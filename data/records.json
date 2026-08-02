@@ -1,8 +1,34 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-02T13:47:45.176Z",
- "count": 2,
+ "updatedAt": "2026-08-02T14:40:49.299Z",
+ "count": 4,
  "records": [
+  {
+   "id": "rmsbwqsy9bjqmp",
+   "jobId": "4435338766",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4435338766/",
+   "company": "TRM Labs",
+   "title": "Account Manager (APAC)",
+   "hirers": [],
+   "ts": 1785681641755,
+   "applicants": "",
+   "tenure": "1.4 years",
+   "memo": "",
+   "status": "等己方处理"
+  },
+  {
+   "id": "rmsbvqs2jly0pc",
+   "jobId": "4427952010",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4427952010/",
+   "company": "Payoneer",
+   "title": "Marketing Manager, APAC",
+   "hirers": [],
+   "ts": 1785679960997,
+   "applicants": "",
+   "tenure": "3.4 years",
+   "memo": "",
+   "status": "已投递等联络"
+  },
   {
    "id": "rmsbut5tme2qbm",
    "jobId": "4435467765",
@@ -19,7 +45,7 @@
    "ts": 1785678392515,
    "applicants": "",
    "tenure": "3.7 years",
-   "memo": "\n26.7.29 人事一面\n26.8.2 发出",
+   "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出\n先方連絡待ち",
    "status": "一次人事面谈结束，等对方联络"
   },
   {
