@@ -21,10 +21,28 @@ DATA = os.path.join(ROOT, "data", "records.json")
 TEMPLATE = os.path.join(ROOT, "template.html")
 OUTDIR = os.path.join(ROOT, "dist")
 
+# 顺序即看板的默认排序顺位，必须和油猴脚本里的 STATUSES 保持一致
 STATUSES = [
-    "已投递等联络", "对方来联络了", "已安排面试",
-    "书类落了", "面试落了", "人事 Offer Call", "内定",
+    "已投递等联络",
+    "等己方处理",
+    "一次人事面谈结束，等对方联络",
+    "対方来联络了",
+    "已安排面试，面试准备中",
+    "书类落了",
+    "面试落了",
+    "一次面试通过，等对方安排下一轮",
+    "二次面试通过，等对方安排下一轮",
+    "三次面试通过，等对方安排下一轮",
+    "四次面试通过，等对方安排下一轮",
+    "人事 Offer Call",
+    "内定",
 ]
+
+# 1.1.0 及更早版本的旧状态值
+STATUS_ALIAS = {
+    "对方来联络了": "対方来联络了",
+    "已安排面试": "已安排面试，面试准备中",
+}
 
 # 只允许指向 LinkedIn 的链接进入公开页面，避免脏数据把页面变成任意跳转
 SAFE_URL = re.compile(r"^https://([a-z0-9-]+\.)*linkedin\.com/", re.I)
@@ -76,6 +94,7 @@ def normalize(raw):
         hirers.append({"name": name or "(未知)", "url": link, "role": s(h.get("role"), 160)})
 
     status = s(raw.get("status"), 40) or STATUSES[0]
+    status = STATUS_ALIAS.get(status, status)
     return {
         "ts": ts,
         "company": s(raw.get("company"), 120),
@@ -107,10 +126,13 @@ def load():
         sys.exit("data/records.json 顶层必须是数组或对象")
 
     records = [r for r in (normalize(x) for x in raw) if r]
-    records.sort(key=lambda r: r["ts"], reverse=True)
+    # 先按状态顺位，同状态再按投递时间从新到旧
+    rank = {name: i for i, name in enumerate(STATUSES)}
+    records.sort(key=lambda r: (rank.get(r["status"], len(STATUSES)), -r["ts"]))
 
     if not updated and records:
-        updated = datetime.fromtimestamp(records[0]["ts"] / 1000, timezone.utc).isoformat()
+        newest = max(r["ts"] for r in records)      # 已不按时间排序，要取最大值
+        updated = datetime.fromtimestamp(newest / 1000, timezone.utc).isoformat()
     return records, updated
 
 

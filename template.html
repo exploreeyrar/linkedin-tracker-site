@@ -10,15 +10,23 @@
   :root {
     --bg: #f6f7f9;      --card: #ffffff;   --fg: #14181d;   --sub: #5d6874;
     --line: #e2e6ea;    --accent: #0a66c2; --shadow: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
-    --c-wait: #6b7684;  --c-contact: #0e7490; --c-interview: #b45309;
-    --c-rejdoc: #9a3412;--c-rejitv: #b91c1c;  --c-offer: #047857; --c-final: #065f46;
+    --c-wait: #6b7684;  --c-self: #7c3aed;    --c-hr1: #0369a1;
+    --c-contact: #0e7490;--c-interview: #b45309;
+    --c-rejdoc: #9a3412;--c-rejitv: #b91c1c;
+    --c-pass1: #0d9488; --c-pass2: #0f9d76;   --c-pass3: #0d9160; --c-pass4: #0a8352;
+    --c-offer: #047857; --c-final: #065f46;
+    --c-dead: #9aa3ad;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #14181d;    --card: #1c2229;   --fg: #e8eaed;   --sub: #98a2ae;
       --line: #2b333c;  --accent: #6cb6ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
-      --c-wait: #97a3b1;--c-contact: #4dd0e1; --c-interview: #fbbf24;
-      --c-rejdoc: #fb923c;--c-rejitv: #f87171; --c-offer: #34d399; --c-final: #6ee7b7;
+      --c-wait: #97a3b1;--c-self: #c4b5fd;    --c-hr1: #7dd3fc;
+      --c-contact: #4dd0e1;--c-interview: #fbbf24;
+      --c-rejdoc: #fb923c;--c-rejitv: #f87171;
+      --c-pass1: #5eead4; --c-pass2: #4fe0c0; --c-pass3: #43d9ad; --c-pass4: #3bd39c;
+      --c-offer: #34d399; --c-final: #6ee7b7;
+      --c-dead: #767f8a;
     }
   }
   * { box-sizing: border-box; }
@@ -41,7 +49,8 @@
   .kpi .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
   .kpi .l { color: var(--sub); font-size: 12px; margin-top: 3px; }
 
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; }
+  /* align-items:start —— 状态多了以后左卡片会很高，右边图表卡片不该跟着拉伸留白 */
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; align-items: start; }
   @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
   .card h2 { font-size: 13px; margin: 0 0 14px; color: var(--sub); font-weight: 600; letter-spacing: .02em; }
@@ -96,6 +105,11 @@
   }
   .age { font-size: 11px; color: var(--sub); }
   .age.stale { color: var(--c-rejitv); font-weight: 600; }
+
+  /* 书类落了 / 面试落了：整行划掉并置灰 */
+  tr.closed td, tr.closed td a { color: var(--c-dead); text-decoration: line-through; }
+  tr.closed .badge { text-decoration: line-through; }
+  tr.closed { opacity: .75; }
 
   .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
   footer { margin-top: 26px; color: var(--sub); font-size: 12px; text-align: center; line-height: 1.8; }
@@ -168,14 +182,50 @@
   var BUILT_AT = PAYLOAD.builtAt;
   var DATA_AT  = PAYLOAD.updatedAt;
 
-  var STATUS_ORDER = ['已投递等联络','对方来联络了','已安排面试','书类落了','面试落了','人事 Offer Call','内定'];
+  // 顺序即默认排序顺位，与油猴脚本 / build.py 保持一致
+  var STATUS_ORDER = [
+    '已投递等联络',
+    '等己方处理',
+    '一次人事面谈结束，等对方联络',
+    '対方来联络了',
+    '已安排面试，面试准备中',
+    '书类落了',
+    '面试落了',
+    '一次面试通过，等对方安排下一轮',
+    '二次面试通过，等对方安排下一轮',
+    '三次面试通过，等对方安排下一轮',
+    '四次面试通过，等对方安排下一轮',
+    '人事 Offer Call',
+    '内定'
+  ];
   var STATUS_VAR = {
-    '已投递等联络': '--c-wait', '对方来联络了': '--c-contact', '已安排面试': '--c-interview',
-    '书类落了': '--c-rejdoc', '面试落了': '--c-rejitv', '人事 Offer Call': '--c-offer', '内定': '--c-final'
+    '已投递等联络': '--c-wait',
+    '等己方处理': '--c-self',
+    '一次人事面谈结束，等对方联络': '--c-hr1',
+    '対方来联络了': '--c-contact',
+    '已安排面试，面试准备中': '--c-interview',
+    '书类落了': '--c-rejdoc',
+    '面试落了': '--c-rejitv',
+    '一次面试通过，等对方安排下一轮': '--c-pass1',
+    '二次面试通过，等对方安排下一轮': '--c-pass2',
+    '三次面试通过，等对方安排下一轮': '--c-pass3',
+    '四次面试通过，等对方安排下一轮': '--c-pass4',
+    '人事 Offer Call': '--c-offer',
+    '内定': '--c-final'
   };
-  var CLOSED  = { '书类落了': 1, '面试落了': 1 };
-  var ADVANCED = { '已安排面试': 1, '人事 Offer Call': 1, '内定': 1 };
+  var CLOSED = { '书类落了': 1, '面试落了': 1 };
+  var ADVANCED = {
+    '已安排面试，面试准备中': 1,
+    '一次面试通过，等对方安排下一轮': 1,
+    '二次面试通过，等对方安排下一轮': 1,
+    '三次面试通过，等对方安排下一轮': 1,
+    '四次面试通过，等对方安排下一轮': 1,
+    '人事 Offer Call': 1,
+    '内定': 1
+  };
+  var WAITING = { '已投递等联络': 1, '等己方处理': 1, '一次人事面谈结束，等对方联络': 1 };
   var STALE_DAYS = 14;
+  function statusRank(s) { var i = STATUS_ORDER.indexOf(s); return i === -1 ? STATUS_ORDER.length : i; }
 
   var $ = function (id) { return document.getElementById(id); };
   var el = function (tag, cls, text) {
@@ -208,7 +258,7 @@
     RECORDS.forEach(function (r) {
       if (CLOSED[r.status]) closed++;
       if (ADVANCED[r.status]) advanced++;
-      if (r.status === '已投递等联络') {
+      if (WAITING[r.status]) {
         waiting++;
         if (daysSince(r.ts) >= STALE_DAYS) stale++;
       }
@@ -294,7 +344,8 @@
   })();
 
   /* ---------- 表格 ---------- */
-  var sortKey = 'ts', sortDir = -1;
+  // 默认：按状态顺位，同状态再按投递时间从新到旧
+  var sortKey = 'status', sortDir = 1;
 
   (function initFilter() {
     var sel = $('fstatus'), seen = {};
@@ -310,12 +361,13 @@
 
   function rowNode(r) {
     var tr = document.createElement('tr');
+    if (CLOSED[r.status]) tr.className = 'closed';
 
     var tdTs = el('td', 'ts');
     tdTs.appendChild(el('div', null, fmtDT(r.ts)));
     var d = daysSince(r.ts);
     var age = el('div', 'age', d === 0 ? '今天' : d + ' 天前');
-    if (r.status === '已投递等联络' && d >= STALE_DAYS) age.className = 'age stale';
+    if (WAITING[r.status] && d >= STALE_DAYS) age.className = 'age stale';
     tdTs.appendChild(age);
     tr.appendChild(tdTs);
 
@@ -384,7 +436,10 @@
         return (nx - ny) * sortDir;
       }
       if (sortKey === 'ts') return (x - y) * sortDir;
-      if (sortKey === 'status') return (STATUS_ORDER.indexOf(x) - STATUS_ORDER.indexOf(y)) * sortDir;
+      if (sortKey === 'status') {
+        var ds = (statusRank(x) - statusRank(y)) * sortDir;
+        return ds !== 0 ? ds : b.ts - a.ts;      // 同状态：投递时间从新到旧
+      }
       return String(x || '').localeCompare(String(y || ''), 'zh') * sortDir;
     });
 

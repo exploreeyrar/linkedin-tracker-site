@@ -80,6 +80,10 @@ cd linkedin-tracker-site && python3 build.py && open dist/index.html
   权限已经限到最小 —— 只能读写这一个仓库的文件。
 - **`data/records.json` 会被整文件覆盖。** 油猴脚本是唯一数据源，在 GitHub 网页上直接编辑
   这个文件的话，下次同步就没了。
+- **状态清单在三处定义，改的时候要一起改**：油猴脚本的 `STATUSES`、`build.py` 的 `STATUSES`、
+  `template.html` 的 `STATUS_ORDER`（还要在 `STATUS_VAR` 里给新状态配个颜色）。
+  数组顺序就是看板与清单的默认排序顺位。改名时在 `STATUS_ALIAS` 里加一条旧名→新名，
+  历史记录才不会掉出下拉框。
 - **定时构建不精确。** GitHub 的 `schedule` 在高峰期可能延迟几分钟到几十分钟，这是平台行为。
   另外仓库若连续 60 天没有任何提交，定时任务会被自动停用 —— 只要还在投递就不会遇到。
 - **页面上的「距今 N 天」「本周新投」在浏览器端实时计算**，所以哪怕构建是几天前跑的，
