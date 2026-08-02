@@ -1,6 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-02T04:37:12.506Z",
- "count": 0,
- "records": []
+ "updatedAt": "2026-08-02T04:38:47.465Z",
+ "count": 1,
+ "records": [
+  {
+   "id": "rmsbb6v2egfzkb",
+   "jobId": "4435633311",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4435633311/",
+   "company": "Canon Singapore",
+   "title": "Account Manager (Production System)",
+   "hirers": [
+    {
+     "name": "Jason _.",
+     "url": "https://www.linkedin.com/in/jason-a36057236/",
+     "role": "Human Resources Consultant @ Canon Singapore | Talent Scouting, Recruiting"
+    }
+   ],
+   "ts": 1785645439434,
+   "applicants": "83",
+   "tenure": "8.8 years",
+   "memo": "",
+   "status": "已投递等联络"
+  }
+ ]
 }
