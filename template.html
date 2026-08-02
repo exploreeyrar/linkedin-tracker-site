@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>投递清单 · Job Application Tracker</title>
+<meta name="description" content="LinkedIn 投递记录看板">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📮</text></svg>">
+<style>
+  :root {
+    --bg: #f6f7f9;      --card: #ffffff;   --fg: #14181d;   --sub: #5d6874;
+    --line: #e2e6ea;    --accent: #0a66c2; --shadow: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
+    --c-wait: #6b7684;  --c-contact: #0e7490; --c-interview: #b45309;
+    --c-rejdoc: #9a3412;--c-rejitv: #b91c1c;  --c-offer: #047857; --c-final: #065f46;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181d;    --card: #1c2229;   --fg: #e8eaed;   --sub: #98a2ae;
+      --line: #2b333c;  --accent: #6cb6ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
+      --c-wait: #97a3b1;--c-contact: #4dd0e1; --c-interview: #fbbf24;
+      --c-rejdoc: #fb923c;--c-rejitv: #f87171; --c-offer: #34d399; --c-final: #6ee7b7;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  header { margin-bottom: 22px; }
+  h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .meta { color: var(--sub); font-size: 13px; }
+  .meta b { color: var(--fg); font-weight: 600; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; margin: 20px 0; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .kpi .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+  .kpi .l { color: var(--sub); font-size: 12px; margin-top: 3px; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .card h2 { font-size: 13px; margin: 0 0 14px; color: var(--sub); font-weight: 600; letter-spacing: .02em; }
+
+  .sbar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--line); margin-bottom: 14px; }
+  .sbar i { display: block; height: 100%; }
+  .slist { display: grid; gap: 7px; }
+  .srow { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .srow .dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 9px; }
+  .srow .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .srow .vv { color: var(--sub); font-variant-numeric: tabular-nums; }
+
+  .chart { display: flex; align-items: flex-end; gap: 5px; height: 118px; }
+  .chart .col { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px; min-width: 0; }
+  .chart .bar { width: 100%; background: var(--accent); border-radius: 4px 4px 2px 2px; min-height: 2px; opacity: .85; }
+  .chart .bar:hover { opacity: 1; }
+  .chart .lb { font-size: 10px; color: var(--sub); white-space: nowrap; }
+  .chart .vl { font-size: 10px; color: var(--sub); font-variant-numeric: tabular-nums; }
+
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 20px 0 12px; }
+  .tools input, .tools select {
+    font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  .tools input { flex: 1 1 220px; min-width: 160px; }
+  .tools input:focus, .tools select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .tools .hint { color: var(--sub); font-size: 12px; margin-left: auto; }
+
+  .tblwrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 940px; font-size: 13px; }
+  th {
+    text-align: left; font-weight: 600; color: var(--sub); font-size: 12px; white-space: nowrap;
+    padding: 11px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); z-index: 1;
+  }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--fg); }
+  th .ar { opacity: .45; font-size: 10px; }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.ts { color: var(--sub); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .co { font-weight: 600; }
+  .role { color: var(--sub); font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
+  .memo { color: var(--sub); font-size: 12.5px; white-space: pre-wrap; word-break: break-word; max-width: 260px; }
+
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    white-space: nowrap; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 12%, transparent);
+  }
+  .age { font-size: 11px; color: var(--sub); }
+  .age.stale { color: var(--c-rejitv); font-weight: 600; }
+
+  .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
+  footer { margin-top: 26px; color: var(--sub); font-size: 12px; text-align: center; line-height: 1.8; }
+  footer code { background: var(--card); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📮 投递清单</h1>
+    <div class="meta">
+      共 <b id="m-total">0</b> 条记录 ·
+      数据更新于 <b id="m-data">—</b> ·
+      页面构建于 <b id="m-built">—</b>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>状态分布</h2>
+      <div class="sbar" id="sbar"></div>
+      <div class="slist" id="slist"></div>
+    </div>
+    <div class="card">
+      <h2>近 12 周投递量</h2>
+      <div class="chart" id="chart"></div>
+    </div>
+  </section>
+
+  <div class="tools">
+    <input id="q" type="search" placeholder="搜索公司 / 岗位 / HR / MEMO…" autocomplete="off">
+    <select id="fstatus"><option value="">全部状态</option></select>
+    <span class="hint" id="shown"></span>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" data-k="ts">投递时间 <span class="ar"></span></th>
+          <th class="sortable" data-k="company">公司 <span class="ar"></span></th>
+          <th class="sortable" data-k="title">岗位 <span class="ar"></span></th>
+          <th>Hiring team</th>
+          <th class="sortable" data-k="applicants" style="text-align:right">申请数 <span class="ar"></span></th>
+          <th class="sortable" data-k="tenure" style="text-align:right">中位任职 <span class="ar"></span></th>
+          <th class="sortable" data-k="status">状态 <span class="ar"></span></th>
+          <th>MEMO</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>暂无记录。在 LinkedIn 职位页点击「已递交投递」并同步后，这里就会出现。</div>
+  </div>
+
+  <footer>
+    由 <code>build.py</code> 从 <code>data/records.json</code> 生成 · GitHub Actions 自动部署<br>
+    「距今天数」在你打开页面时实时计算，因此始终准确
+  </footer>
+</div>
+
+<script id="payload" type="application/json">__DATA__</script>
+<script>
+(function () {
+  'use strict';
+
+  var PAYLOAD = JSON.parse(document.getElementById('payload').textContent);
+  var RECORDS = PAYLOAD.records || [];
+  var BUILT_AT = PAYLOAD.builtAt;
+  var DATA_AT  = PAYLOAD.updatedAt;
+
+  var STATUS_ORDER = ['已投递等联络','对方来联络了','已安排面试','书类落了','面试落了','人事 Offer Call','内定'];
+  var STATUS_VAR = {
+    '已投递等联络': '--c-wait', '对方来联络了': '--c-contact', '已安排面试': '--c-interview',
+    '书类落了': '--c-rejdoc', '面试落了': '--c-rejitv', '人事 Offer Call': '--c-offer', '内定': '--c-final'
+  };
+  var CLOSED  = { '书类落了': 1, '面试落了': 1 };
+  var ADVANCED = { '已安排面试': 1, '人事 Offer Call': 1, '内定': 1 };
+  var STALE_DAYS = 14;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  var cssVar = function (name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || 'var(--sub)';
+  };
+
+  function fmtDT(ms) {
+    if (!ms) return '—';
+    var d = new Date(ms), p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function daysSince(ms) { return Math.floor((Date.now() - ms) / 86400000); }
+  function num(v) { var m = String(v == null ? '' : v).match(/[\d.]+/); return m ? parseFloat(m[0]) : NaN; }
+
+  /* ---------- 顶部信息 ---------- */
+  $('m-total').textContent = RECORDS.length;
+  $('m-data').textContent  = DATA_AT ? fmtDT(Date.parse(DATA_AT)) : '—';
+  $('m-built').textContent = BUILT_AT ? fmtDT(Date.parse(BUILT_AT)) : '—';
+
+  /* ---------- KPI ---------- */
+  (function () {
+    var weekAgo = Date.now() - 7 * 86400000;
+    var closed = 0, advanced = 0, waiting = 0, recent = 0, stale = 0;
+    RECORDS.forEach(function (r) {
+      if (CLOSED[r.status]) closed++;
+      if (ADVANCED[r.status]) advanced++;
+      if (r.status === '已投递等联络') {
+        waiting++;
+        if (daysSince(r.ts) >= STALE_DAYS) stale++;
+      }
+      if (r.ts >= weekAgo) recent++;
+    });
+    var live = RECORDS.length - closed;
+    var kpis = [
+      ['总投递', RECORDS.length, null],
+      ['进行中', live, null],
+      ['已进面试及以后', advanced, null],
+      ['本周新投', recent, null],
+      ['等待回复', waiting, null],
+      ['超 ' + STALE_DAYS + ' 天无进展', stale, stale > 0 ? 'var(--c-rejitv)' : null]
+    ];
+    var box = $('kpis');
+    kpis.forEach(function (k) {
+      var c = el('div', 'kpi');
+      var n = el('div', 'n', k[1]);
+      if (k[2]) n.style.color = k[2];
+      c.appendChild(n);
+      c.appendChild(el('div', 'l', k[0]));
+      box.appendChild(c);
+    });
+  })();
+
+  /* ---------- 状态分布 ---------- */
+  (function () {
+    var counts = {}, total = RECORDS.length;
+    RECORDS.forEach(function (r) { counts[r.status] = (counts[r.status] || 0) + 1; });
+    var order = STATUS_ORDER.slice();
+    Object.keys(counts).forEach(function (s) { if (order.indexOf(s) === -1) order.push(s); });
+
+    var bar = $('sbar'), list = $('slist');
+    order.forEach(function (s) {
+      var n = counts[s] || 0;
+      if (!n) return;
+      var color = cssVar(STATUS_VAR[s] || '--sub');
+      var seg = el('i');
+      seg.style.width = (n / total * 100) + '%';
+      seg.style.background = color;
+      seg.title = s + ' · ' + n;
+      bar.appendChild(seg);
+
+      var row = el('div', 'srow');
+      var dot = el('span', 'dot'); dot.style.background = color;
+      row.appendChild(dot);
+      row.appendChild(el('span', 'nm', s));
+      row.appendChild(el('span', 'vv', n + ' · ' + Math.round(n / total * 100) + '%'));
+      list.appendChild(row);
+    });
+    if (!total) list.appendChild(el('div', 'srow', '暂无数据'));
+  })();
+
+  /* ---------- 近 12 周趋势 ---------- */
+  (function () {
+    var WEEKS = 12, now = new Date();
+    now.setHours(0, 0, 0, 0);
+    // 本周一
+    var monday = new Date(now);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    var buckets = [];
+    for (var i = WEEKS - 1; i >= 0; i--) {
+      var s = new Date(monday); s.setDate(s.getDate() - i * 7);
+      buckets.push({ start: s.getTime(), end: s.getTime() + 7 * 86400000, n: 0, label: (s.getMonth() + 1) + '/' + s.getDate() });
+    }
+    RECORDS.forEach(function (r) {
+      for (var i = 0; i < buckets.length; i++) {
+        if (r.ts >= buckets[i].start && r.ts < buckets[i].end) { buckets[i].n++; break; }
+      }
+    });
+    var max = Math.max.apply(null, buckets.map(function (b) { return b.n; }).concat([1]));
+    var box = $('chart');
+    buckets.forEach(function (b) {
+      var col = el('div', 'col');
+      col.appendChild(el('div', 'vl', b.n || ''));
+      var bar = el('div', 'bar');
+      bar.style.height = Math.max(2, b.n / max * 78) + 'px';
+      bar.title = b.label + ' 那周：' + b.n + ' 份';
+      col.appendChild(bar);
+      col.appendChild(el('div', 'lb', b.label));
+      box.appendChild(col);
+    });
+  })();
+
+  /* ---------- 表格 ---------- */
+  var sortKey = 'ts', sortDir = -1;
+
+  (function initFilter() {
+    var sel = $('fstatus'), seen = {};
+    RECORDS.forEach(function (r) { seen[r.status] = 1; });
+    STATUS_ORDER.concat(Object.keys(seen)).forEach(function (s) {
+      if (!seen[s] || seen['__' + s]) return;
+      seen['__' + s] = 1;
+      var o = document.createElement('option');
+      o.value = s; o.textContent = s;
+      sel.appendChild(o);
+    });
+  })();
+
+  function rowNode(r) {
+    var tr = document.createElement('tr');
+
+    var tdTs = el('td', 'ts');
+    tdTs.appendChild(el('div', null, fmtDT(r.ts)));
+    var d = daysSince(r.ts);
+    var age = el('div', 'age', d === 0 ? '今天' : d + ' 天前');
+    if (r.status === '已投递等联络' && d >= STALE_DAYS) age.className = 'age stale';
+    tdTs.appendChild(age);
+    tr.appendChild(tdTs);
+
+    tr.appendChild(el('td', 'co', r.company || '—'));
+
+    var tdTi = document.createElement('td');
+    if (r.jobUrl) {
+      var a = el('a', null, r.title || '(无标题)');
+      a.href = r.jobUrl; a.target = '_blank'; a.rel = 'noopener';
+      tdTi.appendChild(a);
+    } else {
+      tdTi.textContent = r.title || '(无标题)';
+    }
+    tr.appendChild(tdTi);
+
+    var tdHr = document.createElement('td');
+    if (r.hirers && r.hirers.length) {
+      r.hirers.forEach(function (h) {
+        var name = h.name || h.url || '(未知)';
+        if (h.url) {
+          var la = el('a', null, name);
+          la.href = h.url; la.target = '_blank'; la.rel = 'noopener';
+          tdHr.appendChild(la);
+        } else {
+          tdHr.appendChild(el('div', null, name));
+        }
+        if (h.role) tdHr.appendChild(el('div', 'role', h.role));
+      });
+    } else {
+      tdHr.textContent = '—';
+    }
+    tr.appendChild(tdHr);
+
+    tr.appendChild(el('td', 'num', r.applicants || '—'));
+    tr.appendChild(el('td', 'num', r.tenure || '—'));
+
+    var tdSt = document.createElement('td');
+    var b = el('span', 'badge', r.status || '—');
+    b.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
+    tdSt.appendChild(b);
+    tr.appendChild(tdSt);
+
+    tr.appendChild(el('td', 'memo', r.memo || ''));
+    return tr;
+  }
+
+  function apply() {
+    var q = $('q').value.trim().toLowerCase();
+    var fs = $('fstatus').value;
+    var rows = RECORDS.filter(function (r) {
+      if (fs && r.status !== fs) return false;
+      if (!q) return true;
+      var hay = [r.company, r.title, r.memo, r.status]
+        .concat((r.hirers || []).map(function (h) { return h.name + ' ' + h.role; }))
+        .join(' ').toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+
+    rows.sort(function (a, b) {
+      var x = a[sortKey], y = b[sortKey];
+      if (sortKey === 'applicants' || sortKey === 'tenure') {
+        var nx = num(x), ny = num(y);
+        if (isNaN(nx) && isNaN(ny)) return 0;
+        if (isNaN(nx)) return 1;
+        if (isNaN(ny)) return -1;
+        return (nx - ny) * sortDir;
+      }
+      if (sortKey === 'ts') return (x - y) * sortDir;
+      if (sortKey === 'status') return (STATUS_ORDER.indexOf(x) - STATUS_ORDER.indexOf(y)) * sortDir;
+      return String(x || '').localeCompare(String(y || ''), 'zh') * sortDir;
+    });
+
+    var tb = $('tb');
+    tb.textContent = '';
+    var frag = document.createDocumentFragment();
+    rows.forEach(function (r) { frag.appendChild(rowNode(r)); });
+    tb.appendChild(frag);
+
+    $('empty').hidden = rows.length > 0;
+    $('shown').textContent = rows.length === RECORDS.length
+      ? RECORDS.length + ' 条'
+      : '显示 ' + rows.length + ' / ' + RECORDS.length + ' 条';
+
+    [].forEach.call(document.querySelectorAll('th.sortable'), function (th) {
+      th.querySelector('.ar').textContent = th.dataset.k === sortKey ? (sortDir === 1 ? '▲' : '▼') : '';
+    });
+  }
+
+  $('q').addEventListener('input', apply);
+  $('fstatus').addEventListener('change', apply);
+  [].forEach.call(document.querySelectorAll('th.sortable'), function (th) {
+    th.addEventListener('click', function () {
+      var k = th.dataset.k;
+      if (k === sortKey) sortDir = -sortDir;
+      else { sortKey = k; sortDir = (k === 'ts' || k === 'applicants') ? -1 : 1; }
+      apply();
+    });
+  });
+
+  apply();
+})();
+</script>
+</body>
+</html>

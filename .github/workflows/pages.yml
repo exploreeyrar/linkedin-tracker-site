@@ -1,0 +1,53 @@
+name: Build & Deploy Pages
+
+on:
+  # 油猴脚本通过 GitHub API 提交 data/records.json 时触发（用 PAT 提交会触发 workflow）
+  push:
+    branches: [main]
+    paths:
+      - 'data/**'
+      - 'template.html'
+      - 'build.py'
+      - '.github/workflows/pages.yml'
+  # 定期重建：每天 06:17 (Asia/Singapore, UTC+8) —— cron 用的是 UTC
+  schedule:
+    - cron: '17 22 * * *'
+  # 手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只跑一个部署；排队中的旧任务直接取消
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 生成 dist/index.html
+        run: python build.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
