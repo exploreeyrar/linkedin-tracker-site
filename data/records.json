@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-02T11:58:50.325Z",
+ "updatedAt": "2026-08-02T12:00:25.198Z",
  "count": 1,
  "records": [
   {
@@ -19,7 +19,7 @@
    "ts": 1785671857075,
    "applicants": "85",
    "tenure": "8.8 years",
-   "memo": "1\n2\n3\n4\n5\n6\n6\n7\n8\n9\n10",
+   "memo": "",
    "status": "已投递等联络"
   }
  ]
