@@ -1,39 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-02T04:40:01.459Z",
- "count": 2,
- "records": [
-  {
-   "id": "rmsbba8dyrnvnh",
-   "jobId": "4442504478",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4442504478/",
-   "company": "Hitachi Vantara",
-   "title": "Emerging Market (India & Asean) Field Marketing Leader",
-   "hirers": [],
-   "ts": 1785645596669,
-   "applicants": "",
-   "tenure": "6.5 years",
-   "memo": "",
-   "status": "已投递等联络"
-  },
-  {
-   "id": "rmsbb6v2egfzkb",
-   "jobId": "4435633311",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4435633311/",
-   "company": "Canon Singapore",
-   "title": "Account Manager (Production System)",
-   "hirers": [
-    {
-     "name": "Jason _.",
-     "url": "https://www.linkedin.com/in/jason-a36057236/",
-     "role": "Human Resources Consultant @ Canon Singapore | Talent Scouting, Recruiting"
-    }
-   ],
-   "ts": 1785645439434,
-   "applicants": "83",
-   "tenure": "8.8 years",
-   "memo": "",
-   "status": "已投递等联络"
-  }
- ]
+ "updatedAt": "2026-08-02T04:45:03.009Z",
+ "count": 0,
+ "records": []
 }
