@@ -1,8 +1,21 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-02T15:02:06.035Z",
- "count": 5,
+ "updatedAt": "2026-08-02T15:06:39.656Z",
+ "count": 6,
  "records": [
+  {
+   "id": "rmsbxo452kndkl",
+   "jobId": "4422048961",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4422048961/",
+   "company": "OpenAI",
+   "title": "Partner Marketing Lead, APAC",
+   "hirers": [],
+   "ts": 1785683195901,
+   "applicants": "",
+   "tenure": "1 years",
+   "memo": "",
+   "status": "已投递等联络"
+  },
   {
    "id": "rmsbxi74i30e6w",
    "jobId": "4442504478",
