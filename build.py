@@ -23,26 +23,43 @@ OUTDIR = os.path.join(ROOT, "dist")
 
 # 顺序即看板的默认排序顺位，必须和油猴脚本里的 STATUSES 保持一致
 STATUSES = [
-    "已投递等联络",
     "等己方处理",
-    "一次人事面谈结束，等对方联络",
+    "已安排面试、面试准备中",
     "対方来联络了",
-    "已安排面试，面试准备中",
-    "书类落了",
-    "面试落了",
-    "一次面试通过，等对方安排下一轮",
-    "二次面试通过，等对方安排下一轮",
-    "三次面试通过，等对方安排下一轮",
-    "四次面试通过，等对方安排下一轮",
-    "人事 Offer Call",
+    "四次面试通过、等对方安排下一轮",
+    "三次面试通过、等对方安排下一轮",
+    "二次面试通过、等对方安排下一轮",
+    "一次面试通过、等対方安排下一轮",
+    "一次人事面谈结束、等对方联络",
     "内定",
+    "人事 Offer Call",
+    "已投递等联络",
+    "面试落了",
+    "书类落了",
 ]
 
-# 1.1.0 及更早版本的旧状态值
+# 新记录的初始状态（排序顺位与默认值是两回事，所以不取 STATUSES[0]）
+DEFAULT_STATUS = "已投递等联络"
+
+# 旧版本的状态值
 STATUS_ALIAS = {
     "对方来联络了": "対方来联络了",
-    "已安排面试": "已安排面试，面试准备中",
+    "已安排面试": "已安排面试、面试准备中",
 }
+
+# 逐字匹配之外再做一次「去标点 + 対/对 统一」的模糊匹配，老数据不会落到未知状态
+_PUNCT = str.maketrans("", "", "，,、･·・ \t")
+_LOOSE = {s.translate(_PUNCT).replace("対", "对"): s for s in STATUSES}
+
+
+def canon_status(value):
+    if not value:
+        return DEFAULT_STATUS
+    if value in STATUSES:
+        return value
+    if value in STATUS_ALIAS:
+        return STATUS_ALIAS[value]
+    return _LOOSE.get(value.translate(_PUNCT).replace("対", "对"), value)
 
 # 只允许指向 LinkedIn 的链接进入公开页面，避免脏数据把页面变成任意跳转
 SAFE_URL = re.compile(r"^https://([a-z0-9-]+\.)*linkedin\.com/", re.I)
@@ -93,8 +110,7 @@ def normalize(raw):
             continue
         hirers.append({"name": name or "(未知)", "url": link, "role": s(h.get("role"), 160)})
 
-    status = s(raw.get("status"), 40) or STATUSES[0]
-    status = STATUS_ALIAS.get(status, status)
+    status = canon_status(s(raw.get("status"), 40))
     return {
         "ts": ts,
         "company": s(raw.get("company"), 120),
