@@ -176,6 +176,7 @@
   }
   .dlg h3 { margin: 0 0 4px; font-size: 16px; }
   .dlg .desc { color: var(--sub); font-size: 12px; line-height: 1.6; margin-bottom: 6px; word-break: break-word; }
+  .dlg .tip { color: var(--sub); font-size: 11.5px; line-height: 1.5; margin-top: 5px; }
   .dlg label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 5px; }
   .dlg select, .dlg textarea, .dlg input[type=text] {
     width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
@@ -355,6 +356,16 @@
       <option value="己 ball">己 ball</option>
       <option value="通知">通知</option>
     </select>
+
+    <label for="rmPriority">优先级</label>
+    <select id="rmPriority">
+      <option value="紧急">紧急</option>
+      <option value="高">高</option>
+      <option value="中">中</option>
+      <option value="低">低</option>
+      <option value="无" selected>无</option>
+    </select>
+    <div class="tip">选「无」则不在 Telegram 消息里附上这一行。</div>
 
     <label for="rmMemo">备注</label>
     <textarea id="rmMemo" placeholder="想让对方知道的事…"></textarea>
@@ -864,14 +875,19 @@
   function buildRemindText(r, note) {
     var lines = [
       TG_PREFIX + ' 状态更新请求',
-      '处理人：' + $('rmWho').value,
+      '处理人：' + $('rmWho').value
+    ];
+    if ($('rmPriority').value && $('rmPriority').value !== '无') {
+      lines.push('📍优先级：' + $('rmPriority').value);
+    }
+    lines.push(
       '',
       '公司：' + (r.company || '—'),
       '岗位：' + (r.title || '—'),
       '投递时间：' + fmtDT(r.ts),
       '链接：' + (r.jobUrl || '—'),
       '当前状态：' + r.status
-    ];
+    );
     if ($('rmWith').checked && r.memo) lines.push('', '现有 MEMO：' + r.memo);
     lines.push('', '🟢 备注：' + (note || '(无)'));
     return lines.join('\n');
@@ -896,6 +912,7 @@
     clearTimeout(remindCloseTimer);   // 上一次发送成功后的延时关闭，别把新开的窗关掉
     remindTarget = r;
     $('rmWho').value = 'XR ball';
+    $('rmPriority').value = '无';
     $('rmMemo').value = '';
     $('rmWith').checked = false;
     $('rmStatus').textContent = '';
@@ -909,6 +926,7 @@
   $('remindMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   $('rmMemo').addEventListener('input', updateRemindPreview);
   $('rmWho').addEventListener('change', updateRemindPreview);
+  $('rmPriority').addEventListener('change', updateRemindPreview);
   $('rmWith').addEventListener('change', updateRemindPreview);
 
   $('rmSend').addEventListener('click', function () {
