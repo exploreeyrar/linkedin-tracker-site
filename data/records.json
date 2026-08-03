@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T07:11:31.105Z",
- "count": 18,
+ "updatedAt": "2026-08-03T07:15:18.126Z",
+ "count": 19,
  "records": [
+  {
+   "id": "rmscw9rnhs32ii",
+   "jobId": "4341329331",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4341329331/",
+   "company": "Airwallex",
+   "title": "Account Executive (Education Segment)",
+   "hirers": [],
+   "ts": 1785741313099,
+   "applicants": "10",
+   "tenure": "1.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscw4whsz539m",
    "jobId": "4447643845",
