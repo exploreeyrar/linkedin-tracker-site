@@ -122,6 +122,21 @@
   .role { color: var(--sub); font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
   .memo { white-space: pre-wrap; word-break: break-word; min-width: 150px; }
   .memo:empty::before { content: '—'; color: var(--sub); }
+  /* MEMO 太长时只露前 8 行，其余收进弹窗 */
+  .memo.clamp {
+    display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .morebtn {
+    display: block; margin-top: 4px; padding: 0; border: 0; background: none; cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 600; color: var(--accent);
+  }
+  .morebtn:hover { text-decoration: underline; }
+  .morebtn[hidden] { display: none; }
+  .memofull {
+    white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.7;
+    max-height: min(60vh, 460px); overflow: auto;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px;
+  }
 
   .badge {
     display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
@@ -168,8 +183,16 @@
   }
   .dlg textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
   .dlg select:focus, .dlg textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .dlg .info { font-size: 12px; color: var(--sub); line-height: 1.7; background: var(--bg);
-               border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin-top: 12px; word-break: break-word; }
+  .previewhdr { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; margin: 16px 0 5px; }
+  .previewhdr .cnum { margin-left: auto; font-weight: 500; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .previewhdr .cnum.over { color: var(--c-rejitv); font-weight: 700; }
+  .rmhint { font-size: 11.5px; color: var(--sub); line-height: 1.6; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+  .rmhint.warn { color: var(--c-rejitv); }
+  .rmhint:empty { display: none; }
+  .dlg .info { font-size: 12px; color: var(--fg); line-height: 1.6; max-height: 240px; overflow: auto;
+               font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+               white-space: pre-wrap; background: var(--bg);
+               border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; word-break: break-word; }
   .dlg .row { display: flex; gap: 8px; margin-top: 18px; align-items: center; }
   .dlg .row button {
     font: inherit; font-size: 13px; padding: 9px 14px; border-radius: 9px; cursor: pointer;
@@ -336,25 +359,35 @@
     <label for="rmMemo">备注</label>
     <textarea id="rmMemo" placeholder="想让对方知道的事…"></textarea>
 
-    <label class="chk disabled" title="看板是只读的，MEMO 只能在 LinkedIn 侧改">
-      <input type="checkbox" id="rmAppend" disabled>
-      <span>把上面的内容追加到这条的 MEMO<small>看板改不了 MEMO —— 数据由 LinkedIn 侧的脚本整份覆盖，请在那边操作</small></span>
-    </label>
-    <label class="chk disabled" title="看板是只读的，MEMO 只能在 LinkedIn 侧改">
-      <input type="checkbox" id="rmReplace" disabled>
-      <span>用上面的内容替换掉这条的 MEMO</span>
-    </label>
     <label class="chk">
       <input type="checkbox" id="rmWith">
       <span>附上 MEMO 里已有的内容一并发送</span>
     </label>
 
+    <div class="previewhdr">
+      <span>预览 —— 实际发送的内容</span>
+      <span class="cnum" id="rmCount"></span>
+    </div>
     <div class="info" id="rmInfo"></div>
+    <div class="rmhint" id="rmHint"></div>
     <div class="status" id="rmStatus"></div>
 
     <div class="row">
       <button class="primary" id="rmSend" type="button">发送到 Telegram</button>
       <button class="sp" id="rmCancel" type="button">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMO 全文 -->
+<div class="mask" id="memoMask" hidden>
+  <div class="dlg">
+    <h3>📝 MEMO</h3>
+    <div class="desc" id="memoWho"></div>
+    <div class="memofull" id="memoFull"></div>
+    <div class="row">
+      <button id="memoRemind" type="button">📢 请求更新状态</button>
+      <button class="primary sp" id="memoClose" type="button">关闭</button>
     </div>
   </div>
 </div>
@@ -423,6 +456,7 @@
   };
   var STALE_DAYS = 14;
   var TG_PREFIX = '#SGJOB';
+  var TG_LIMIT = 4096;          // Telegram 单条上限，Worker 也按这个值拦
 
   function statusRank(s) { var i = STATUS_ORDER.indexOf(s); return i === -1 ? STATUS_ORDER.length : i; }
 
@@ -617,7 +651,15 @@
     }
     tr.appendChild(tdSt);
 
-    tr.appendChild(el('td', 'memo', r.memo || ''));
+    var tdMemo = document.createElement('td');
+    var memoBox = el('div', 'memo clamp', r.memo || '');
+    var moreBtn = el('button', 'morebtn', 'more..');
+    moreBtn.type = 'button';
+    moreBtn.hidden = true;                       // 渲染后按实际溢出情况决定是否露出
+    moreBtn.addEventListener('click', function () { openMemoFull(r); });
+    tdMemo.appendChild(memoBox);
+    tdMemo.appendChild(moreBtn);
+    tr.appendChild(tdMemo);
     tr.appendChild(el('td', 'co', r.company || '—'));
 
     var tdTi = document.createElement('td');
@@ -708,6 +750,12 @@
     rows.forEach(function (r) { frag.appendChild(rowNode(r)); });
     tb.appendChild(frag);
 
+    // -webkit-line-clamp 是视觉截断，只有排版完才知道有没有被截，所以在这里判断
+    [].forEach.call(tb.querySelectorAll('.memo.clamp'), function (box) {
+      var btn = box.nextElementSibling;
+      if (btn) btn.hidden = box.scrollHeight <= box.clientHeight + 1;
+    });
+
     $('empty').hidden = rows.length > 0;
     $('shown').textContent = rows.length === RECORDS.length
       ? RECORDS.length + ' 条'
@@ -792,35 +840,28 @@
       });
   }
 
+  /* ---------- MEMO 全文弹窗 ---------- */
+  var memoFullTarget = null;
+  function openMemoFull(r) {
+    memoFullTarget = r;
+    $('memoWho').textContent = (r.company || '—') + ' / ' + (r.title || '—');
+    $('memoFull').textContent = r.memo || '(空)';
+    $('memoMask').hidden = false;
+  }
+  $('memoClose').addEventListener('click', function () { $('memoMask').hidden = true; });
+  $('memoMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('memoRemind').addEventListener('click', function () {
+    var r = memoFullTarget;
+    $('memoMask').hidden = true;
+    if (r) openRemind(r);
+  });
+
   /* ---------- 提醒弹窗 ---------- */
   var remindTarget = null;
   var remindCloseTimer = null;
-  function openRemind(r) {
-    clearTimeout(remindCloseTimer);   // 上一次发送成功后的延时关闭，别把新开的窗关掉
-    remindTarget = r;
-    $('rmWho').value = 'XR ball';
-    $('rmMemo').value = '';
-    $('rmWith').checked = !!r.memo;      // 有 MEMO 时默认带上
-    $('rmStatus').textContent = '';
-    $('rmStatus').className = 'status';
-    $('rmInfo').textContent =
-      '投递时间：' + fmtDT(r.ts) + '\n' +
-      '公司：' + (r.company || '—') + '\n' +
-      '岗位：' + (r.title || '—') + '\n' +
-      '链接：' + (r.jobUrl || '—') + '\n' +
-      '当前状态：' + r.status + '\n' +
-      '现有 MEMO：' + (r.memo ? r.memo.replace(/\n/g, ' / ') : '(空)');
-    $('rmSend').disabled = false;
-    $('remindMask').hidden = false;
-    $('rmMemo').focus();
-  }
-  $('rmCancel').addEventListener('click', function () { $('remindMask').hidden = true; });
-  $('remindMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
 
-  $('rmSend').addEventListener('click', function () {
-    if (!remindTarget) return;
-    var r = remindTarget;
-    var memo = $('rmMemo').value.trim();
+  /** 组装要发送的正文。预览和真正发送都走这里，免得两边对不上。 */
+  function buildRemindText(r, note) {
     var lines = [
       TG_PREFIX + ' 状态更新请求',
       '处理人：' + $('rmWho').value,
@@ -832,8 +873,48 @@
       '当前状态：' + r.status
     ];
     if ($('rmWith').checked && r.memo) lines.push('', '现有 MEMO：' + r.memo);
-    lines.push('', '备注：' + (memo || '(无)'));
-    var text = lines.join('\n');
+    lines.push('', '🟢 备注：' + (note || '(无)'));
+    return lines.join('\n');
+  }
+
+  function updateRemindPreview() {
+    if (!remindTarget) return;
+    var text = buildRemindText(remindTarget, $('rmMemo').value.trim());
+    $('rmInfo').textContent = text;
+
+    var over = text.length > TG_LIMIT;
+    $('rmCount').textContent = text.length + ' / ' + TG_LIMIT + ' 字';
+    $('rmCount').classList.toggle('over', over);
+    $('rmHint').textContent = over
+      ? '超过 Telegram 单条上限，发不出去 —— 取消勾选「附上 MEMO」或把备注写短一些。'
+      : '';
+    $('rmHint').classList.toggle('warn', over);
+    $('rmSend').disabled = over;
+  }
+
+  function openRemind(r) {
+    clearTimeout(remindCloseTimer);   // 上一次发送成功后的延时关闭，别把新开的窗关掉
+    remindTarget = r;
+    $('rmWho').value = 'XR ball';
+    $('rmMemo').value = '';
+    $('rmWith').checked = false;
+    $('rmStatus').textContent = '';
+    $('rmStatus').className = 'status';
+    $('rmSend').disabled = false;
+    updateRemindPreview();
+    $('remindMask').hidden = false;
+    $('rmMemo').focus();
+  }
+  $('rmCancel').addEventListener('click', function () { $('remindMask').hidden = true; });
+  $('remindMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('rmMemo').addEventListener('input', updateRemindPreview);
+  $('rmWho').addEventListener('change', updateRemindPreview);
+  $('rmWith').addEventListener('change', updateRemindPreview);
+
+  $('rmSend').addEventListener('click', function () {
+    if (!remindTarget) return;
+    var r = remindTarget;
+    var text = buildRemindText(r, $('rmMemo').value.trim());
 
     var btn = this;
     btn.disabled = true;
@@ -987,6 +1068,7 @@
     if (e.key !== 'Escape') return;
     $('remindMask').hidden = true;
     $('prefsMask').hidden = true;
+    $('memoMask').hidden = true;
   });
 })();
 </script>
