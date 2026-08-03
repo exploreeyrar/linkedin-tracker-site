@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T05:44:46.723Z",
- "count": 7,
+ "updatedAt": "2026-08-03T05:55:33.117Z",
+ "count": 8,
  "records": [
+  {
+   "id": "rmsctf7iywmp7e",
+   "jobId": "4410885728",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4410885728/",
+   "company": "StarHub",
+   "title": "Solution Sales Manager (Hybrid Multi-Cloud)",
+   "hirers": [],
+   "ts": 1785736528097,
+   "applicants": "10",
+   "tenure": "7.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsct1crni7bu7",
    "jobId": "4447688144",
