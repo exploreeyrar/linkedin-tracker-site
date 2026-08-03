@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T07:58:11.970Z",
- "count": 25,
+ "updatedAt": "2026-08-03T08:00:04.528Z",
+ "count": 26,
  "records": [
+  {
+   "id": "rmscxvci4uryhp",
+   "jobId": "4445867082",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4445867082/",
+   "company": "JustLogin",
+   "title": "Sales Executive – HR Tech / SaaS (Hybrid Working Arrangement)",
+   "hirers": [],
+   "ts": 1785743999510,
+   "applicants": "9",
+   "tenure": "4.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscxsxn1npiuq",
    "jobId": "4448136313",
