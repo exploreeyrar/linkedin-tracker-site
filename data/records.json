@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T05:55:33.117Z",
- "count": 8,
+ "updatedAt": "2026-08-03T06:01:15.527Z",
+ "count": 9,
  "records": [
+  {
+   "id": "rmsctmjpz3xpt9",
+   "jobId": "4448143229",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448143229/",
+   "company": "Dow Jones",
+   "title": "Sales Development Manager",
+   "hirers": [],
+   "ts": 1785736870503,
+   "applicants": "10",
+   "tenure": "6.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsctf7iywmp7e",
    "jobId": "4410885728",
