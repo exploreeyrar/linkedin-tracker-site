@@ -18,12 +18,14 @@ from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(ROOT, "data", "records.json")
+CONFIG = os.path.join(ROOT, "config.json")
 TEMPLATE = os.path.join(ROOT, "template.html")
 OUTDIR = os.path.join(ROOT, "dist")
 
 # 顺序即看板的默认排序顺位，必须和油猴脚本里的 STATUSES 保持一致
 STATUSES = [
-    "等己方处理",
+    "等己方处理(XR ball)",
+    "等己方处理(己 ball)",
     "已安排面试、面试准备中",
     "対方来联络了",
     "四次面试通过、等对方安排下一轮",
@@ -45,6 +47,7 @@ DEFAULT_STATUS = "已投递等联络"
 STATUS_ALIAS = {
     "对方来联络了": "対方来联络了",
     "已安排面试": "已安排面试、面试准备中",
+    "等己方处理": "等己方处理(XR ball)",
 }
 
 # 逐字匹配之外再做一次「去标点 + 対/对 统一」的模糊匹配，老数据不会落到未知状态
@@ -121,7 +124,46 @@ def normalize(raw):
         "tenure": s(raw.get("tenure"), 30),
         "status": status,
         "memo": s(raw.get("memo"), 1000),
+        "scout": bool(raw.get("scout")),          # 人事主动 scout 的
     }
+
+
+def normalize_message(raw):
+    """留言板的一条留言。"""
+    if not isinstance(raw, dict):
+        return None
+    text = s(raw.get("text"), 4000)
+    if not text:
+        return None
+    created = to_ms(raw.get("createdAt") or raw.get("ts"))
+    if not created:
+        return None
+    edited = to_ms(raw.get("editedAt"))
+    return {
+        "id": s(raw.get("id"), 40) or ("m" + str(created)),
+        "text": text,
+        "createdAt": created,
+        "editedAt": edited if edited and edited != created else 0,
+        "author": s(raw.get("author"), 40),
+    }
+
+
+def load_config():
+    """Telegram 中继地址等站点配置。缺文件就按未配置处理。"""
+    cfg = {"tgEndpoint": "", "tgAppKey": ""}
+    if os.path.exists(CONFIG):
+        try:
+            with open(CONFIG, encoding="utf-8") as f:
+                raw = json.load(f)
+            if isinstance(raw, dict):
+                cfg["tgEndpoint"] = s(raw.get("tgEndpoint"), 300)
+                cfg["tgAppKey"] = s(raw.get("tgAppKey"), 200)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"! config.json 读取失败（按未配置处理）: {e}", file=sys.stderr)
+    if cfg["tgEndpoint"] and not cfg["tgEndpoint"].startswith("https://"):
+        print("! config.json 的 tgEndpoint 必须是 https:// 开头，已忽略", file=sys.stderr)
+        cfg["tgEndpoint"] = ""
+    return cfg
 
 
 def load():
@@ -135,9 +177,11 @@ def load():
             sys.exit(f"data/records.json 不是合法 JSON: {e}")
 
     if isinstance(blob, dict):
-        raw, updated = blob.get("records") or [], s(blob.get("updatedAt"), 40)
+        raw = blob.get("records") or []
+        updated = s(blob.get("updatedAt"), 40)
+        raw_msgs = blob.get("messages") or []
     elif isinstance(blob, list):
-        raw, updated = blob, ""
+        raw, updated, raw_msgs = blob, "", []
     else:
         sys.exit("data/records.json 顶层必须是数组或对象")
 
@@ -146,14 +190,18 @@ def load():
     rank = {name: i for i, name in enumerate(STATUSES)}
     records.sort(key=lambda r: (rank.get(r["status"], len(STATUSES)), -r["ts"]))
 
+    messages = [m for m in (normalize_message(x) for x in raw_msgs) if m]
+    messages.sort(key=lambda m: m["createdAt"], reverse=True)
+
     if not updated and records:
         newest = max(r["ts"] for r in records)      # 已不按时间排序，要取最大值
         updated = datetime.fromtimestamp(newest / 1000, timezone.utc).isoformat()
-    return records, updated
+    return records, updated, messages
 
 
 def main():
-    records, updated = load()
+    records, updated, messages = load()
+    cfg = load_config()
 
     with open(TEMPLATE, encoding="utf-8") as f:
         html = f.read()
@@ -163,6 +211,9 @@ def main():
         "updatedAt": updated,
         "count": len(records),
         "records": records,
+        "messages": messages,
+        "statuses": STATUSES,
+        "config": cfg,
     }
     # 嵌进 <script type="application/json">，必须堵死提前闭合标签的可能
     blob = (json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -181,7 +232,10 @@ def main():
     by_status = {}
     for r in records:
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
-    print(f"✓ dist/index.html — {len(records)} 条记录，数据更新于 {updated or '未知'}")
+    scouted = sum(1 for r in records if r["scout"])
+    print(f"✓ dist/index.html — {len(records)} 条记录"
+          f"（scout {scouted} 条）、留言 {len(messages)} 条，数据更新于 {updated or '未知'}")
+    print(f"    Telegram 中继: {cfg['tgEndpoint'] or '未配置（config.json 的 tgEndpoint 为空）'}")
     for k in STATUSES:
         if by_status.get(k):
             print(f"    {k}: {by_status[k]}")

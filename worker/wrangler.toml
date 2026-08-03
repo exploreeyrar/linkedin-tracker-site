@@ -1,0 +1,16 @@
+name = "sgjob-tracker-telegram"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+[vars]
+# 送信先グループ（スーパーグループ ID）
+TG_CHAT = "-1004286394659"
+
+# 送信を許可する Origin をカンマ区切りで。
+#   - GitHub Pages: https://exploreeyrar.github.io
+#   - LinkedIn 上のユーザースクリプト: https://www.linkedin.com
+#   - ローカルで dist/index.html を file:// で開く場合: null
+ALLOWED_ORIGINS = "https://exploreeyrar.github.io,https://www.linkedin.com,null"
+
+# TG_TOKEN は Secret として登録する（wrangler secret put TG_TOKEN）。ここには書かない。
+# APP_KEY を Secret に登録すると X-App-Key ヘッダーの一致も必須になる（任意）。

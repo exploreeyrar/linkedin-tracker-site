@@ -10,7 +10,8 @@
   :root {
     --bg: #f6f7f9;      --card: #ffffff;   --fg: #14181d;   --sub: #5d6874;
     --line: #e2e6ea;    --accent: #0a66c2; --shadow: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
-    --c-wait: #6b7684;  --c-self: #7c3aed;    --c-hr1: #0369a1;
+    --pop: 0 10px 34px rgba(16,24,40,.18);
+    --c-wait: #6b7684;  --c-self: #7c3aed;  --c-selfme: #a855f7;    --c-hr1: #0369a1;
     --c-contact: #0e7490;--c-interview: #b45309;
     --c-rejdoc: #9a3412;--c-rejitv: #b91c1c;
     --c-pass1: #0d9488; --c-pass2: #0f9d76;   --c-pass3: #0d9160; --c-pass4: #0a8352;
@@ -21,7 +22,8 @@
     :root {
       --bg: #14181d;    --card: #1c2229;   --fg: #e8eaed;   --sub: #98a2ae;
       --line: #2b333c;  --accent: #6cb6ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
-      --c-wait: #97a3b1;--c-self: #c4b5fd;    --c-hr1: #7dd3fc;
+      --pop: 0 10px 34px rgba(0,0,0,.6);
+      --c-wait: #97a3b1;--c-self: #c4b5fd;  --c-selfme: #d8b4fe;    --c-hr1: #7dd3fc;
       --c-contact: #4dd0e1;--c-interview: #fbbf24;
       --c-rejdoc: #fb923c;--c-rejitv: #f87171;
       --c-pass1: #5eead4; --c-pass2: #4fe0c0; --c-pass3: #43d9ad; --c-pass4: #3bd39c;
@@ -53,12 +55,27 @@
   .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; align-items: start; }
   @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
-  .card h2 { font-size: 13px; margin: 0 0 14px; color: var(--sub); font-weight: 600; letter-spacing: .02em; }
+  .card h2 { font-size: 13px; margin: 0 0 14px; color: var(--sub); font-weight: 600; letter-spacing: .02em;
+             display: flex; align-items: center; gap: 10px; }
+  .card h2 .sp { margin-left: auto; }
+
+  .linkbtn {
+    font: inherit; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  }
+  .linkbtn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .linkbtn[hidden] { display: none; }
 
   .sbar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--line); margin-bottom: 14px; }
   .sbar i { display: block; height: 100%; }
-  .slist { display: grid; gap: 7px; }
-  .srow { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .slist { display: grid; gap: 2px; }
+  .srow {
+    display: flex; align-items: center; gap: 9px; font-size: 13px; width: 100%;
+    background: none; border: 0; padding: 5px 6px; margin: 0; border-radius: 7px;
+    font-family: inherit; color: var(--fg); cursor: pointer; text-align: left;
+  }
+  .srow:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  .srow.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .srow .dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 9px; }
   .srow .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .srow .vv { color: var(--sub); font-variant-numeric: tabular-nums; }
@@ -75,12 +92,18 @@
     font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 9px;
     border: 1px solid var(--line); background: var(--card); color: var(--fg);
   }
-  .tools input { flex: 1 1 220px; min-width: 160px; }
-  .tools input:focus, .tools select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .tools .hint { color: var(--sub); font-size: 12px; margin-left: auto; }
+  .tools input[type=search] { flex: 1 1 200px; min-width: 150px; }
+  .tools input:focus, .tools select:focus, .tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .tools .hint { color: var(--sub); font-size: 12px; margin-left: auto; white-space: nowrap; }
+  .toggle {
+    font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg); white-space: nowrap;
+  }
+  .toggle:hover { border-color: var(--accent); }
+  .toggle.on { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
   .tblwrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; min-width: 940px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 13px; }
   th {
     text-align: left; font-weight: 600; color: var(--sub); font-size: 12px; white-space: nowrap;
     padding: 11px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); z-index: 1;
@@ -97,23 +120,125 @@
   a:hover { text-decoration: underline; }
   .co { font-weight: 600; }
   .role { color: var(--sub); font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
-  .memo { color: var(--sub); font-size: 12.5px; white-space: pre-wrap; word-break: break-word; max-width: 260px; }
+  .memo { white-space: pre-wrap; word-break: break-word; min-width: 150px; }
+  .memo:empty::before { content: '—'; color: var(--sub); }
 
   .badge {
     display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
     white-space: nowrap; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 12%, transparent);
   }
+  .star { display: block; margin-top: 4px; font-size: 13px; }
   .age { font-size: 11px; color: var(--sub); }
   .age.stale { color: var(--c-rejitv); font-weight: 600; }
 
   /* 书类落了 / 面试落了：整行划掉并置灰 */
   tr.closed td, tr.closed td a { color: var(--c-dead); text-decoration: line-through; }
   tr.closed .badge { text-decoration: line-through; }
+  tr.closed .star { text-decoration: none; }
   tr.closed { opacity: .75; }
+
+  .iconbtn {
+    border: 1px solid transparent; background: transparent; cursor: pointer; font-size: 15px;
+    padding: 3px 6px; border-radius: 7px; line-height: 1;
+  }
+  .iconbtn:hover { background: var(--line); }
+  td.act { text-align: center; white-space: nowrap; }
 
   .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
   footer { margin-top: 26px; color: var(--sub); font-size: 12px; text-align: center; line-height: 1.8; }
   footer code { background: var(--card); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; font-size: 11px; }
+
+  /* ---------- 弹窗 ---------- */
+  .mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 60;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .mask[hidden] { display: none; }
+  .dlg {
+    width: min(480px, 100%); max-height: calc(100vh - 32px); overflow: auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: var(--pop); padding: 20px 22px;
+  }
+  .dlg h3 { margin: 0 0 4px; font-size: 16px; }
+  .dlg .desc { color: var(--sub); font-size: 12px; line-height: 1.6; margin-bottom: 6px; word-break: break-word; }
+  .dlg label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 5px; }
+  .dlg select, .dlg textarea, .dlg input[type=text] {
+    width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--fg);
+  }
+  .dlg textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+  .dlg select:focus, .dlg textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .dlg .info { font-size: 12px; color: var(--sub); line-height: 1.7; background: var(--bg);
+               border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin-top: 12px; word-break: break-word; }
+  .dlg .row { display: flex; gap: 8px; margin-top: 18px; align-items: center; }
+  .dlg .row button {
+    font: inherit; font-size: 13px; padding: 9px 14px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  .dlg .row button.primary { background: var(--accent); color: #fff; border-color: transparent; font-weight: 600; }
+  .dlg .row button:disabled { opacity: .5; cursor: default; }
+  .dlg .row .sp { margin-left: auto; }
+  .dlg .status { font-size: 12px; margin-top: 12px; line-height: 1.6; word-break: break-word; }
+  .dlg .status.ok { color: var(--c-offer); }
+  .dlg .status.err { color: var(--c-rejitv); }
+  .chk { display: flex; align-items: center; gap: 9px; font-size: 13px; margin: 11px 0; cursor: pointer; }
+  .chk input { width: 16px; height: 16px; flex: 0 0 16px; }
+  .chk span small { display: block; color: var(--sub); font-size: 11.5px; line-height: 1.5; }
+
+  /* ---------- 留言板 ---------- */
+  .fab {
+    position: fixed; right: 20px; bottom: 20px; z-index: 40;
+    display: flex; align-items: center; gap: 8px;
+    font: inherit; font-size: 13px; font-weight: 600; padding: 11px 16px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg); box-shadow: var(--pop); cursor: pointer;
+  }
+  .fab:hover { border-color: var(--accent); }
+  .fab .dot {
+    width: 9px; height: 9px; border-radius: 50%; background: #e5484d;
+    box-shadow: 0 0 0 3px color-mix(in srgb, #e5484d 25%, transparent);
+  }
+  .fab .dot[hidden] { display: none; }
+
+  .board {
+    position: fixed; z-index: 50; display: flex; flex-direction: column;
+    background: var(--card); border: 1px solid var(--line); border-radius: 13px;
+    box-shadow: var(--pop); overflow: hidden; min-width: 300px; min-height: 200px;
+  }
+  .board[hidden] { display: none; }
+  .board .bhdr {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--bg); border-bottom: 1px solid var(--line); cursor: grab; user-select: none; flex: 0 0 auto;
+  }
+  .board .bhdr.dragging { cursor: grabbing; }
+  .board .bhdr .t { font-size: 13px; font-weight: 700; margin-right: auto; }
+  .board .bhdr .t em { font-style: normal; font-weight: 500; color: var(--sub); }
+  .board .bhdr button {
+    font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  .board .bhdr button:hover { background: var(--line); }
+  .board .blist { flex: 1 1 auto; overflow: auto; padding: 10px 12px; }
+  .msg { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .msg:last-child { border-bottom: 0; }
+  .msg.unread { position: relative; padding-left: 13px; }
+  .msg.unread::before {
+    content: ''; position: absolute; left: 0; top: 15px;
+    width: 7px; height: 7px; border-radius: 50%; background: #e5484d;
+  }
+  .msg .mt { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .msg .mm { font-size: 11px; color: var(--sub); margin-top: 5px; }
+  .board .brz {
+    position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; z-index: 3;
+    background: linear-gradient(135deg, transparent 0 48%, var(--line) 48% 58%, transparent 58% 70%, var(--line) 70% 80%, transparent 80%);
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: rgba(20,20,20,.93); color: #fff; padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; z-index: 90; opacity: 0; transition: opacity .18s ease; pointer-events: none;
+    max-width: calc(100vw - 32px); text-align: center;
+  }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -131,7 +256,10 @@
 
   <section class="grid">
     <div class="card">
-      <h2>状态分布</h2>
+      <h2>
+        状态分布
+        <button class="linkbtn sp" id="clearStatus" hidden>显示全部状态</button>
+      </h2>
       <div class="sbar" id="sbar"></div>
       <div class="slist" id="slist"></div>
     </div>
@@ -144,6 +272,8 @@
   <div class="tools">
     <input id="q" type="search" placeholder="搜索公司 / 岗位 / HR / MEMO…" autocomplete="off">
     <select id="fstatus"><option value="">全部状态</option></select>
+    <button class="toggle" id="fscout" type="button" aria-pressed="false">🌟 人事主动 scout 的案件</button>
+    <button class="toggle" id="openPrefs" type="button" title="显示设置">⚙ 设置</button>
     <span class="hint" id="shown"></span>
   </div>
 
@@ -151,14 +281,15 @@
     <table>
       <thead>
         <tr>
-          <th class="sortable" data-k="ts">投递时间 <span class="ar"></span></th>
+          <th class="sortable" data-k="status">状态 <span class="ar"></span></th>
+          <th>MEMO</th>
           <th class="sortable" data-k="company">公司 <span class="ar"></span></th>
           <th class="sortable" data-k="title">岗位 <span class="ar"></span></th>
           <th>Hiring team</th>
-          <th class="sortable" data-k="applicants" style="text-align:right">申请数 <span class="ar"></span></th>
-          <th class="sortable" data-k="tenure" style="text-align:right">中位任职 <span class="ar"></span></th>
-          <th class="sortable" data-k="status">状态 <span class="ar"></span></th>
-          <th>MEMO</th>
+          <th class="sortable" data-k="ts">投递时间 <span class="ar"></span></th>
+          <th class="sortable col-ap" data-k="applicants" style="text-align:right">申请数 <span class="ar"></span></th>
+          <th class="sortable col-te" data-k="tenure" style="text-align:right">中位任职 <span class="ar"></span></th>
+          <th style="text-align:center">提醒</th>
         </tr>
       </thead>
       <tbody id="tb"></tbody>
@@ -172,34 +303,81 @@
   </footer>
 </div>
 
+<!-- 留言板 -->
+<button class="fab" id="boardFab" type="button">
+  <span>💬 留言板</span>
+  <span class="dot" id="boardDot" hidden></span>
+</button>
+
+<div class="board" id="board" hidden>
+  <div class="bhdr" id="boardHdr">
+    <span class="t">💬 留言板 <em id="boardCount">(0)</em></span>
+    <button type="button" id="boardMarkRead">全部标为已读</button>
+    <button type="button" id="boardClose">收起 ✕</button>
+  </div>
+  <div class="blist" id="boardList"></div>
+  <div class="brz" id="boardRz" title="拖拽调整大小"></div>
+</div>
+
+<!-- 提醒弹窗 -->
+<div class="mask" id="remindMask" hidden>
+  <div class="dlg">
+    <h3>✏️ 请求更新状态</h3>
+    <div class="desc">提醒内容会连同这条投递的基本信息一起发到 Telegram 群。</div>
+
+    <label for="rmWho">谁需要处理这个提醒？</label>
+    <select id="rmWho">
+      <option value="XR ball" selected>XR ball</option>
+      <option value="己 ball">己 ball</option>
+    </select>
+
+    <label for="rmMemo">备注</label>
+    <textarea id="rmMemo" placeholder="想让对方知道的事…"></textarea>
+
+    <div class="info" id="rmInfo"></div>
+    <div class="status" id="rmStatus"></div>
+
+    <div class="row">
+      <button class="primary" id="rmSend" type="button">发送到 Telegram</button>
+      <button class="sp" id="rmCancel" type="button">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="mask" id="prefsMask" hidden>
+  <div class="dlg">
+    <h3>⚙ 显示设置</h3>
+    <div class="desc">只影响这台设备上的这个浏览器。</div>
+
+    <label class="chk"><input type="checkbox" id="pfAp"><span>显示「申请数」列</span></label>
+    <label class="chk"><input type="checkbox" id="pfTe"><span>显示「中位任职」列</span></label>
+    <label class="chk"><input type="checkbox" id="pfDot"><span>留言板有未读时显示小红点</span></label>
+    <label class="chk"><input type="checkbox" id="pfNotify"><span>有新留言时弹 Chrome 通知<small id="pfNotifyHint"></small></span></label>
+
+    <div class="row"><button class="primary sp" id="pfClose" type="button">完成</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script id="payload" type="application/json">__DATA__</script>
 <script>
 (function () {
   'use strict';
 
-  var PAYLOAD = JSON.parse(document.getElementById('payload').textContent);
-  var RECORDS = PAYLOAD.records || [];
+  var PAYLOAD  = JSON.parse(document.getElementById('payload').textContent);
+  var RECORDS  = PAYLOAD.records || [];
+  var MESSAGES = PAYLOAD.messages || [];
+  var CONFIG   = PAYLOAD.config || {};
   var BUILT_AT = PAYLOAD.builtAt;
   var DATA_AT  = PAYLOAD.updatedAt;
 
   // 顺序即默认排序顺位，与油猴脚本 / build.py 保持一致
-  var STATUS_ORDER = [
-    '等己方处理',
-    '已安排面试、面试准备中',
-    '対方来联络了',
-    '四次面试通过、等对方安排下一轮',
-    '三次面试通过、等对方安排下一轮',
-    '二次面试通过、等对方安排下一轮',
-    '一次面试通过、等対方安排下一轮',
-    '一次人事面谈结束、等对方联络',
-    '内定',
-    '人事 Offer Call',
-    '已投递等联络',
-    '面试落了',
-    '书类落了'
-  ];
+  var STATUS_ORDER = PAYLOAD.statuses || [];
   var STATUS_VAR = {
-    '等己方处理': '--c-self',
+    '等己方处理(XR ball)': '--c-self',
+    '等己方处理(己 ball)': '--c-selfme',
     '已安排面试、面试准备中': '--c-interview',
     '対方来联络了': '--c-contact',
     '四次面试通过、等对方安排下一轮': '--c-pass4',
@@ -224,8 +402,13 @@
     '内定': 1
   };
   // 还没有下一步安排、在等着的：用于「等待中」与「超 N 天无进展」两个指标
-  var WAITING = { '已投递等联络': 1, '等己方处理': 1, '一次人事面谈结束、等对方联络': 1 };
+  var WAITING = {
+    '已投递等联络': 1, '等己方处理(XR ball)': 1, '等己方处理(己 ball)': 1,
+    '一次人事面谈结束、等对方联络': 1
+  };
   var STALE_DAYS = 14;
+  var TG_PREFIX = '#SGJOB';
+
   function statusRank(s) { var i = STATUS_ORDER.indexOf(s); return i === -1 ? STATUS_ORDER.length : i; }
 
   var $ = function (id) { return document.getElementById(id); };
@@ -247,6 +430,32 @@
   function daysSince(ms) { return Math.floor((Date.now() - ms) / 86400000); }
   function num(v) { var m = String(v == null ? '' : v).match(/[\d.]+/); return m ? parseFloat(m[0]) : NaN; }
 
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+
+  /* ---------- 本地偏好 ---------- */
+  var PK = 'sgjob_prefs_v1';
+  var prefs = {
+    showApplicants: false, showTenure: false,
+    showDot: true, notify: false,
+    lastRead: 0,
+    board: { x: 0, y: 0, w: 380, h: 440, placed: false }
+  };
+  try {
+    var saved = JSON.parse(localStorage.getItem(PK) || 'null');
+    if (saved && typeof saved === 'object') {
+      Object.keys(prefs).forEach(function (k) { if (k in saved) prefs[k] = saved[k]; });
+      prefs.board = Object.assign({ x: 0, y: 0, w: 380, h: 440, placed: false }, prefs.board || {});
+    }
+  } catch (e) { /* 用默认值 */ }
+  function savePrefs() { try { localStorage.setItem(PK, JSON.stringify(prefs)); } catch (e) {} }
+
   /* ---------- 顶部信息 ---------- */
   $('m-total').textContent = RECORDS.length;
   $('m-data').textContent  = DATA_AT ? fmtDT(Date.parse(DATA_AT)) : '—';
@@ -255,7 +464,7 @@
   /* ---------- KPI ---------- */
   (function () {
     var weekAgo = Date.now() - 7 * 86400000;
-    var closed = 0, advanced = 0, waiting = 0, recent = 0, stale = 0;
+    var closed = 0, advanced = 0, waiting = 0, recent = 0, stale = 0, scouted = 0;
     RECORDS.forEach(function (r) {
       if (CLOSED[r.status]) closed++;
       if (ADVANCED[r.status]) advanced++;
@@ -264,14 +473,15 @@
         if (daysSince(r.ts) >= STALE_DAYS) stale++;
       }
       if (r.ts >= weekAgo) recent++;
+      if (r.scout) scouted++;
     });
-    var live = RECORDS.length - closed;
     var kpis = [
       ['总投递', RECORDS.length, null],
-      ['进行中', live, null],
+      ['进行中', RECORDS.length - closed, null],
       ['已进面试及以后', advanced, null],
       ['本周新投', recent, null],
       ['等待中', waiting, null],
+      ['人事主动 scout', scouted, null],
       ['超 ' + STALE_DAYS + ' 天无进展', stale, stale > 0 ? 'var(--c-rejitv)' : null]
     ];
     var box = $('kpis');
@@ -285,39 +495,47 @@
     });
   })();
 
-  /* ---------- 状态分布 ---------- */
-  (function () {
+  /* ---------- 状态分布（点击即筛选） ---------- */
+  function buildStatusPanel() {
     var counts = {}, total = RECORDS.length;
     RECORDS.forEach(function (r) { counts[r.status] = (counts[r.status] || 0) + 1; });
     var order = STATUS_ORDER.slice();
     Object.keys(counts).forEach(function (s) { if (order.indexOf(s) === -1) order.push(s); });
 
     var bar = $('sbar'), list = $('slist');
+    bar.textContent = ''; list.textContent = '';
     order.forEach(function (s) {
       var n = counts[s] || 0;
       if (!n) return;
       var color = cssVar(STATUS_VAR[s] || '--sub');
+
       var seg = el('i');
       seg.style.width = (n / total * 100) + '%';
       seg.style.background = color;
       seg.title = s + ' · ' + n;
       bar.appendChild(seg);
 
-      var row = el('div', 'srow');
+      var row = el('button', 'srow');
+      row.type = 'button';
+      row.dataset.status = s;
+      row.title = '只看「' + s + '」';
       var dot = el('span', 'dot'); dot.style.background = color;
       row.appendChild(dot);
       row.appendChild(el('span', 'nm', s));
       row.appendChild(el('span', 'vv', n + ' · ' + Math.round(n / total * 100) + '%'));
+      row.addEventListener('click', function () {
+        $('fstatus').value = ($('fstatus').value === s) ? '' : s;   // 再点一次取消
+        apply();
+      });
       list.appendChild(row);
     });
     if (!total) list.appendChild(el('div', 'srow', '暂无数据'));
-  })();
+  }
 
   /* ---------- 近 12 周趋势 ---------- */
   (function () {
     var WEEKS = 12, now = new Date();
     now.setHours(0, 0, 0, 0);
-    // 本周一
     var monday = new Date(now);
     monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
     var buckets = [];
@@ -345,33 +563,46 @@
   })();
 
   /* ---------- 表格 ---------- */
-  // 默认：按状态顺位，同状态再按投递时间从新到旧
-  var sortKey = 'status', sortDir = 1;
+  var sortKey = 'status', sortDir = 1;   // 默认：状态顺位 → 同状态时间从新到旧
 
   (function initFilter() {
     var sel = $('fstatus'), seen = {};
     RECORDS.forEach(function (r) { seen[r.status] = 1; });
-    STATUS_ORDER.concat(Object.keys(seen)).forEach(function (s) {
-      if (!seen[s] || seen['__' + s]) return;
-      seen['__' + s] = 1;
+    var order = STATUS_ORDER.slice();
+    Object.keys(seen).forEach(function (s) { if (order.indexOf(s) === -1) order.push(s); });
+    order.forEach(function (s) {
+      if (!seen[s]) return;
       var o = document.createElement('option');
       o.value = s; o.textContent = s;
       sel.appendChild(o);
     });
   })();
 
+  function applyColumnPrefs() {
+    var show = function (cls, on) {
+      [].forEach.call(document.querySelectorAll('.' + cls), function (n) { n.hidden = !on; });
+    };
+    show('col-ap', prefs.showApplicants);
+    show('col-te', prefs.showTenure);
+  }
+
   function rowNode(r) {
     var tr = document.createElement('tr');
     if (CLOSED[r.status]) tr.className = 'closed';
 
-    var tdTs = el('td', 'ts');
-    tdTs.appendChild(el('div', null, fmtDT(r.ts)));
-    var d = daysSince(r.ts);
-    var age = el('div', 'age', d === 0 ? '今天' : d + ' 天前');
-    if (WAITING[r.status] && d >= STALE_DAYS) age.className = 'age stale';
-    tdTs.appendChild(age);
-    tr.appendChild(tdTs);
+    // 状态（scout 的在状态下方加 🌟）
+    var tdSt = document.createElement('td');
+    var b = el('span', 'badge', r.status || '—');
+    b.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
+    tdSt.appendChild(b);
+    if (r.scout) {
+      var st = el('span', 'star', '🌟');
+      st.title = '人事主动 scout 的';
+      tdSt.appendChild(st);
+    }
+    tr.appendChild(tdSt);
 
+    tr.appendChild(el('td', 'memo', r.memo || ''));
     tr.appendChild(el('td', 'co', r.company || '—'));
 
     var tdTi = document.createElement('td');
@@ -402,24 +633,36 @@
     }
     tr.appendChild(tdHr);
 
-    tr.appendChild(el('td', 'num', r.applicants || '—'));
-    tr.appendChild(el('td', 'num', r.tenure || '—'));
+    var tdTs = el('td', 'ts');
+    tdTs.appendChild(el('div', null, fmtDT(r.ts)));
+    var d = daysSince(r.ts);
+    var age = el('div', 'age', d === 0 ? '今天' : d + ' 天前');
+    if (WAITING[r.status] && d >= STALE_DAYS) age.className = 'age stale';
+    tdTs.appendChild(age);
+    tr.appendChild(tdTs);
 
-    var tdSt = document.createElement('td');
-    var b = el('span', 'badge', r.status || '—');
-    b.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
-    tdSt.appendChild(b);
-    tr.appendChild(tdSt);
+    var tdAp = el('td', 'num col-ap', r.applicants || '—'); tdAp.hidden = !prefs.showApplicants; tr.appendChild(tdAp);
+    var tdTe = el('td', 'num col-te', r.tenure || '—');     tdTe.hidden = !prefs.showTenure;     tr.appendChild(tdTe);
 
-    tr.appendChild(el('td', 'memo', r.memo || ''));
+    var tdAct = el('td', 'act');
+    var pen = el('button', 'iconbtn', '✏️');
+    pen.type = 'button';
+    pen.title = '请求更新这条的状态（发 Telegram）';
+    pen.addEventListener('click', function () { openRemind(r); });
+    tdAct.appendChild(pen);
+    tr.appendChild(tdAct);
+
     return tr;
   }
 
   function apply() {
     var q = $('q').value.trim().toLowerCase();
     var fs = $('fstatus').value;
+    var scoutOnly = $('fscout').classList.contains('on');
+
     var rows = RECORDS.filter(function (r) {
       if (fs && r.status !== fs) return false;
+      if (scoutOnly && !r.scout) return false;
       if (!q) return true;
       var hay = [r.company, r.title, r.memo, r.status]
         .concat((r.hirers || []).map(function (h) { return h.name + ' ' + h.role; }))
@@ -458,10 +701,25 @@
     [].forEach.call(document.querySelectorAll('th.sortable'), function (th) {
       th.querySelector('.ar').textContent = th.dataset.k === sortKey ? (sortDir === 1 ? '▲' : '▼') : '';
     });
+
+    // 状态筛选中：高亮对应的分布行，并露出「显示全部状态」
+    [].forEach.call(document.querySelectorAll('.srow'), function (n) {
+      n.classList.toggle('on', !!fs && n.dataset.status === fs);
+    });
+    $('clearStatus').hidden = !fs;
+
+    applyColumnPrefs();
   }
 
   $('q').addEventListener('input', apply);
   $('fstatus').addEventListener('change', apply);
+  $('clearStatus').addEventListener('click', function () { $('fstatus').value = ''; apply(); });
+  $('fscout').addEventListener('click', function () {
+    var on = !this.classList.contains('on');
+    this.classList.toggle('on', on);
+    this.setAttribute('aria-pressed', String(on));
+    apply();
+  });
   [].forEach.call(document.querySelectorAll('th.sortable'), function (th) {
     th.addEventListener('click', function () {
       var k = th.dataset.k;
@@ -471,7 +729,244 @@
     });
   });
 
+  /* ---------- 设置 ---------- */
+  function syncPrefsUI() {
+    $('pfAp').checked = !!prefs.showApplicants;
+    $('pfTe').checked = !!prefs.showTenure;
+    $('pfDot').checked = !!prefs.showDot;
+    $('pfNotify').checked = !!prefs.notify;
+    var hint = '';
+    if (!('Notification' in window)) hint = '这个浏览器不支持通知。';
+    else if (Notification.permission === 'denied') hint = '浏览器已拒绝该站点的通知权限，需要在站点设置里改回来。';
+    else if (Notification.permission !== 'granted') hint = '勾选后会向浏览器申请通知权限。';
+    $('pfNotifyHint').textContent = hint;
+  }
+  $('openPrefs').addEventListener('click', function () { syncPrefsUI(); $('prefsMask').hidden = false; });
+  $('pfClose').addEventListener('click', function () { $('prefsMask').hidden = true; });
+  $('prefsMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('pfAp').addEventListener('change', function () { prefs.showApplicants = this.checked; savePrefs(); apply(); });
+  $('pfTe').addEventListener('change', function () { prefs.showTenure = this.checked; savePrefs(); apply(); });
+  $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
+  $('pfNotify').addEventListener('change', function () {
+    var want = this.checked;
+    if (!want || !('Notification' in window)) { prefs.notify = false; savePrefs(); syncPrefsUI(); return; }
+    // 申请权限必须发生在用户手势里，这里就是 change 事件
+    Notification.requestPermission().then(function (p) {
+      prefs.notify = (p === 'granted');
+      savePrefs();
+      syncPrefsUI();
+      if (p !== 'granted') toast('未获得通知权限');
+    });
+  });
+
+  /* ---------- Telegram ---------- */
+  function tgSend(text) {
+    var endpoint = CONFIG.tgEndpoint;
+    if (!endpoint) return Promise.reject(new Error('还没有配置 Telegram 中继（config.json 的 tgEndpoint）'));
+    if (text.indexOf(TG_PREFIX) !== 0) return Promise.reject(new Error('内部错误：正文缺少前缀'));
+    var opts = { method: 'POST', body: new URLSearchParams({ text: text }) };
+    if (CONFIG.tgAppKey) {
+      // 带自定义头会触发预检，Worker 已经处理了 OPTIONS
+      opts.headers = { 'X-App-Key': CONFIG.tgAppKey };
+    }
+    return fetch(endpoint, opts)
+      .then(function (res) { return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; }); })
+      .then(function (data) {
+        if (!data.ok) throw new Error(data.description || 'unknown error');
+        return data;
+      });
+  }
+
+  /* ---------- 提醒弹窗 ---------- */
+  var remindTarget = null;
+  function openRemind(r) {
+    remindTarget = r;
+    $('rmWho').value = 'XR ball';
+    $('rmMemo').value = '';
+    $('rmStatus').textContent = '';
+    $('rmStatus').className = 'status';
+    $('rmInfo').textContent =
+      '投递时间：' + fmtDT(r.ts) + '\n' +
+      '公司：' + (r.company || '—') + '\n' +
+      '岗位：' + (r.title || '—') + '\n' +
+      '链接：' + (r.jobUrl || '—');
+    $('rmSend').disabled = false;
+    $('remindMask').hidden = false;
+    $('rmMemo').focus();
+  }
+  $('rmCancel').addEventListener('click', function () { $('remindMask').hidden = true; });
+  $('remindMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+
+  $('rmSend').addEventListener('click', function () {
+    if (!remindTarget) return;
+    var r = remindTarget;
+    var memo = $('rmMemo').value.trim();
+    var text = [
+      TG_PREFIX + ' 状态更新请求',
+      '处理人：' + $('rmWho').value,
+      '',
+      '公司：' + (r.company || '—'),
+      '岗位：' + (r.title || '—'),
+      '投递时间：' + fmtDT(r.ts),
+      '链接：' + (r.jobUrl || '—'),
+      '当前状态：' + r.status,
+      '',
+      '备注：' + (memo || '(无)')
+    ].join('\n');
+
+    var btn = this;
+    btn.disabled = true;
+    $('rmStatus').className = 'status';
+    $('rmStatus').textContent = '发送中…';
+    tgSend(text).then(function () {
+      $('rmStatus').className = 'status ok';
+      $('rmStatus').textContent = '已发送到 Telegram 群';
+      toast('提醒已发送');
+      setTimeout(function () { $('remindMask').hidden = true; }, 900);
+    }).catch(function (e) {
+      $('rmStatus').className = 'status err';
+      $('rmStatus').textContent = '发送失败：' + (e.message || e);
+      btn.disabled = false;
+    });
+  });
+
+  /* ---------- 留言板 ---------- */
+  function msgStamp(m) { return Math.max(m.createdAt || 0, m.editedAt || 0); }
+  function unreadList() {
+    return MESSAGES.filter(function (m) { return msgStamp(m) > (prefs.lastRead || 0); });
+  }
+
+  function renderBoard() {
+    var list = $('boardList');
+    list.textContent = '';
+    $('boardCount').textContent = '(' + MESSAGES.length + ')';
+    if (!MESSAGES.length) {
+      list.appendChild(el('div', 'empty', '还没有留言。在 LinkedIn 页面的留言板里写一条并同步后，这里就会出现。'));
+      return;
+    }
+    var lastRead = prefs.lastRead || 0;
+    MESSAGES.forEach(function (m) {
+      var box = el('div', 'msg' + (msgStamp(m) > lastRead ? ' unread' : ''));
+      box.appendChild(el('div', 'mt', m.text));
+      var meta = fmtDT(m.createdAt);
+      if (m.editedAt) meta += ' · 编辑于 ' + fmtDT(m.editedAt);
+      if (m.author) meta += ' · ' + m.author;
+      box.appendChild(el('div', 'mm', meta));
+      list.appendChild(box);
+    });
+  }
+
+  function refreshUnread() {
+    var n = unreadList().length;
+    $('boardDot').hidden = !(n > 0 && prefs.showDot);
+    $('boardFab').title = n > 0 ? (n + ' 条未读留言') : '留言板';
+  }
+
+  function markAllRead() {
+    var newest = MESSAGES.reduce(function (a, m) { return Math.max(a, msgStamp(m)); }, 0);
+    prefs.lastRead = Math.max(prefs.lastRead || 0, newest, Date.now() - 1);
+    savePrefs();
+    renderBoard();
+    refreshUnread();
+  }
+
+  function placeBoard() {
+    var b = prefs.board;
+    if (!b.placed) {
+      b.w = Math.min(380, Math.max(300, window.innerWidth - 40));
+      b.h = Math.min(440, Math.max(200, window.innerHeight - 140));
+      b.x = Math.max(10, window.innerWidth - b.w - 20);
+      b.y = Math.max(10, window.innerHeight - b.h - 80);
+      b.placed = true;
+    }
+    b.w = Math.max(300, Math.min(b.w, Math.max(300, window.innerWidth - 16)));
+    b.h = Math.max(200, Math.min(b.h, Math.max(200, window.innerHeight - 16)));
+    b.x = Math.min(Math.max(0, b.x), Math.max(0, window.innerWidth - 80));
+    b.y = Math.min(Math.max(0, b.y), Math.max(0, window.innerHeight - 40));
+    var n = $('board');
+    n.style.left = b.x + 'px'; n.style.top = b.y + 'px';
+    n.style.width = b.w + 'px'; n.style.height = b.h + 'px';
+  }
+
+  function openBoard() {
+    placeBoard();
+    $('board').hidden = false;
+    renderBoard();
+    // 打开即视为已读，但先渲染出未读标记再清
+    setTimeout(markAllRead, 1200);
+  }
+
+  $('boardFab').addEventListener('click', function () {
+    if ($('board').hidden) openBoard();
+    else $('board').hidden = true;
+  });
+  $('boardClose').addEventListener('click', function () { $('board').hidden = true; });
+  $('boardMarkRead').addEventListener('click', markAllRead);
+
+  // 拖拽 + 缩放
+  (function () {
+    var hdr = $('boardHdr'), node = $('board');
+    var sx, sy, ox, oy, dragging = false;
+    hdr.addEventListener('mousedown', function (e) {
+      if (e.button !== 0 || e.target.tagName === 'BUTTON') return;
+      var r = node.getBoundingClientRect();
+      sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top; dragging = true;
+      hdr.classList.add('dragging');
+      e.preventDefault();
+    });
+    var rz = $('boardRz');
+    var rzOn = false, rw, rh;
+    rz.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      var r = node.getBoundingClientRect();
+      sx = e.clientX; sy = e.clientY; rw = r.width; rh = r.height; rzOn = true;
+      e.preventDefault(); e.stopPropagation();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (dragging) {
+        prefs.board.x = ox + (e.clientX - sx);
+        prefs.board.y = oy + (e.clientY - sy);
+        placeBoard();
+      } else if (rzOn) {
+        prefs.board.w = Math.max(300, rw + (e.clientX - sx));
+        prefs.board.h = Math.max(200, rh + (e.clientY - sy));
+        placeBoard();
+      }
+    });
+    window.addEventListener('mouseup', function () {
+      if (dragging || rzOn) savePrefs();
+      dragging = false; rzOn = false;
+      hdr.classList.remove('dragging');
+    });
+    window.addEventListener('resize', function () { if (!$('board').hidden) placeBoard(); });
+  })();
+
+  // Chrome 通知：这次构建里有比上次已读更新的留言时提醒一次
+  (function notifyNew() {
+    var pending = unreadList();
+    if (!pending.length) return;
+    if (!prefs.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      var n = new Notification('投递清单 · ' + pending.length + ' 条新留言', {
+        body: pending[0].text.slice(0, 120),
+        tag: 'sgjob-board',
+        icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="26">💬</text></svg>')
+      });
+      n.onclick = function () { window.focus(); openBoard(); n.close(); };
+    } catch (e) { /* 通知失败不影响页面 */ }
+  })();
+
+  /* ---------- 启动 ---------- */
+  buildStatusPanel();
   apply();
+  renderBoard();
+  refreshUnread();
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    $('remindMask').hidden = true;
+    $('prefsMask').hidden = true;
+  });
 })();
 </script>
 </body>

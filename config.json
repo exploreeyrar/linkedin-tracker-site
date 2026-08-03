@@ -1,0 +1,5 @@
+{
+  "_comment": "部署 worker/ 之后，把 wrangler 输出的 URL 填到 tgEndpoint。留空则页面上的 Telegram 按钮显示为未配置。tgAppKey 只有在 worker 上设了 APP_KEY Secret 时才需要填。",
+  "tgEndpoint": "https://sgjob-tracker-telegram.fda-tsk.workers.dev",
+  "tgAppKey": ""
+}
