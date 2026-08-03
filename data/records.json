@@ -1,17 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T05:43:27.643Z",
+ "updatedAt": "2026-08-03T05:44:46.723Z",
  "count": 7,
  "records": [
   {
-   "id": "rmscsznr9k28v1",
-   "jobId": "4448108773",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4448108773/",
-   "company": "CNS Worldwide Executive Search",
-   "title": "Business Development Manager – Southeast Asia - Fire Extinguishing Systems",
-   "hirers": [],
-   "ts": 1785735802634,
-   "applicants": "17",
+   "id": "rmsct1crni7bu7",
+   "jobId": "4447688144",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447688144/",
+   "company": "Insight Genesis - IGAi",
+   "title": "Zone Sales Manager",
+   "hirers": [
+    {
+     "name": "Jay Koh🔹许晋瑜",
+     "url": "https://www.linkedin.com/in/jay-koh/",
+     "role": "Architecting the Future of Decentralized AI in Asia | Founding VP, Asia Web3 AI Association | Mentor to the Next Generation of Builders | Insight Genesis, Founder | Community Catalyst"
+    }
+   ],
+   "ts": 1785735881704,
+   "applicants": "8",
    "tenure": "",
    "memo": "",
    "status": "已投递等联络",
