@@ -114,8 +114,11 @@ def normalize(raw):
         hirers.append({"name": name or "(未知)", "url": link, "role": s(h.get("role"), 160)})
 
     status = canon_status(s(raw.get("status"), 40))
+    job_id = re.sub(r"\D", "", s(raw.get("jobId"), 24))[:24]
     return {
         "ts": ts,
+        "jobId": job_id,                          # 看板锚点用（#job-<id>）
+        "updatedAt": to_ms(raw.get("updatedAt")),  # 最后一次改 MEMO / 状态的时间
         "company": s(raw.get("company"), 120),
         "title": s(raw.get("title"), 200),
         "jobUrl": url(raw.get("jobUrl")),

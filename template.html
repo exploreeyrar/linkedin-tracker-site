@@ -159,6 +159,23 @@
   .iconbtn:hover { background: var(--line); }
   td.act { text-align: center; white-space: nowrap; }
 
+  /* Telegram 链接跳过来时高亮那一行，直到点「取消高亮」 */
+  tr.hl > td { background: #fff5c2 !important; }
+  @media (prefers-color-scheme: dark) { tr.hl > td { background: #4a4218 !important; } }
+  tr.hl > td:first-child { box-shadow: inset 3px 0 0 #eab308; }
+  .hlbar {
+    position: fixed; left: 50%; transform: translateX(-50%); top: 14px; z-index: 70;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid #eab308; border-radius: 999px;
+    box-shadow: var(--pop); padding: 8px 10px 8px 16px; font-size: 13px;
+  }
+  .hlbar[hidden] { display: none; }
+  .hlbar button {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    border: 0; background: #eab308; color: #1a1a1a; cursor: pointer;
+  }
+  .hlbar button:hover { filter: brightness(1.06); }
+
   .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
   footer { margin-top: 26px; color: var(--sub); font-size: 12px; text-align: center; line-height: 1.8; }
   footer code { background: var(--card); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; font-size: 11px; }
@@ -311,7 +328,8 @@
           <th class="sortable" data-k="company">公司 <span class="ar"></span></th>
           <th class="sortable" data-k="title">岗位 <span class="ar"></span></th>
           <th>Hiring team</th>
-          <th class="sortable" data-k="ts">投递时间 <span class="ar"></span></th>
+          <th class="sortable" data-k="updatedAt">更新时间 <span class="ar"></span></th>
+          <th class="sortable col-ts" data-k="ts">投递时间 <span class="ar"></span></th>
           <th class="sortable col-ap" data-k="applicants" style="text-align:right">申请数 <span class="ar"></span></th>
           <th class="sortable col-te" data-k="tenure" style="text-align:right">中位任职 <span class="ar"></span></th>
           <th style="text-align:center">提醒</th>
@@ -409,6 +427,7 @@
     <h3>⚙ 显示设置</h3>
     <div class="desc">只影响这台设备上的这个浏览器。</div>
 
+    <label class="chk"><input type="checkbox" id="pfTs"><span>显示「投递时间」列</span></label>
     <label class="chk"><input type="checkbox" id="pfAp"><span>显示「申请数」列</span></label>
     <label class="chk"><input type="checkbox" id="pfTe"><span>显示「中位任职」列</span></label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
@@ -416,6 +435,11 @@
 
     <div class="row"><button class="primary sp" id="pfClose" type="button">完成</button></div>
   </div>
+</div>
+
+<div class="hlbar" id="hlbar" hidden>
+  <span id="hlwho">已定位到该项目</span>
+  <button type="button" id="hlclear">取消高亮</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -502,8 +526,8 @@
   /* ---------- 本地偏好 ---------- */
   var PK = 'sgjob_prefs_v1';
   var prefs = {
-    showApplicants: false, showTenure: false,
-    showDot: true, notify: false,
+    showTs: false, showApplicants: false, showTenure: false,
+    showDot: true, notify: true, notifyDefaulted: false,
     lastRead: 0,
     board: { x: 0, y: 0, w: 380, h: 440, placed: false }
   };
@@ -515,6 +539,9 @@
     }
   } catch (e) { /* 用默认值 */ }
   function savePrefs() { try { localStorage.setItem(PK, JSON.stringify(prefs)); } catch (e) {} }
+
+  // 之前版本默认不勾，做一次性迁移并立刻落盘；之后仍然尊重用户自己的选择
+  if (!prefs.notifyDefaulted) { prefs.notify = true; prefs.notifyDefaulted = true; savePrefs(); }
 
   /* ---------- 顶部信息 ---------- */
   $('m-total').textContent = RECORDS.length;
@@ -642,6 +669,7 @@
     var show = function (cls, on) {
       [].forEach.call(document.querySelectorAll('.' + cls), function (n) { n.hidden = !on; });
     };
+    show('col-ts', prefs.showTs);
     show('col-ap', prefs.showApplicants);
     show('col-te', prefs.showTenure);
   }
@@ -649,6 +677,7 @@
   function rowNode(r) {
     var tr = document.createElement('tr');
     if (CLOSED[r.status]) tr.className = 'closed';
+    if (r.jobId) tr.id = 'job-' + r.jobId;      // Telegram 链接的锚点
 
     // 状态（scout 的在状态下方加 🌟）
     var tdSt = document.createElement('td');
@@ -690,23 +719,35 @@
         if (h.url) {
           var la = el('a', null, name);
           la.href = h.url; la.target = '_blank'; la.rel = 'noopener';
+          if (h.role) la.title = h.role;        // 头衔只留在 tooltip 里
           tdHr.appendChild(la);
         } else {
-          tdHr.appendChild(el('div', null, name));
+          var sp = el('div', null, name);
+          if (h.role) sp.title = h.role;
+          tdHr.appendChild(sp);
         }
-        if (h.role) tdHr.appendChild(el('div', 'role', h.role));
       });
     } else {
       tdHr.textContent = '—';
     }
     tr.appendChild(tdHr);
 
-    var tdTs = el('td', 'ts');
+    // 更新时间：改过 MEMO / 状态才有，否则退回投递时间
+    var upd = r.updatedAt || r.ts;
+    var tdUp = el('td', 'ts');
+    tdUp.appendChild(el('div', null, fmtDT(upd)));
+    var du = daysSince(upd);
+    var ageU = el('div', 'age', du === 0 ? '今天' : du + ' 天前');
+    if (WAITING[r.status] && du >= STALE_DAYS) ageU.className = 'age stale';
+    if (!r.updatedAt) ageU.title = '这条还没改过 MEMO 或状态，显示的是投递时间';
+    tdUp.appendChild(ageU);
+    tr.appendChild(tdUp);
+
+    var tdTs = el('td', 'ts col-ts');
+    tdTs.hidden = !prefs.showTs;
     tdTs.appendChild(el('div', null, fmtDT(r.ts)));
     var d = daysSince(r.ts);
-    var age = el('div', 'age', d === 0 ? '今天' : d + ' 天前');
-    if (WAITING[r.status] && d >= STALE_DAYS) age.className = 'age stale';
-    tdTs.appendChild(age);
+    tdTs.appendChild(el('div', 'age', d === 0 ? '今天' : d + ' 天前'));
     tr.appendChild(tdTs);
 
     var tdAp = el('td', 'num col-ap', r.applicants || '—'); tdAp.hidden = !prefs.showApplicants; tr.appendChild(tdAp);
@@ -748,6 +789,7 @@
         return (nx - ny) * sortDir;
       }
       if (sortKey === 'ts') return (x - y) * sortDir;
+      if (sortKey === 'updatedAt') return ((a.updatedAt || a.ts) - (b.updatedAt || b.ts)) * sortDir;
       if (sortKey === 'status') {
         var ds = (statusRank(x) - statusRank(y)) * sortDir;
         return ds !== 0 ? ds : b.ts - a.ts;      // 同状态：投递时间从新到旧
@@ -783,6 +825,13 @@
     $('clearStatus').hidden = !fs;
 
     applyColumnPrefs();
+
+    // tbody 是整块重建的，重绘后把高亮补回去
+    var hid = targetJobId();
+    if (hid) {
+      var row = document.getElementById('job-' + hid);
+      if (row) row.classList.add('hl');
+    }
   }
 
   $('q').addEventListener('input', apply);
@@ -798,13 +847,14 @@
     th.addEventListener('click', function () {
       var k = th.dataset.k;
       if (k === sortKey) sortDir = -sortDir;
-      else { sortKey = k; sortDir = (k === 'ts' || k === 'applicants') ? -1 : 1; }
+      else { sortKey = k; sortDir = (k === 'ts' || k === 'updatedAt' || k === 'applicants') ? -1 : 1; }
       apply();
     });
   });
 
   /* ---------- 设置 ---------- */
   function syncPrefsUI() {
+    $('pfTs').checked = !!prefs.showTs;
     $('pfAp').checked = !!prefs.showApplicants;
     $('pfTe').checked = !!prefs.showTenure;
     $('pfDot').checked = !!prefs.showDot;
@@ -818,6 +868,7 @@
   $('openPrefs').addEventListener('click', function () { syncPrefsUI(); $('prefsMask').hidden = false; });
   $('pfClose').addEventListener('click', function () { $('prefsMask').hidden = true; });
   $('prefsMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('pfTs').addEventListener('change', function () { prefs.showTs = this.checked; savePrefs(); apply(); });
   $('pfAp').addEventListener('change', function () { prefs.showApplicants = this.checked; savePrefs(); apply(); });
   $('pfTe').addEventListener('change', function () { prefs.showTenure = this.checked; savePrefs(); apply(); });
   $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
@@ -1061,24 +1112,81 @@
     window.addEventListener('resize', function () { if (!$('board').hidden) placeBoard(); });
   })();
 
-  // Chrome 通知：这次构建里有比上次已读更新的留言时提醒一次
-  (function notifyNew() {
+  // 没有权限就在加载后自动申请一次（Chrome 允许无手势调用；被"安静通知"策略拦下时静默失败）
+  (function askNotifyPermission() {
+    if (!prefs.notify || !('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+    try {
+      Notification.requestPermission().then(function (p) {
+        if (p !== 'granted') return;
+        syncPrefsUI();
+        notifyPending();          // 刚拿到权限，把这次的未读补提醒一次
+      });
+    } catch (e) { /* 老浏览器的回调式 API，忽略 */ }
+  })();
+
+  // Chrome 通知：有比上次已读更新的留言时提醒一次
+  var notified = false;
+  function notifyPending() {
+    if (notified) return;
     var pending = unreadList();
     if (!pending.length) return;
     if (!prefs.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
     try {
-      var n = new Notification('投递清单 · ' + pending.length + ' 条新留言', {
+      var n = new Notification('投递清单 · ' + pending.length + ' 条新通知', {
         body: pending[0].text.slice(0, 120),
         tag: 'sgjob-board',
         icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="26">💬</text></svg>')
       });
       n.onclick = function () { window.focus(); openBoard(); n.close(); };
+      notified = true;
     } catch (e) { /* 通知失败不影响页面 */ }
-  })();
+  }
+  notifyPending();
+
+  /* ---------- Telegram 链接定位 + 高亮 ---------- */
+  function targetJobId() {
+    var m = (location.hash || '').match(/^#job-(\d+)$/);
+    return m ? m[1] : '';
+  }
+
+  function applyHighlight(scroll) {
+    var id = targetJobId();
+    [].forEach.call(document.querySelectorAll('#tb tr.hl'), function (n) { n.classList.remove('hl'); });
+    if (!id) { $('hlbar').hidden = true; return; }
+
+    var row = document.getElementById('job-' + id);
+    if (!row) {
+      // 可能被搜索/筛选挡住了，清掉条件再试一次
+      $('q').value = ''; $('fstatus').value = '';
+      $('fscout').classList.remove('on');
+      apply();
+      row = document.getElementById('job-' + id);
+    }
+    if (!row) {
+      $('hlwho').textContent = '链接指向的项目不在当前清单里';
+      $('hlbar').hidden = false;
+      return;
+    }
+    row.classList.add('hl');
+    var co = row.querySelector('.co');
+    $('hlwho').textContent = '已定位：' + (co ? co.textContent : '该项目');
+    $('hlbar').hidden = false;
+    if (scroll) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  $('hlclear').addEventListener('click', function () {
+    [].forEach.call(document.querySelectorAll('#tb tr.hl'), function (n) { n.classList.remove('hl'); });
+    $('hlbar').hidden = true;
+    // 清掉 hash，免得刷新后又亮起来
+    history.replaceState(null, '', location.pathname + location.search);
+  });
+  window.addEventListener('hashchange', function () { applyHighlight(true); });
 
   /* ---------- 启动 ---------- */
   buildStatusPanel();
   apply();
+  applyHighlight(true);
   renderBoard();
   refreshUnread();
 
