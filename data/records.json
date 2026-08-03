@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T06:48:54.133Z",
- "count": 16,
+ "updatedAt": "2026-08-03T07:05:53.828Z",
+ "count": 17,
  "records": [
+  {
+   "id": "rmscvxo1lwudc9",
+   "jobId": "4400831519",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4400831519/",
+   "company": "Palo Alto Networks",
+   "title": "Named Account Manager, Public Sector",
+   "hirers": [],
+   "ts": 1785740748564,
+   "applicants": "10",
+   "tenure": "2.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscvbtfoz0vgh",
    "jobId": "4437132379",
