@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T02:43:34.352Z",
- "count": 6,
+ "updatedAt": "2026-08-03T05:43:27.643Z",
+ "count": 7,
  "records": [
+  {
+   "id": "rmscsznr9k28v1",
+   "jobId": "4448108773",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448108773/",
+   "company": "CNS Worldwide Executive Search",
+   "title": "Business Development Manager – Southeast Asia - Fire Extinguishing Systems",
+   "hirers": [],
+   "ts": 1785735802634,
+   "applicants": "17",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsbxo452kndkl",
    "jobId": "4422048961",
