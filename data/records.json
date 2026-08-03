@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T08:00:04.528Z",
- "count": 26,
+ "updatedAt": "2026-08-03T08:03:08.704Z",
+ "count": 27,
  "records": [
+  {
+   "id": "rmscxzahe4imkh",
+   "jobId": "4409280518",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4409280518/",
+   "company": "NTT DATA, Inc.",
+   "title": "Senior Sales Specialist",
+   "hirers": [],
+   "ts": 1785744183519,
+   "applicants": "10",
+   "tenure": "4.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscxvci4uryhp",
    "jobId": "4445867082",
