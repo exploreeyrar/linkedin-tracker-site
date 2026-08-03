@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T01:59:57.263Z",
+ "updatedAt": "2026-08-03T02:14:13.874Z",
  "count": 6,
  "records": [
   {
@@ -39,7 +39,7 @@
    "ts": 1785681641755,
    "applicants": "",
    "tenure": "1.4 years",
-   "memo": "应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?",
+   "memo": "应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenrrging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?",
    "status": "等己方处理(XR ball)"
   },
   {
@@ -54,26 +54,6 @@
    "tenure": "3.4 years",
    "memo": "",
    "status": "已投递等联络"
-  },
-  {
-   "id": "rmsbut5tme2qbm",
-   "jobId": "4435467765",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4435467765/",
-   "company": "Unity",
-   "title": "Lead Sales Development Representative, APAC",
-   "hirers": [
-    {
-     "name": "Magdalene Chai (IHRP-CP)",
-     "url": "https://www.linkedin.com/in/magdalene-chai-ihrp-cp-a52b25118/",
-     "role": "Building a more inclusive workplace grounded in Empathy, Respect, and Opportunity. Build with Unity!"
-    }
-   ],
-   "ts": 1785678392515,
-   "applicants": "",
-   "tenure": "3.7 years",
-   "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出\n先方連絡待ち",
-   "status": "一次人事面谈结束、等对方联络",
-   "scout": true
   },
   {
    "id": "rmsbqx31qom94x",
@@ -91,8 +71,28 @@
    "ts": 1785671857075,
    "applicants": "85",
    "tenure": "8.8 years",
-   "memo": "",
+   "memo": "Jason _.  (He/Him)  9:45 AM\nCanon Singapore - Future Employer of your choice\nThank you for your application for the above position.\n\nTo support a more comprehensive initial screening process, we would appreciate it if you could provide the following information:\n\nReason for leaving your current role/company\n\nCurrent and expected monthly salary, with a breakdown of:\nBasic salary \nCommission (if applicable) \nIncentives / bonuses (if applicable) \n\nYour motivation for applying for this role and how it aligns with your medium‑ to long‑term career plans\n\nYour current notice period\n\nWhether you require a work pass or employment visa to work in Singapore\n\nThe above information will be used as part of the initial qualifying stage prior to shortlisting.\nPlease be assured that all details shared will be kept confidential within Canon Singapore and used strictly for recruitment purposes.\n\nWe look forward to hearing from you.\n\nCANON SINGAPORE PTE LTD\nHR Department",
    "status": "等己方处理(XR ball)"
+  },
+  {
+   "id": "rmsbut5tme2qbm",
+   "jobId": "4435467765",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4435467765/",
+   "company": "Unity",
+   "title": "Lead Sales Development Representative, APAC",
+   "hirers": [
+    {
+     "name": "Magdalene Chai (IHRP-CP)",
+     "url": "https://www.linkedin.com/in/magdalene-chai-ihrp-cp-a52b25118/",
+     "role": "Building a more inclusive workplace grounded in Empathy, Respect, and Opportunity. Build with Unity!"
+    }
+   ],
+   "ts": 1785652440000,
+   "applicants": "",
+   "tenure": "3.7 years",
+   "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出\n先方連絡待ち",
+   "status": "一次人事面谈结束、等对方联络",
+   "scout": true
   }
  ],
  "messages": [
