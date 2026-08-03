@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T07:05:53.828Z",
- "count": 17,
+ "updatedAt": "2026-08-03T07:11:31.105Z",
+ "count": 18,
  "records": [
+  {
+   "id": "rmscw4whsz539m",
+   "jobId": "4447643845",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447643845/",
+   "company": "World Wide Technology",
+   "title": "Senior Inside Sales Representative",
+   "hirers": [],
+   "ts": 1785741086088,
+   "applicants": "25",
+   "tenure": "4.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscvxo1lwudc9",
    "jobId": "4400831519",
