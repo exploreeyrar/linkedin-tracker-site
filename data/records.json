@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T09:00:56.771Z",
- "count": 28,
+ "updatedAt": "2026-08-03T09:15:32.393Z",
+ "count": 29,
  "records": [
+  {
+   "id": "rmsd0ke6zocup6",
+   "jobId": "4428235338",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4428235338/",
+   "company": "Thermo Fisher Scientific",
+   "title": "Inside Sales Specialist",
+   "hirers": [],
+   "ts": 1785748527347,
+   "applicants": "10",
+   "tenure": "4.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsd01mkd3j8fj",
    "jobId": "4438327467",
