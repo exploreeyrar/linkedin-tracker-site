@@ -1,8 +1,29 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T06:41:53.095Z",
- "count": 13,
+ "updatedAt": "2026-08-03T06:46:59.063Z",
+ "count": 14,
  "records": [
+  {
+   "id": "rmscv9cnchj9dw",
+   "jobId": "4447683425",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447683425/",
+   "company": "Acclime",
+   "title": "Regional Business Development Manager",
+   "hirers": [
+    {
+     "name": "Rachel O.",
+     "url": "https://www.linkedin.com/in/rachelongsm/",
+     "role": "People & Culture Business Partner, ASEAN"
+    }
+   ],
+   "ts": 1785739614037,
+   "applicants": "32",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscv2sjkaivi8",
    "jobId": "4447688662",
