@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T08:03:08.704Z",
- "count": 27,
+ "updatedAt": "2026-08-03T09:00:56.771Z",
+ "count": 28,
  "records": [
+  {
+   "id": "rmsd01mkd3j8fj",
+   "jobId": "4438327467",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4438327467/",
+   "company": "Google",
+   "title": "Google Store Sales Operations Lead",
+   "hirers": [],
+   "ts": 1785747651728,
+   "applicants": "10",
+   "tenure": "5.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscxzahe4imkh",
    "jobId": "4409280518",
