@@ -1,8 +1,29 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T06:46:59.063Z",
- "count": 14,
+ "updatedAt": "2026-08-03T06:47:25.625Z",
+ "count": 15,
  "records": [
+  {
+   "id": "rmscv9x4dz8mzf",
+   "jobId": "4445877009",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4445877009/",
+   "company": "Hubexo",
+   "title": "Customer Success Manager",
+   "hirers": [
+    {
+     "name": "Mikee Katigbak",
+     "url": "https://www.linkedin.com/in/miguela-katigbak/",
+     "role": "Talent Acquisition"
+    }
+   ],
+   "ts": 1785739640570,
+   "applicants": "47",
+   "tenure": "1.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscv9cnchj9dw",
    "jobId": "4447683425",
