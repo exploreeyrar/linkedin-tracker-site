@@ -16,6 +16,7 @@
     --c-rejdoc: #9a3412;--c-rejitv: #b91c1c;
     --c-pass1: #0d9488; --c-pass2: #0f9d76;   --c-pass3: #0d9160; --c-pass4: #0a8352;
     --c-offer: #047857; --c-final: #065f46;
+    --c-taken: #78716c;
     --c-dead: #9aa3ad;
   }
   @media (prefers-color-scheme: dark) {
@@ -28,6 +29,7 @@
       --c-rejdoc: #fb923c;--c-rejitv: #f87171;
       --c-pass1: #5eead4; --c-pass2: #4fe0c0; --c-pass3: #43d9ad; --c-pass4: #3bd39c;
       --c-offer: #34d399; --c-final: #6ee7b7;
+      --c-taken: #a8a29e;
       --c-dead: #767f8a;
     }
   }
@@ -538,9 +540,10 @@
     '人事 Offer Call': '--c-offer',
     '已投递等联络': '--c-wait',
     '面试落了': '--c-rejitv',
-    '书类落了': '--c-rejdoc'
+    '书类落了': '--c-rejdoc',
+    '对方招到人了': '--c-taken'
   };
-  var CLOSED = { '书类落了': 1, '面试落了': 1 };
+  var CLOSED = { '书类落了': 1, '面试落了': 1, '对方招到人了': 1 };
   var ADVANCED = {
     '已安排面试、面试准备中': 1,
     '一次面试通过、等対方安排下一轮': 1,

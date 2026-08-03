@@ -38,6 +38,7 @@ STATUSES = [
     "已投递等联络",
     "面试落了",
     "书类落了",
+    "对方招到人了",
 ]
 
 # 新记录的初始状态（排序顺位与默认值是两回事，所以不取 STATUSES[0]）
@@ -172,7 +173,7 @@ def load_config():
 def load():
     if not os.path.exists(DATA):
         print(f"! 找不到 {DATA}，按空清单构建", file=sys.stderr)
-        return [], ""
+        return [], "", [], list(STATUSES)
     with open(DATA, encoding="utf-8") as f:
         try:
             blob = json.load(f)
@@ -183,15 +184,22 @@ def load():
         raw = blob.get("records") or []
         updated = s(blob.get("updatedAt"), 40)
         raw_msgs = blob.get("messages") or []
+        order = blob.get("statusOrder") or []
     elif isinstance(blob, list):
-        raw, updated, raw_msgs = blob, "", []
+        raw, updated, raw_msgs, order = blob, "", [], []
     else:
         sys.exit("data/records.json 顶层必须是数组或对象")
 
+    # 油猴脚本里可以拖动调整状态优先级，推上来就以它为准；
+    # 只认已知状态，缺的按内置顺序补在后面，脏数据不会打乱排序。
+    statuses = [x for x in order if isinstance(x, str) and x in STATUSES]
+    seen = set(statuses)
+    statuses += [x for x in STATUSES if x not in seen]
+
     records = [r for r in (normalize(x) for x in raw) if r]
     # 先按状态顺位，同状态再按投递时间从新到旧
-    rank = {name: i for i, name in enumerate(STATUSES)}
-    records.sort(key=lambda r: (rank.get(r["status"], len(STATUSES)), -r["ts"]))
+    rank = {name: i for i, name in enumerate(statuses)}
+    records.sort(key=lambda r: (rank.get(r["status"], len(statuses)), -r["ts"]))
 
     messages = [m for m in (normalize_message(x) for x in raw_msgs) if m]
     messages.sort(key=lambda m: m["createdAt"], reverse=True)
@@ -199,11 +207,11 @@ def load():
     if not updated and records:
         newest = max(r["ts"] for r in records)      # 已不按时间排序，要取最大值
         updated = datetime.fromtimestamp(newest / 1000, timezone.utc).isoformat()
-    return records, updated, messages
+    return records, updated, messages, statuses
 
 
 def main():
-    records, updated, messages = load()
+    records, updated, messages, statuses = load()
     cfg = load_config()
 
     with open(TEMPLATE, encoding="utf-8") as f:
@@ -215,7 +223,7 @@ def main():
         "count": len(records),
         "records": records,
         "messages": messages,
-        "statuses": STATUSES,
+        "statuses": statuses,
         "config": cfg,
     }
     # 嵌进 <script type="application/json">，必须堵死提前闭合标签的可能
@@ -239,10 +247,10 @@ def main():
     print(f"✓ dist/index.html — {len(records)} 条记录"
           f"（scout {scouted} 条）、留言 {len(messages)} 条，数据更新于 {updated or '未知'}")
     print(f"    Telegram 中继: {cfg['tgEndpoint'] or '未配置（config.json 的 tgEndpoint 为空）'}")
-    for k in STATUSES:
+    for k in statuses:
         if by_status.get(k):
             print(f"    {k}: {by_status[k]}")
-    extra = [k for k in by_status if k not in STATUSES]
+    extra = [k for k in by_status if k not in statuses]
     for k in extra:
         print(f"    {k}（非预设状态）: {by_status[k]}")
 
