@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T02:14:13.874Z",
+ "updatedAt": "2026-08-03T02:33:18.031Z",
  "count": 6,
  "records": [
   {
@@ -90,7 +90,7 @@
    "ts": 1785652440000,
    "applicants": "",
    "tenure": "3.7 years",
-   "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出\n先方連絡待ち",
+   "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち",
    "status": "一次人事面谈结束、等对方联络",
    "scout": true
   }
