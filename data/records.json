@@ -1,23 +1,8 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T14:56:44.055Z",
- "count": 35,
+ "updatedAt": "2026-08-03T15:14:05.984Z",
+ "count": 34,
  "records": [
-  {
-   "id": "rmsdcr65hsp3df",
-   "jobId": "4442609839",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4442609839/",
-   "company": "Grab",
-   "title": "Merchant Sales Executive, OmniCommerce",
-   "hirers": [],
-   "ts": 1785768998914,
-   "applicants": "",
-   "tenure": "5.5 years",
-   "memo": "",
-   "status": "已投递等联络",
-   "scout": false,
-   "updatedAt": 0
-  },
   {
    "id": "rmsd8jvcu5msdy",
    "jobId": "4435058424",
@@ -556,5 +541,22 @@
    "scout": true
   }
  ],
- "messages": []
+ "messages": [],
+ "statusOrder": [
+  "等己方处理(XR ball)",
+  "等己方处理(己 ball)",
+  "已安排面试、面试准备中",
+  "対方来联络了",
+  "四次面试通过、等对方安排下一轮",
+  "三次面试通过、等对方安排下一轮",
+  "二次面试通过、等对方安排下一轮",
+  "一次面试通过、等対方安排下一轮",
+  "一次人事面谈结束、等对方联络",
+  "内定",
+  "人事 Offer Call",
+  "已投递等联络",
+  "面试落了",
+  "书类落了",
+  "对方招到人了"
+ ]
 }
