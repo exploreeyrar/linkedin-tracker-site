@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T07:40:44.654Z",
- "count": 23,
+ "updatedAt": "2026-08-03T07:54:47.915Z",
+ "count": 24,
  "records": [
+  {
+   "id": "rmscxok6jxjidm",
+   "jobId": "4445855741",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4445855741/",
+   "company": "Aspire",
+   "title": "Inside Sales Representatives",
+   "hirers": [],
+   "ts": 1785743682872,
+   "applicants": "10",
+   "tenure": "2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscx6hi07hn7d",
    "jobId": "4448106446",
