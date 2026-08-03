@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T01:58:28.958Z",
+ "updatedAt": "2026-08-03T01:59:57.263Z",
  "count": 6,
  "records": [
   {
@@ -95,5 +95,13 @@
    "status": "等己方处理(XR ball)"
   }
  ],
- "messages": []
+ "messages": [
+  {
+   "id": "gmsckz79nt2aq",
+   "text": "hi",
+   "createdAt": 1785722344331,
+   "editedAt": 0,
+   "author": ""
+  }
+ ]
 }
