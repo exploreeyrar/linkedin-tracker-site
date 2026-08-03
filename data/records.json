@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T09:23:19.833Z",
- "count": 31,
+ "updatedAt": "2026-08-03T09:29:47.484Z",
+ "count": 32,
  "records": [
+  {
+   "id": "rmsd12q0c0uql6",
+   "jobId": "4443260521",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4443260521/",
+   "company": "Arrow Electronics",
+   "title": "Inside Sales Representative",
+   "hirers": [],
+   "ts": 1785749382457,
+   "applicants": "10",
+   "tenure": "6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsd0uejw46te5",
    "jobId": "4434568161",
