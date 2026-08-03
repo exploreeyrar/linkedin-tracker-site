@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T09:29:47.484Z",
- "count": 32,
+ "updatedAt": "2026-08-03T12:40:37.391Z",
+ "count": 33,
  "records": [
+  {
+   "id": "rmsd7w4owu1rm3",
+   "jobId": "4430567950",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4430567950/",
+   "company": "Google",
+   "title": "Account Manager, Large Customer Sales, SEAS",
+   "hirers": [],
+   "ts": 1785760832212,
+   "applicants": "10",
+   "tenure": "5.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsd12q0c0uql6",
    "jobId": "4443260521",
