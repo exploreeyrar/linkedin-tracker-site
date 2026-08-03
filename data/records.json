@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T09:21:46.288Z",
- "count": 30,
+ "updatedAt": "2026-08-03T09:23:19.833Z",
+ "count": 31,
  "records": [
+  {
+   "id": "rmsd0uejw46te5",
+   "jobId": "4434568161",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4434568161/",
+   "company": "TÜV SÜD",
+   "title": "内部销售主管",
+   "hirers": [],
+   "ts": 1785748994359,
+   "applicants": "10",
+   "tenure": "5.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsd0rz1k16ubk",
    "jobId": "4410566970",
