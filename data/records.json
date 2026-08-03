@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T06:05:02.899Z",
- "count": 10,
+ "updatedAt": "2026-08-03T06:08:58.404Z",
+ "count": 11,
  "records": [
+  {
+   "id": "rmsctwgv8awxu3",
+   "jobId": "4404079866",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4404079866/",
+   "company": "Cisco",
+   "title": "Sales Development Representative (Taiwan Market)",
+   "hirers": [],
+   "ts": 1785737333367,
+   "applicants": "",
+   "tenure": "7.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsctrf6ctto3b",
    "jobId": "4448143397",
