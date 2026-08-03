@@ -176,6 +176,49 @@
   }
   .hlbar button:hover { filter: brightness(1.06); }
 
+  tr.clickable { cursor: pointer; }
+
+  /* 列管理 */
+  .collist { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .colitem {
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px; font-size: 13px;
+    border-bottom: 1px solid var(--line); background: var(--card); cursor: grab;
+  }
+  .colitem:last-child { border-bottom: 0; }
+  .colitem.dragging { opacity: .4; }
+  .colitem.over { border-top: 2px solid var(--accent); }
+  .colitem .grip { color: var(--sub); cursor: grab; user-select: none; }
+  .colitem input { width: 15px; height: 15px; }
+
+  /* 右上角快捷入口 */
+  .navbar { position: fixed; top: 14px; right: 16px; z-index: 45; display: flex; gap: 8px; }
+  .navbtn {
+    font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap;
+    padding: 8px 14px; border-radius: 999px;
+    background: var(--card); color: var(--fg); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .navbtn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+  /* 右下角「联系己」 */
+  .contactfab {
+    position: fixed; right: 20px; bottom: 78px; z-index: 40;
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    padding: 11px 16px; border-radius: 999px;
+    background: var(--card); color: var(--fg);
+    border: 1px solid var(--line); box-shadow: var(--pop);
+    max-width: 68vw; overflow: hidden; white-space: nowrap;
+  }
+  .contactfab:hover { border-color: var(--accent); color: var(--accent); }
+  .contactfab .full { display: none; }
+  .contactfab:hover .short { display: none; }
+  .contactfab:hover .full { display: inline; }
+
+  /* 详情弹窗 */
+  .dtgrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; font-size: 13px; margin-top: 12px; }
+  .dtgrid dt { color: var(--sub); white-space: nowrap; }
+  .dtgrid dd { margin: 0; word-break: break-word; white-space: pre-wrap; }
+  .dtlink { font-size: 13px; align-self: center; }
+
   .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
   footer { margin-top: 26px; color: var(--sub); font-size: 12px; text-align: center; line-height: 1.8; }
   footer code { background: var(--card); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; font-size: 11px; }
@@ -321,20 +364,7 @@
 
   <div class="tblwrap">
     <table>
-      <thead>
-        <tr>
-          <th class="sortable" data-k="status">状态 <span class="ar"></span></th>
-          <th>MEMO</th>
-          <th class="sortable" data-k="company">公司 <span class="ar"></span></th>
-          <th class="sortable" data-k="title">岗位 <span class="ar"></span></th>
-          <th>Hiring team</th>
-          <th class="sortable" data-k="updatedAt">更新时间 <span class="ar"></span></th>
-          <th class="sortable col-ts" data-k="ts">投递时间 <span class="ar"></span></th>
-          <th class="sortable col-ap" data-k="applicants" style="text-align:right">申请数 <span class="ar"></span></th>
-          <th class="sortable col-te" data-k="tenure" style="text-align:right">中位任职 <span class="ar"></span></th>
-          <th style="text-align:center">提醒</th>
-        </tr>
-      </thead>
+      <thead><tr id="thead-row"></tr></thead>
       <tbody id="tb"></tbody>
     </table>
     <div class="empty" id="empty" hidden>暂无记录。在 LinkedIn 职位页点击「已递交投递」并同步后，这里就会出现。</div>
@@ -379,8 +409,8 @@
     <select id="rmPriority">
       <option value="紧急">紧急</option>
       <option value="高">高</option>
-      <option value="中">中</option>
-      <option value="低">低</option>
+      <option value="中（下班后处理 OK）">中（下班后处理 OK）</option>
+      <option value="低（下班后处理 OK）">低（下班后处理 OK）</option>
       <option value="无" selected>无</option>
     </select>
     <div class="tip">选「无」则不在 Telegram 消息里附上这一行。</div>
@@ -391,6 +421,10 @@
     <label class="chk">
       <input type="checkbox" id="rmWith">
       <span>附上 MEMO 里已有的内容一并发送</span>
+    </label>
+    <label class="chk">
+      <input type="checkbox" id="rmLink" checked>
+      <span>附上看板链接（点开直接定位并高亮这一条）</span>
     </label>
 
     <div class="previewhdr">
@@ -427,13 +461,45 @@
     <h3>⚙ 显示设置</h3>
     <div class="desc">只影响这台设备上的这个浏览器。</div>
 
-    <label class="chk"><input type="checkbox" id="pfTs"><span>显示「投递时间」列</span></label>
-    <label class="chk"><input type="checkbox" id="pfAp"><span>显示「申请数」列</span></label>
-    <label class="chk"><input type="checkbox" id="pfTe"><span>显示「中位任职」列</span></label>
+    <label style="margin-top:4px">列的显示与顺序</label>
+    <div class="collist" id="collist"></div>
+    <div class="tip">拖动可调整顺序，取消勾选即隐藏该列。</div>
+
+    <label for="fbText" style="margin-top:18px">功能反馈 / 改进建议</label>
+    <textarea id="fbText" placeholder="哪里别扭、想要什么功能…"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="fbSend" type="button">推送到 Telegram</button>
+      <span class="status" id="fbState" style="margin:0"></span>
+    </div>
+
+    <label style="margin-top:18px">通知</label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
     <label class="chk"><input type="checkbox" id="pfNotify"><span>有新留言时弹 Chrome 通知<small id="pfNotifyHint"></small></span></label>
 
     <div class="row"><button class="primary sp" id="pfClose" type="button">完成</button></div>
+  </div>
+</div>
+
+<div class="navbar">
+  <a class="navbtn" href="https://www.linkedin.com/jobs/" target="_blank" rel="noopener">🔎 Linkedin 筛工作</a>
+  <a class="navbtn" href="https://www.linkedin.com/jobs-tracker/" target="_blank" rel="noopener">🔖 Job Saved list</a>
+</div>
+
+<button class="contactfab" id="contactFab" type="button">
+  <span class="short">联系己</span>
+  <span class="full">请己处理新一批的 Linkedin jobs saved list</span>
+</button>
+
+<div class="mask" id="detailMask" hidden>
+  <div class="dlg">
+    <h3 id="dtTitle">项目详情</h3>
+    <div class="desc" id="dtSub"></div>
+    <div class="dtgrid" id="dtBody"></div>
+    <div class="row">
+      <button class="primary" id="dtRemind" type="button">📢 请求更新状态</button>
+      <a class="dtlink" id="dtOpen" target="_blank" rel="noopener">在 LinkedIn 打开</a>
+      <button class="sp" id="dtClose" type="button">关闭</button>
+    </div>
   </div>
 </div>
 
@@ -495,6 +561,39 @@
 
   function statusRank(s) { var i = STATUS_ORDER.indexOf(s); return i === -1 ? STATUS_ORDER.length : i; }
 
+  // 列的定义与默认顺序；顺序和显隐都可以在设置里改，存本机
+  var COLUMNS = [
+    { key: 'status',     label: '状态',        sort: 'status' },
+    { key: 'act',        label: '提醒',        sort: null,    align: 'center' },
+    { key: 'memo',       label: 'MEMO',        sort: null },
+    { key: 'company',    label: '公司',        sort: 'company' },
+    { key: 'title',      label: '岗位',        sort: 'title' },
+    { key: 'hirers',     label: 'Hiring team', sort: null },
+    { key: 'updatedAt',  label: '更新时间',    sort: 'updatedAt' },
+    { key: 'ts',         label: '投递时间',    sort: 'ts' },
+    { key: 'applicants', label: '申请数',      sort: 'applicants', align: 'right' },
+    { key: 'tenure',     label: '中位任职',    sort: 'tenure',     align: 'right' }
+  ];
+  var COL_BY_KEY = {};
+  COLUMNS.forEach(function (c) { COL_BY_KEY[c.key] = c; });
+  var DEFAULT_HIDDEN = { ts: 1, applicants: 1, tenure: 1 };
+
+  /** 当前生效的列顺序（补上新增列、剔除已删列） */
+  function colOrder() {
+    var saved = (prefs.cols && prefs.cols.order) || [];
+    var out = saved.filter(function (k) { return COL_BY_KEY[k]; });
+    COLUMNS.forEach(function (c) { if (out.indexOf(c.key) === -1) out.push(c.key); });
+    return out;
+  }
+  function colHidden(key) {
+    var h = (prefs.cols && prefs.cols.hidden) || null;
+    return h ? !!h[key] : !!DEFAULT_HIDDEN[key];
+  }
+  function saveCols(order, hidden) {
+    prefs.cols = { order: order, hidden: hidden };
+    savePrefs();
+  }
+
   var $ = function (id) { return document.getElementById(id); };
   var el = function (tag, cls, text) {
     var n = document.createElement(tag);
@@ -526,7 +625,7 @@
   /* ---------- 本地偏好 ---------- */
   var PK = 'sgjob_prefs_v1';
   var prefs = {
-    showTs: false, showApplicants: false, showTenure: false,
+    cols: null,
     showDot: true, notify: true, notifyDefaulted: false,
     lastRead: 0,
     board: { x: 0, y: 0, w: 380, h: 440, placed: false }
@@ -665,106 +764,137 @@
     });
   })();
 
-  function applyColumnPrefs() {
-    var show = function (cls, on) {
-      [].forEach.call(document.querySelectorAll('.' + cls), function (n) { n.hidden = !on; });
-    };
-    show('col-ts', prefs.showTs);
-    show('col-ap', prefs.showApplicants);
-    show('col-te', prefs.showTenure);
+  /* ---------- 单元格工厂：一个 key 对应一种渲染 ---------- */
+  var CELL = {
+    status: function (r) {
+      var td = document.createElement('td');
+      var b = el('span', 'badge', r.status || '—');
+      b.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
+      td.appendChild(b);
+      if (r.scout) {
+        var st = el('span', 'star', '🌟');
+        st.title = '人事主动 scout 的';
+        td.appendChild(st);
+      }
+      return td;
+    },
+    act: function (r) {
+      var td = el('td', 'act');
+      var pen = el('button', 'iconbtn', '📢');
+      pen.type = 'button';
+      pen.title = '请求更新这条的状态（发 Telegram）';
+      pen.addEventListener('click', function (e) { e.stopPropagation(); openRemind(r); });
+      td.appendChild(pen);
+      return td;
+    },
+    memo: function (r) {
+      var td = document.createElement('td');
+      var box = el('div', 'memo clamp', r.memo || '');
+      var more = el('button', 'morebtn', 'more..');
+      more.type = 'button';
+      more.hidden = true;
+      more.addEventListener('click', function (e) { e.stopPropagation(); openMemoFull(r); });
+      td.appendChild(box);
+      td.appendChild(more);
+      return td;
+    },
+    company: function (r) { return el('td', 'co', r.company || '—'); },
+    title: function (r) {
+      var td = document.createElement('td');
+      if (r.jobUrl) {
+        var a = el('a', null, r.title || '(无标题)');
+        a.href = r.jobUrl; a.target = '_blank'; a.rel = 'noopener';
+        a.addEventListener('click', function (e) { e.stopPropagation(); });
+        td.appendChild(a);
+      } else {
+        td.textContent = r.title || '(无标题)';
+      }
+      return td;
+    },
+    hirers: function (r) {
+      var td = document.createElement('td');
+      if (r.hirers && r.hirers.length) {
+        r.hirers.forEach(function (h) {
+          var name = h.name || h.url || '(未知)';
+          if (h.url) {
+            var la = el('a', null, name);
+            la.href = h.url; la.target = '_blank'; la.rel = 'noopener';
+            if (h.role) la.title = h.role;
+            la.addEventListener('click', function (e) { e.stopPropagation(); });
+            td.appendChild(la);
+          } else {
+            var sp = el('div', null, name);
+            if (h.role) sp.title = h.role;
+            td.appendChild(sp);
+          }
+        });
+      } else {
+        td.textContent = '—';
+      }
+      return td;
+    },
+    updatedAt: function (r) {
+      var upd = r.updatedAt || r.ts;
+      var td = el('td', 'ts');
+      td.appendChild(el('div', null, fmtDT(upd)));
+      var d = daysSince(upd);
+      var age = el('div', 'age', d === 0 ? '今天' : d + ' 天前');
+      if (WAITING[r.status] && d >= STALE_DAYS) age.className = 'age stale';
+      if (!r.updatedAt) age.title = '这条还没改过 MEMO 或状态，显示的是投递时间';
+      td.appendChild(age);
+      return td;
+    },
+    ts: function (r) {
+      var td = el('td', 'ts');
+      td.appendChild(el('div', null, fmtDT(r.ts)));
+      var d = daysSince(r.ts);
+      td.appendChild(el('div', 'age', d === 0 ? '今天' : d + ' 天前'));
+      return td;
+    },
+    applicants: function (r) { return el('td', 'num', r.applicants || '—'); },
+    tenure: function (r) { return el('td', 'num', r.tenure || '—'); }
+  };
+
+  function buildHead() {
+    var tr = $('thead-row');
+    tr.textContent = '';
+    colOrder().forEach(function (key) {
+      if (colHidden(key)) return;
+      var c = COL_BY_KEY[key];
+      var th = document.createElement('th');
+      th.textContent = c.label + ' ';
+      if (c.align) th.style.textAlign = c.align;
+      if (c.sort) {
+        th.className = 'sortable';
+        th.dataset.k = c.sort;
+        var ar = el('span', 'ar', c.sort === sortKey ? (sortDir === 1 ? '▲' : '▼') : '');
+        th.appendChild(ar);
+        th.addEventListener('click', function () {
+          var k = c.sort;
+          if (k === sortKey) sortDir = -sortDir;
+          else { sortKey = k; sortDir = (k === 'ts' || k === 'updatedAt' || k === 'applicants') ? -1 : 1; }
+          apply();
+        });
+      }
+      tr.appendChild(th);
+    });
   }
 
   function rowNode(r) {
     var tr = document.createElement('tr');
     if (CLOSED[r.status]) tr.className = 'closed';
     if (r.jobId) tr.id = 'job-' + r.jobId;      // Telegram 链接的锚点
-
-    // 状态（scout 的在状态下方加 🌟）
-    var tdSt = document.createElement('td');
-    var b = el('span', 'badge', r.status || '—');
-    b.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
-    tdSt.appendChild(b);
-    if (r.scout) {
-      var st = el('span', 'star', '🌟');
-      st.title = '人事主动 scout 的';
-      tdSt.appendChild(st);
-    }
-    tr.appendChild(tdSt);
-
-    var tdMemo = document.createElement('td');
-    var memoBox = el('div', 'memo clamp', r.memo || '');
-    var moreBtn = el('button', 'morebtn', 'more..');
-    moreBtn.type = 'button';
-    moreBtn.hidden = true;                       // 渲染后按实际溢出情况决定是否露出
-    moreBtn.addEventListener('click', function () { openMemoFull(r); });
-    tdMemo.appendChild(memoBox);
-    tdMemo.appendChild(moreBtn);
-    tr.appendChild(tdMemo);
-    tr.appendChild(el('td', 'co', r.company || '—'));
-
-    var tdTi = document.createElement('td');
-    if (r.jobUrl) {
-      var a = el('a', null, r.title || '(无标题)');
-      a.href = r.jobUrl; a.target = '_blank'; a.rel = 'noopener';
-      tdTi.appendChild(a);
-    } else {
-      tdTi.textContent = r.title || '(无标题)';
-    }
-    tr.appendChild(tdTi);
-
-    var tdHr = document.createElement('td');
-    if (r.hirers && r.hirers.length) {
-      r.hirers.forEach(function (h) {
-        var name = h.name || h.url || '(未知)';
-        if (h.url) {
-          var la = el('a', null, name);
-          la.href = h.url; la.target = '_blank'; la.rel = 'noopener';
-          if (h.role) la.title = h.role;        // 头衔只留在 tooltip 里
-          tdHr.appendChild(la);
-        } else {
-          var sp = el('div', null, name);
-          if (h.role) sp.title = h.role;
-          tdHr.appendChild(sp);
-        }
-      });
-    } else {
-      tdHr.textContent = '—';
-    }
-    tr.appendChild(tdHr);
-
-    // 更新时间：改过 MEMO / 状态才有，否则退回投递时间
-    var upd = r.updatedAt || r.ts;
-    var tdUp = el('td', 'ts');
-    tdUp.appendChild(el('div', null, fmtDT(upd)));
-    var du = daysSince(upd);
-    var ageU = el('div', 'age', du === 0 ? '今天' : du + ' 天前');
-    if (WAITING[r.status] && du >= STALE_DAYS) ageU.className = 'age stale';
-    if (!r.updatedAt) ageU.title = '这条还没改过 MEMO 或状态，显示的是投递时间';
-    tdUp.appendChild(ageU);
-    tr.appendChild(tdUp);
-
-    var tdTs = el('td', 'ts col-ts');
-    tdTs.hidden = !prefs.showTs;
-    tdTs.appendChild(el('div', null, fmtDT(r.ts)));
-    var d = daysSince(r.ts);
-    tdTs.appendChild(el('div', 'age', d === 0 ? '今天' : d + ' 天前'));
-    tr.appendChild(tdTs);
-
-    var tdAp = el('td', 'num col-ap', r.applicants || '—'); tdAp.hidden = !prefs.showApplicants; tr.appendChild(tdAp);
-    var tdTe = el('td', 'num col-te', r.tenure || '—');     tdTe.hidden = !prefs.showTenure;     tr.appendChild(tdTe);
-
-    var tdAct = el('td', 'act');
-    var pen = el('button', 'iconbtn', '📢');
-    pen.type = 'button';
-    pen.title = '请求更新这条的状态（发 Telegram）';
-    pen.addEventListener('click', function () { openRemind(r); });
-    tdAct.appendChild(pen);
-    tr.appendChild(tdAct);
-
+    tr.classList.add('clickable');
+    colOrder().forEach(function (key) {
+      if (colHidden(key)) return;
+      tr.appendChild(CELL[key](r));
+    });
+    tr.addEventListener('click', function () { openDetail(r); });
     return tr;
   }
 
   function apply() {
+    buildHead();
     var q = $('q').value.trim().toLowerCase();
     var fs = $('fstatus').value;
     var scoutOnly = $('fscout').classList.contains('on');
@@ -814,17 +944,12 @@
       ? RECORDS.length + ' 条'
       : '显示 ' + rows.length + ' / ' + RECORDS.length + ' 条';
 
-    [].forEach.call(document.querySelectorAll('th.sortable'), function (th) {
-      th.querySelector('.ar').textContent = th.dataset.k === sortKey ? (sortDir === 1 ? '▲' : '▼') : '';
-    });
 
     // 状态筛选中：高亮对应的分布行，并露出「显示全部状态」
     [].forEach.call(document.querySelectorAll('.srow'), function (n) {
       n.classList.toggle('on', !!fs && n.dataset.status === fs);
     });
     $('clearStatus').hidden = !fs;
-
-    applyColumnPrefs();
 
     // tbody 是整块重建的，重绘后把高亮补回去
     var hid = targetJobId();
@@ -843,20 +968,9 @@
     this.setAttribute('aria-pressed', String(on));
     apply();
   });
-  [].forEach.call(document.querySelectorAll('th.sortable'), function (th) {
-    th.addEventListener('click', function () {
-      var k = th.dataset.k;
-      if (k === sortKey) sortDir = -sortDir;
-      else { sortKey = k; sortDir = (k === 'ts' || k === 'updatedAt' || k === 'applicants') ? -1 : 1; }
-      apply();
-    });
-  });
 
   /* ---------- 设置 ---------- */
   function syncPrefsUI() {
-    $('pfTs').checked = !!prefs.showTs;
-    $('pfAp').checked = !!prefs.showApplicants;
-    $('pfTe').checked = !!prefs.showTenure;
     $('pfDot').checked = !!prefs.showDot;
     $('pfNotify').checked = !!prefs.notify;
     var hint = '';
@@ -868,9 +982,6 @@
   $('openPrefs').addEventListener('click', function () { syncPrefsUI(); $('prefsMask').hidden = false; });
   $('pfClose').addEventListener('click', function () { $('prefsMask').hidden = true; });
   $('prefsMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
-  $('pfTs').addEventListener('change', function () { prefs.showTs = this.checked; savePrefs(); apply(); });
-  $('pfAp').addEventListener('change', function () { prefs.showApplicants = this.checked; savePrefs(); apply(); });
-  $('pfTe').addEventListener('change', function () { prefs.showTenure = this.checked; savePrefs(); apply(); });
   $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
   $('pfNotify').addEventListener('change', function () {
     var want = this.checked;
@@ -901,6 +1012,115 @@
         return data;
       });
   }
+
+  /* ---------- 列管理（拖动排序 + 勾选显隐） ---------- */
+  function renderColList() {
+    var box = $('collist');
+    box.textContent = '';
+    var order = colOrder();
+    order.forEach(function (key) {
+      var c = COL_BY_KEY[key];
+      var item = el('div', 'colitem');
+      item.draggable = true;
+      item.dataset.key = key;
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !colHidden(key);
+      cb.addEventListener('click', function (e) { e.stopPropagation(); });
+      cb.addEventListener('change', function () {
+        var hidden = {};
+        colOrder().forEach(function (k) { hidden[k] = colHidden(k); });
+        hidden[key] = !cb.checked;
+        // 至少留一列，全隐藏的话表格就没了
+        var anyVisible = colOrder().some(function (k) { return !hidden[k]; });
+        if (!anyVisible) { cb.checked = true; toast('至少要保留一列'); return; }
+        saveCols(colOrder(), hidden);
+        apply();
+      });
+
+      item.appendChild(el('span', 'grip', '⠿'));
+      item.appendChild(cb);
+      item.appendChild(el('span', null, c.label));
+
+      item.addEventListener('dragstart', function (e) {
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', key);
+      });
+      item.addEventListener('dragend', function () {
+        item.classList.remove('dragging');
+        [].forEach.call(box.children, function (n) { n.classList.remove('over'); });
+      });
+      item.addEventListener('dragover', function (e) { e.preventDefault(); item.classList.add('over'); });
+      item.addEventListener('dragleave', function () { item.classList.remove('over'); });
+      item.addEventListener('drop', function (e) {
+        e.preventDefault();
+        item.classList.remove('over');
+        var from = e.dataTransfer.getData('text/plain');
+        if (!from || from === key) return;
+        var next = colOrder().filter(function (k) { return k !== from; });
+        next.splice(next.indexOf(key), 0, from);
+        var hidden = {};
+        next.forEach(function (k) { hidden[k] = colHidden(k); });
+        saveCols(next, hidden);
+        renderColList();
+        apply();
+      });
+
+      box.appendChild(item);
+    });
+  }
+
+  /* ---------- 项目详情弹窗 ---------- */
+  var detailTarget = null;
+  function openDetail(r) {
+    detailTarget = r;
+    $('dtTitle').textContent = r.company || '(无公司名)';
+    $('dtSub').textContent = r.title || '(无标题)';
+    var g = $('dtBody');
+    g.textContent = '';
+    var add = function (k, v, node) {
+      g.appendChild(el('dt', null, k));
+      var dd = document.createElement('dd');
+      if (node) dd.appendChild(node); else dd.textContent = (v == null || v === '') ? '—' : v;
+      g.appendChild(dd);
+    };
+    var badge = el('span', 'badge', r.status || '—');
+    badge.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
+    add('状态', null, badge);
+    if (r.scout) add('人事主动 scout', '🌟 是');
+    add('更新时间', fmtDT(r.updatedAt || r.ts) + (r.updatedAt ? '' : '（未改动过，同投递时间）'));
+    add('投递时间', fmtDT(r.ts) + '（' + daysSince(r.ts) + ' 天前）');
+    if (r.hirers && r.hirers.length) {
+      var box = document.createElement('div');
+      r.hirers.forEach(function (h) {
+        var line = document.createElement('div');
+        if (h.url) {
+          var a2 = el('a', null, h.name || h.url);
+          a2.href = h.url; a2.target = '_blank'; a2.rel = 'noopener';
+          line.appendChild(a2);
+        } else line.textContent = h.name || '(未知)';
+        if (h.role) line.appendChild(el('div', 'role', h.role));
+        box.appendChild(line);
+      });
+      add('Hiring team', null, box);
+    } else add('Hiring team', '');
+    add('申请数', r.applicants);
+    add('中位任职', r.tenure);
+    add('MEMO', r.memo);
+
+    var open = $('dtOpen');
+    if (r.jobUrl) { open.href = r.jobUrl; open.hidden = false; } else { open.hidden = true; }
+    $('detailMask').hidden = false;
+  }
+  $('dtClose').addEventListener('click', function () { $('detailMask').hidden = true; });
+  $('detailMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('dtRemind').addEventListener('click', function () {
+    var r = detailTarget;
+    $('detailMask').hidden = true;
+    if (r) openRemind(r);
+  });
 
   /* ---------- MEMO 全文弹窗 ---------- */
   var memoFullTarget = null;
@@ -939,6 +1159,9 @@
       '链接：' + (r.jobUrl || '—'),
       '当前状态：' + r.status
     );
+    if ($('rmLink').checked && r.jobId) {
+      lines.push('看板：' + location.origin + location.pathname + '#job-' + r.jobId);
+    }
     if ($('rmWith').checked && r.memo) lines.push('', '现有 MEMO：' + r.memo);
     lines.push('', '🟢 备注：' + (note || '(无)'));
     return lines.join('\n');
@@ -966,6 +1189,7 @@
     $('rmPriority').value = '无';
     $('rmMemo').value = '';
     $('rmWith').checked = false;
+    $('rmLink').checked = !!r.jobId;
     $('rmStatus').textContent = '';
     $('rmStatus').className = 'status';
     $('rmSend').disabled = false;
@@ -979,6 +1203,7 @@
   $('rmWho').addEventListener('change', updateRemindPreview);
   $('rmPriority').addEventListener('change', updateRemindPreview);
   $('rmWith').addEventListener('change', updateRemindPreview);
+  $('rmLink').addEventListener('change', updateRemindPreview);
 
   $('rmSend').addEventListener('click', function () {
     if (!remindTarget) return;
@@ -1183,7 +1408,40 @@
   });
   window.addEventListener('hashchange', function () { applyHighlight(true); });
 
+  /* ---------- 功能反馈 ---------- */
+  $('fbSend').addEventListener('click', function () {
+    var text = $('fbText').value.trim();
+    var st = $('fbState');
+    if (!text) { st.className = 'status err'; st.textContent = '先写点什么'; return; }
+    var btn = this;
+    btn.disabled = true;
+    st.className = 'status';
+    st.textContent = '发送中…';
+    tgSend(TG_PREFIX + ' 功能反馈\n' + fmtDT(Date.now()) + '\n\n' + text).then(function () {
+      st.className = 'status ok';
+      st.textContent = '已发送，谢谢';
+      $('fbText').value = '';
+    }).catch(function (e) {
+      st.className = 'status err';
+      st.textContent = '发送失败：' + (e.message || e);
+    }).then(function () { btn.disabled = false; });
+  });
+
+  /* ---------- 联系己 ---------- */
+  $('contactFab').addEventListener('click', function () {
+    if (!confirm('是否 telegram 提醒己处理新一批的 Linkedin jobs saved list？')) return;
+    var btn = this;
+    btn.disabled = true;
+    tgSend(TG_PREFIX + ' 请己处理新一批的 Linkedin jobs saved list\n' + fmtDT(Date.now())
+           + '\n\nhttps://www.linkedin.com/jobs-tracker/').then(function () {
+      toast('已提醒');
+    }).catch(function (e) {
+      toast('发送失败：' + (e.message || e));
+    }).then(function () { btn.disabled = false; });
+  });
+
   /* ---------- 启动 ---------- */
+  renderColList();
   buildStatusPanel();
   apply();
   applyHighlight(true);
