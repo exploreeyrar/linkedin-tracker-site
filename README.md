@@ -17,7 +17,7 @@ LinkedIn 职位页
 
 | 文件 | 作用 |
 |---|---|
-| `data/records.json` | 数据源（投递记录 + 留言板）。**由油猴脚本整文件覆盖写入**，不要手工编辑 |
+| `data/records.json` | 数据源（投递记录 + 通知板）。**由油猴脚本整文件覆盖写入**，不要手工编辑 |
 | `config.json` | 站点配置。目前只有 Telegram 中继地址 |
 | `template.html` | 页面模板，`__DATA__` 是数据注入点。想改配色/布局改这里 |
 | `build.py` | 读数据 → 清洗校验 → 注入模板 → 输出 `dist/index.html`。只用标准库 |
@@ -64,7 +64,7 @@ LinkedIn 职位页 → 清单面板标题栏 → **☁ 未配置** → 填仓库
 
 和 FDA-TSK 一样：页面与油猴脚本都不持有 Bot Token，只把正文 POST 给 Worker，
 Token 作为 Cloudflare Secret 保存。发送目标群写在 `worker/wrangler.toml` 的 `TG_CHAT`
-（已填 `-1004286394659`）。
+（已填 `-1003974378230`）。
 
 ```bash
 cd linkedin-tracker-site/worker && npx wrangler login && npx wrangler deploy
@@ -110,7 +110,7 @@ cd linkedin-tracker-site && python3 build.py && open dist/index.html
   `template.html` 的 `STATUS_VAR`（配色；顺序由 `build.py` 注入，不用重复写）。
   数组顺序就是看板与清单的默认排序顺位。改名时在 `STATUS_ALIAS` 里加一条旧名→新名，
   历史记录才不会掉出下拉框。
-- **留言板不是即时通讯。** LinkedIn 侧写完留言 → 5 秒后推送到仓库 → Actions 重建 → 看板更新，
+- **通知板不是即时通讯。** LinkedIn 侧写完留言 → 5 秒后推送到仓库 → Actions 重建 → 看板更新，
   整条链路大约一分钟。看板页面本身是静态的，不会自己轮询。
 - **Chrome 通知只在看板页面打开着（或被打开）时才会弹。** 静态页面没有 Service Worker 与推送
   订阅，做不到关掉标签页还能收推送。想要真正的后台推送，就看 Telegram 群里的消息。

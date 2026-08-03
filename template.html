@@ -181,11 +181,12 @@
   .dlg .status { font-size: 12px; margin-top: 12px; line-height: 1.6; word-break: break-word; }
   .dlg .status.ok { color: var(--c-offer); }
   .dlg .status.err { color: var(--c-rejitv); }
-  .chk { display: flex; align-items: center; gap: 9px; font-size: 13px; margin: 11px 0; cursor: pointer; }
-  .chk input { width: 16px; height: 16px; flex: 0 0 16px; }
-  .chk span small { display: block; color: var(--sub); font-size: 11.5px; line-height: 1.5; }
+  .chk { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; margin: 11px 0; cursor: pointer; }
+  .chk input { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 2px; }
+  .chk span small { display: block; color: var(--sub); font-size: 11.5px; line-height: 1.5; margin-top: 2px; }
+  .chk.disabled { cursor: not-allowed; opacity: .6; }
 
-  /* ---------- 留言板 ---------- */
+  /* ---------- 通知板 ---------- */
   .fab {
     position: fixed; right: 20px; bottom: 20px; z-index: 40;
     display: flex; align-items: center; gap: 8px;
@@ -303,15 +304,15 @@
   </footer>
 </div>
 
-<!-- 留言板 -->
+<!-- 通知板 -->
 <button class="fab" id="boardFab" type="button">
-  <span>💬 留言板</span>
+  <span>💬 通知板</span>
   <span class="dot" id="boardDot" hidden></span>
 </button>
 
 <div class="board" id="board" hidden>
   <div class="bhdr" id="boardHdr">
-    <span class="t">💬 留言板 <em id="boardCount">(0)</em></span>
+    <span class="t">💬 通知板 <em id="boardCount">(0)</em></span>
     <button type="button" id="boardMarkRead">全部标为已读</button>
     <button type="button" id="boardClose">收起 ✕</button>
   </div>
@@ -322,17 +323,31 @@
 <!-- 提醒弹窗 -->
 <div class="mask" id="remindMask" hidden>
   <div class="dlg">
-    <h3>✏️ 请求更新状态</h3>
+    <h3>📢 请求更新状态</h3>
     <div class="desc">提醒内容会连同这条投递的基本信息一起发到 Telegram 群。</div>
 
     <label for="rmWho">谁需要处理这个提醒？</label>
     <select id="rmWho">
       <option value="XR ball" selected>XR ball</option>
       <option value="己 ball">己 ball</option>
+      <option value="通知">通知</option>
     </select>
 
     <label for="rmMemo">备注</label>
     <textarea id="rmMemo" placeholder="想让对方知道的事…"></textarea>
+
+    <label class="chk disabled" title="看板是只读的，MEMO 只能在 LinkedIn 侧改">
+      <input type="checkbox" id="rmAppend" disabled>
+      <span>把上面的内容追加到这条的 MEMO<small>看板改不了 MEMO —— 数据由 LinkedIn 侧的脚本整份覆盖，请在那边操作</small></span>
+    </label>
+    <label class="chk disabled" title="看板是只读的，MEMO 只能在 LinkedIn 侧改">
+      <input type="checkbox" id="rmReplace" disabled>
+      <span>用上面的内容替换掉这条的 MEMO</span>
+    </label>
+    <label class="chk">
+      <input type="checkbox" id="rmWith">
+      <span>附上 MEMO 里已有的内容一并发送</span>
+    </label>
 
     <div class="info" id="rmInfo"></div>
     <div class="status" id="rmStatus"></div>
@@ -352,7 +367,7 @@
 
     <label class="chk"><input type="checkbox" id="pfAp"><span>显示「申请数」列</span></label>
     <label class="chk"><input type="checkbox" id="pfTe"><span>显示「中位任职」列</span></label>
-    <label class="chk"><input type="checkbox" id="pfDot"><span>留言板有未读时显示小红点</span></label>
+    <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
     <label class="chk"><input type="checkbox" id="pfNotify"><span>有新留言时弹 Chrome 通知<small id="pfNotifyHint"></small></span></label>
 
     <div class="row"><button class="primary sp" id="pfClose" type="button">完成</button></div>
@@ -645,7 +660,7 @@
     var tdTe = el('td', 'num col-te', r.tenure || '—');     tdTe.hidden = !prefs.showTenure;     tr.appendChild(tdTe);
 
     var tdAct = el('td', 'act');
-    var pen = el('button', 'iconbtn', '✏️');
+    var pen = el('button', 'iconbtn', '📢');
     pen.type = 'button';
     pen.title = '请求更新这条的状态（发 Telegram）';
     pen.addEventListener('click', function () { openRemind(r); });
@@ -779,17 +794,22 @@
 
   /* ---------- 提醒弹窗 ---------- */
   var remindTarget = null;
+  var remindCloseTimer = null;
   function openRemind(r) {
+    clearTimeout(remindCloseTimer);   // 上一次发送成功后的延时关闭，别把新开的窗关掉
     remindTarget = r;
     $('rmWho').value = 'XR ball';
     $('rmMemo').value = '';
+    $('rmWith').checked = !!r.memo;      // 有 MEMO 时默认带上
     $('rmStatus').textContent = '';
     $('rmStatus').className = 'status';
     $('rmInfo').textContent =
       '投递时间：' + fmtDT(r.ts) + '\n' +
       '公司：' + (r.company || '—') + '\n' +
       '岗位：' + (r.title || '—') + '\n' +
-      '链接：' + (r.jobUrl || '—');
+      '链接：' + (r.jobUrl || '—') + '\n' +
+      '当前状态：' + r.status + '\n' +
+      '现有 MEMO：' + (r.memo ? r.memo.replace(/\n/g, ' / ') : '(空)');
     $('rmSend').disabled = false;
     $('remindMask').hidden = false;
     $('rmMemo').focus();
@@ -801,7 +821,7 @@
     if (!remindTarget) return;
     var r = remindTarget;
     var memo = $('rmMemo').value.trim();
-    var text = [
+    var lines = [
       TG_PREFIX + ' 状态更新请求',
       '处理人：' + $('rmWho').value,
       '',
@@ -809,10 +829,11 @@
       '岗位：' + (r.title || '—'),
       '投递时间：' + fmtDT(r.ts),
       '链接：' + (r.jobUrl || '—'),
-      '当前状态：' + r.status,
-      '',
-      '备注：' + (memo || '(无)')
-    ].join('\n');
+      '当前状态：' + r.status
+    ];
+    if ($('rmWith').checked && r.memo) lines.push('', '现有 MEMO：' + r.memo);
+    lines.push('', '备注：' + (memo || '(无)'));
+    var text = lines.join('\n');
 
     var btn = this;
     btn.disabled = true;
@@ -822,7 +843,7 @@
       $('rmStatus').className = 'status ok';
       $('rmStatus').textContent = '已发送到 Telegram 群';
       toast('提醒已发送');
-      setTimeout(function () { $('remindMask').hidden = true; }, 900);
+      remindCloseTimer = setTimeout(function () { $('remindMask').hidden = true; }, 900);
     }).catch(function (e) {
       $('rmStatus').className = 'status err';
       $('rmStatus').textContent = '发送失败：' + (e.message || e);
@@ -830,7 +851,7 @@
     });
   });
 
-  /* ---------- 留言板 ---------- */
+  /* ---------- 通知板 ---------- */
   function msgStamp(m) { return Math.max(m.createdAt || 0, m.editedAt || 0); }
   function unreadList() {
     return MESSAGES.filter(function (m) { return msgStamp(m) > (prefs.lastRead || 0); });
@@ -841,7 +862,7 @@
     list.textContent = '';
     $('boardCount').textContent = '(' + MESSAGES.length + ')';
     if (!MESSAGES.length) {
-      list.appendChild(el('div', 'empty', '还没有留言。在 LinkedIn 页面的留言板里写一条并同步后，这里就会出现。'));
+      list.appendChild(el('div', 'empty', '还没有留言。在 LinkedIn 页面的通知板里写一条并同步后，这里就会出现。'));
       return;
     }
     var lastRead = prefs.lastRead || 0;
@@ -859,7 +880,7 @@
   function refreshUnread() {
     var n = unreadList().length;
     $('boardDot').hidden = !(n > 0 && prefs.showDot);
-    $('boardFab').title = n > 0 ? (n + ' 条未读留言') : '留言板';
+    $('boardFab').title = n > 0 ? (n + ' 条未读留言') : '通知板';
   }
 
   function markAllRead() {

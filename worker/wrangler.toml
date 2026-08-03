@@ -4,7 +4,7 @@ compatibility_date = "2026-08-01"
 
 [vars]
 # 送信先グループ（スーパーグループ ID）
-TG_CHAT = "-1004286394659"
+TG_CHAT = "-1003974378230"
 
 # 送信を許可する Origin をカンマ区切りで。
 #   - GitHub Pages: https://exploreeyrar.github.io
