@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T09:15:32.393Z",
- "count": 29,
+ "updatedAt": "2026-08-03T09:21:25.981Z",
+ "count": 30,
  "records": [
+  {
+   "id": "rmsd0rz1k16ubk",
+   "jobId": "4410566970",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4410566970/",
+   "company": "ICE",
+   "title": "Inside Sales Specialist",
+   "hirers": [],
+   "ts": 1785748880950,
+   "applicants": "10",
+   "tenure": "4.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsd0ke6zocup6",
    "jobId": "4428235338",
