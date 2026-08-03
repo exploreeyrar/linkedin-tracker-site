@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T09:21:25.981Z",
+ "updatedAt": "2026-08-03T09:21:46.288Z",
  "count": 30,
  "records": [
   {
@@ -13,10 +13,10 @@
    "ts": 1785748880950,
    "applicants": "10",
    "tenure": "4.9 years",
-   "memo": "",
+   "memo": "疑似明文要求 5天出社",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 1785748901287
   },
   {
    "id": "rmsd0ke6zocup6",
