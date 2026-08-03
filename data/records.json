@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T02:33:18.031Z",
+ "updatedAt": "2026-08-03T02:34:03.941Z",
  "count": 6,
  "records": [
   {
@@ -95,13 +95,5 @@
    "scout": true
   }
  ],
- "messages": [
-  {
-   "id": "gmsckz79nt2aq",
-   "text": "hi",
-   "createdAt": 1785722344331,
-   "editedAt": 0,
-   "author": ""
-  }
- ]
+ "messages": []
 }
