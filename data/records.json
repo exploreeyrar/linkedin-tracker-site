@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T07:17:23.806Z",
- "count": 20,
+ "updatedAt": "2026-08-03T07:27:10.037Z",
+ "count": 21,
  "records": [
+  {
+   "id": "rmscwp0z1y62dr",
+   "jobId": "4447664522",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447664522/",
+   "company": "Aires",
+   "title": "Director of Client Development",
+   "hirers": [],
+   "ts": 1785742025016,
+   "applicants": "10",
+   "tenure": "5.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscwcfvgmos55",
    "jobId": "4448137098",
