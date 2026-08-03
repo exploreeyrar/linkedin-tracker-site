@@ -1,8 +1,29 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T06:01:15.527Z",
- "count": 9,
+ "updatedAt": "2026-08-03T06:05:02.899Z",
+ "count": 10,
  "records": [
+  {
+   "id": "rmsctrf6ctto3b",
+   "jobId": "4448143397",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448143397/",
+   "company": "APX Luxury",
+   "title": "Head of Sales",
+   "hirers": [
+    {
+     "name": "Mahak Asija",
+     "url": "https://www.linkedin.com/in/mahakasija/",
+     "role": "Regional Talent Acquisition Lead – APAC | Hiring Strategy | Leadership Hiring | Scaling Teams Across Markets"
+    }
+   ],
+   "ts": 1785737097883,
+   "applicants": "10",
+   "tenure": "3.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsctmjpz3xpt9",
    "jobId": "4448143229",
