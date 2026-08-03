@@ -1,8 +1,50 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T15:14:05.984Z",
- "count": 34,
+ "updatedAt": "2026-08-03T15:27:26.480Z",
+ "count": 36,
  "records": [
+  {
+   "id": "rmsddunvx7dhqy",
+   "jobId": "4420292859",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4420292859/",
+   "company": "Broadridge",
+   "title": "Lead Generation Specialist",
+   "hirers": [
+    {
+     "name": "Khryztyn Joyce Areta, CHRA",
+     "url": "https://www.linkedin.com/in/khryztynareta/",
+     "role": "Talent Acquisition Specialist @ Broadridge | Bridging Talent and Opportunity in Fintech | Mastering APAC Markets: Japan, Hong Kong, Singapore, Australia, Philippines 🌏"
+    }
+   ],
+   "ts": 1785770841459,
+   "applicants": "",
+   "tenure": "5.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
+  {
+   "id": "rmsddsj03gcyn2",
+   "jobId": "4363521458",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4363521458/",
+   "company": "Singapore (all genders)",
+   "title": "Business Development Representative",
+   "hirers": [
+    {
+     "name": "Adam Wynne",
+     "url": "https://www.linkedin.com/in/adamwynne2/",
+     "role": "Global Sales Director New Logo - Lucanet"
+    }
+   ],
+   "ts": 1785770741821,
+   "applicants": "",
+   "tenure": "2.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmsd8jvcu5msdy",
    "jobId": "4435058424",
