@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T06:13:25.150Z",
- "count": 12,
+ "updatedAt": "2026-08-03T06:41:53.095Z",
+ "count": 13,
  "records": [
+  {
+   "id": "rmscv2sjkaivi8",
+   "jobId": "4447688662",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447688662/",
+   "company": "Docusign",
+   "title": "Account Executive, SMB",
+   "hirers": [],
+   "ts": 1785739308055,
+   "applicants": "10",
+   "tenure": "3.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmscu26pohoacv",
    "jobId": "4374363243",
