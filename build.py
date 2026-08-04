@@ -65,8 +65,11 @@ def canon_status(value):
         return STATUS_ALIAS[value]
     return _LOOSE.get(value.translate(_PUNCT).replace("対", "对"), value)
 
-# 只允许指向 LinkedIn 的链接进入公开页面，避免脏数据把页面变成任意跳转
-SAFE_URL = re.compile(r"^https://([a-z0-9-]+\.)*linkedin\.com/", re.I)
+# 只允许指向招聘站本身的链接进入公开页面，避免脏数据把页面变成任意跳转。
+# jobstreet 各国站都是子域（sg./my./ph.…），另有 jobstreet.com.sg 这种老域名。
+SAFE_URL = re.compile(
+    r"^https://([a-z0-9-]+\.)*(linkedin\.com|jobstreet\.com(\.[a-z]{2})?)/", re.I
+)
 
 
 def s(v, limit=400):
