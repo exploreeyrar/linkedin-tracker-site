@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:31:41.176Z",
- "count": 58,
+ "updatedAt": "2026-08-04T04:34:12.539Z",
+ "count": 59,
  "records": [
+  {
+   "id": "rmse5ygb70fxps",
+   "jobId": "4447565578",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447565578/",
+   "company": "Salesforce",
+   "title": "Business Development Representative, Singapore Market",
+   "hirers": [],
+   "ts": 1785818047518,
+   "applicants": "",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse5v7ij5xtau",
    "jobId": "4434129922",
