@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:09:24.782Z",
- "count": 75,
+ "updatedAt": "2026-08-04T05:11:26.051Z",
+ "count": 76,
  "records": [
+  {
+   "id": "rmse7abaizfsao",
+   "jobId": "4441516259",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4441516259/",
+   "company": "CrowdStrike",
+   "title": "Sales Development Representative",
+   "hirers": [],
+   "ts": 1785820280498,
+   "applicants": "10",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse77q4kcaari",
    "jobId": "4446979770",
