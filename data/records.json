@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:29:14.615Z",
- "count": 55,
+ "updatedAt": "2026-08-04T04:30:08.643Z",
+ "count": 56,
  "records": [
+  {
+   "id": "rmse5t83dbd4es",
+   "jobId": "4443359642",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4443359642/",
+   "company": "Rippling",
+   "title": "Account Manager, Mid-Market APAC",
+   "hirers": [
+    {
+     "name": "Haris Qureshi",
+     "url": "https://www.linkedin.com/in/harisqureshi/",
+     "role": "AM Leader @ Rippling | Writing about Australian Startups at news.harisq.com"
+    }
+   ],
+   "ts": 1785817803600,
+   "applicants": "",
+   "tenure": "1.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse5s2faphu9e",
    "jobId": "4440910641",
