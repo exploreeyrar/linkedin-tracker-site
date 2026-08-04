@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T07:12:53.113Z",
- "count": 82,
+ "updatedAt": "2026-08-04T07:16:22.062Z",
+ "count": 83,
  "records": [
+  {
+   "id": "rmsebqzil3y85v",
+   "site": "jobstreet",
+   "jobId": "93161399",
+   "jobUrl": "https://sg.jobstreet.com/job/93161399",
+   "company": "Black & White Engineering Pte. Ltd.",
+   "title": "Associate Director, Mechanical Engineer (Data Centre)",
+   "hirers": [],
+   "ts": 1785827776845,
+   "applicants": "",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsebm85686mza",
    "site": "jobstreet",
