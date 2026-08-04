@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:03:45.758Z",
- "count": 72,
+ "updatedAt": "2026-08-04T05:05:23.130Z",
+ "count": 73,
  "records": [
+  {
+   "id": "rmse72jnyjyax1",
+   "jobId": "4447223717",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447223717/",
+   "company": "SpaceX",
+   "title": "Sales Manager, APAC (Global Starlink Enterprise Sales)",
+   "hirers": [
+    {
+     "name": "Ashley Neale",
+     "url": "https://www.linkedin.com/in/ashleyneale/",
+     "role": "Director, Starlink Enterprise - APAC | We Connect the World"
+    }
+   ],
+   "ts": 1785819918104,
+   "applicants": "10",
+   "tenure": "2.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse70gi9rf063",
    "jobId": "4437737754",
