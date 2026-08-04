@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:36:53.566Z",
+ "updatedAt": "2026-08-04T05:37:00.439Z",
  "count": 78,
  "records": [
   {
@@ -14,10 +14,10 @@
    "applicants": "10",
    "tenure": "2.7 years",
    "memo": "",
-   "status": "已投递等联络",
+   "status": "等己方处理(XR ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 0,
+   "updatedAt": 1785821815436,
    "epMonthly": 0,
    "epAnnual": 0
   },
