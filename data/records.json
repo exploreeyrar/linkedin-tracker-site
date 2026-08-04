@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:46:05.444Z",
- "count": 63,
+ "updatedAt": "2026-08-04T04:48:01.077Z",
+ "count": 64,
  "records": [
+  {
+   "id": "rmse6g7lblgtxx",
+   "jobId": "4446541445",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446541445/",
+   "company": "LinkedIn",
+   "title": "SMB Account Executive, Talent Solutions",
+   "hirers": [],
+   "ts": 1785818876040,
+   "applicants": "177",
+   "tenure": "4.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6dqdbklhuq",
    "jobId": "4428091138",
