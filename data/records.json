@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T01:55:07.483Z",
- "count": 40,
+ "updatedAt": "2026-08-04T02:03:50.653Z",
+ "count": 41,
  "records": [
+  {
+   "id": "rmse0l2y6yw1sq",
+   "jobId": "4439799997",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4439799997/",
+   "company": "Brink’s Inc",
+   "title": "Senior Business Development Manager",
+   "hirers": [],
+   "ts": 1785809025603,
+   "applicants": "10",
+   "tenure": "5.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse09vadw1nzw",
    "jobId": "4439165321",
