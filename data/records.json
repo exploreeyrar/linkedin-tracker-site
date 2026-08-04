@@ -1,26 +1,8 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T06:28:10.342Z",
- "count": 81,
+ "updatedAt": "2026-08-04T06:29:00.072Z",
+ "count": 80,
  "records": [
-  {
-   "id": "rmsea0iiudh2qg",
-   "jobId": "4448678740",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4448678740/",
-   "company": "PropertyGuru Group",
-   "title": "Relationship Manager",
-   "hirers": [],
-   "ts": 1785824862171,
-   "applicants": "10",
-   "tenure": "4.1 years",
-   "memo": "",
-   "status": "已投递等联络",
-   "scout": false,
-   "sector": "",
-   "updatedAt": 0,
-   "epMonthly": 0,
-   "epAnnual": 0
-  },
   {
    "id": "rmse9jcthvfd7w",
    "jobId": "4448199391",
