@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:04:32.706Z",
- "count": 42,
+ "updatedAt": "2026-08-04T02:04:52.610Z",
+ "count": 43,
  "records": [
+  {
+   "id": "rmse0mes6pv5gl",
+   "jobId": "4448684197",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448684197/",
+   "company": "Anradus Pte Ltd",
+   "title": "Sales Executive #10220",
+   "hirers": [],
+   "ts": 1785809087585,
+   "applicants": "10",
+   "tenure": "2.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0lzfd5tzf6",
    "jobId": "4447921187",
