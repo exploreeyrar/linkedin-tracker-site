@@ -128,14 +128,28 @@ export default {
       if (!env.SCHEDULE) return json({ ok: false, description: 'KV 未绑定，定时功能不可用' }, 501, headers);
       const id = String(body.id || '');
       if (!id) return json({ ok: false, description: 'missing id' }, 400, headers);
-      const items = await listQueue(env, MAX_QUEUE);
-      const hit = items.find(i => i.id === id);
-      if (!hit) return json({ ok: false, description: 'not found' }, 404, headers);
+
+      // KV 的 list 有最多 60 秒延迟，刚入队的条目扫不到。
+      // 客户端手上有 at，就能直接拼出 key 精确读取，不必依赖 list。
+      const at = Number(body.at || 0);
+      let key = null, item = null;
+      if (at) {
+        key = queueKey(at, id);
+        const raw = await env.SCHEDULE.get(key);
+        if (raw) { try { item = JSON.parse(raw); } catch (e) { item = null; } }
+      }
+      if (!item) {                       // 回退：扫一遍队列
+        const items = await listQueue(env, MAX_QUEUE);
+        const hit = items.find(i => i.id === id);
+        if (hit) { item = hit; key = hit.key; }
+      }
+      if (!item || !key) return json({ ok: false, description: 'not found' }, 404, headers);
+
       if (action === 'sendnow') {
-        const data = await tgSend(env, hit.text);
+        const data = await tgSend(env, item.text);
         if (!data.ok) return json(data, 502, headers);
       }
-      await env.SCHEDULE.delete(hit.key);
+      await env.SCHEDULE.delete(key);
       return json({ ok: true }, 200, headers);
     }
 

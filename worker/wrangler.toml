@@ -19,7 +19,7 @@ ALLOWED_ORIGINS = "https://exploreeyrar.github.io,https://www.linkedin.com,null"
 #   npx wrangler kv namespace create SCHEDULE
 [[kv_namespaces]]
 binding = "SCHEDULE"
-id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"
+id = "5618df7bf92b4f4886a45644efeefb29"
 
 # 5 分ごとにキューを見て、時間が来たものを送る
 [triggers]

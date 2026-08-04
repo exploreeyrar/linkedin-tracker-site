@@ -1264,14 +1264,14 @@
       now.addEventListener('click', function (e) {
         e.stopPropagation();
         now.disabled = true;
-        tgAction({ action: 'sendnow', id: it.id })
+        tgAction({ action: 'sendnow', id: it.id, at: String(it.at) })
           .then(function () { toast('已发送'); return loadScheduled(); })
           .catch(function (err) { toast('发送失败：' + err.message); now.disabled = false; });
       });
       cancel.addEventListener('click', function (e) {
         e.stopPropagation();
         cancel.disabled = true;
-        tgAction({ action: 'cancel', id: it.id })
+        tgAction({ action: 'cancel', id: it.id, at: String(it.at) })
           .then(function () { toast('已取消预约'); return loadScheduled(); })
           .catch(function (err) { toast('取消失败：' + err.message); cancel.disabled = false; });
       });
@@ -1391,11 +1391,23 @@
                    meta: JSON.stringify({ jobId: r.jobId || '', company: r.company || '', title: r.title || '' }) })
       : tgSend(text);
 
-    job.then(function () {
+    job.then(function (resp) {
       $('rmStatus').className = 'status ok';
       $('rmStatus').textContent = sched ? ('已设定：' + fmtDT(at) + ' 发送') : '已发送到 Telegram 群';
       toast(sched ? '已设定定时发送' : '提醒已发送');
-      if (sched) loadScheduled();
+      if (sched) {
+        // KV 的 list 要等最多 60 秒才看得到，先本地补一条让行立刻变深蓝，
+        // 之后 loadScheduled() 拉到真数据会覆盖掉。
+        var jid = r.jobId || '';
+        if (jid) {
+          (SCHEDULED[jid] = SCHEDULED[jid] || []).push({
+            id: (resp && resp.id) || ('tmp' + at), at: at, text: text,
+            meta: { jobId: jid, company: r.company || '', title: r.title || '' }
+          });
+          apply();
+        }
+        setTimeout(loadScheduled, 65000);   // 等 KV 传播开再对一次账
+      }
       remindCloseTimer = setTimeout(function () { $('remindMask').hidden = true; }, 900);
     }).catch(function (e) {
       $('rmStatus').className = 'status err';
