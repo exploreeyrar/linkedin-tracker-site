@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:18:54.621Z",
- "count": 50,
+ "updatedAt": "2026-08-04T02:22:27.502Z",
+ "count": 51,
  "records": [
+  {
+   "id": "rmse1909umyk0i",
+   "jobId": "4448640206",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448640206/",
+   "company": "Mercer",
+   "title": "Client Relationship Executive",
+   "hirers": [],
+   "ts": 1785810141875,
+   "applicants": "10",
+   "tenure": "5.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse14gg9ouvqn",
    "jobId": "4448170811",
