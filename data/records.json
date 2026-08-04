@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:03:21.277Z",
- "count": 71,
+ "updatedAt": "2026-08-04T05:03:45.758Z",
+ "count": 72,
  "records": [
+  {
+   "id": "rmse70gi9rf063",
+   "jobId": "4437737754",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4437737754/",
+   "company": "EDB",
+   "title": "Sales Development Rep",
+   "hirers": [],
+   "ts": 1785819820713,
+   "applicants": "236",
+   "tenure": "3.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6zxmdc7r0r",
    "jobId": "4443272826",
