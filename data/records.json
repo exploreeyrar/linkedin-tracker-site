@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:05:23.130Z",
- "count": 73,
+ "updatedAt": "2026-08-04T05:07:15.046Z",
+ "count": 74,
  "records": [
+  {
+   "id": "rmse74xwx7htxb",
+   "jobId": "4429663519",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4429663519/",
+   "company": "Baringa",
+   "title": "Account Manager - APAC Power Markets & Insights",
+   "hirers": [],
+   "ts": 1785820029905,
+   "applicants": "10",
+   "tenure": "3.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse72jnyjyax1",
    "jobId": "4447223717",
