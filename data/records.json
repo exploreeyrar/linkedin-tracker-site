@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T01:49:48.628Z",
- "count": 39,
+ "updatedAt": "2026-08-04T01:55:07.483Z",
+ "count": 40,
  "records": [
+  {
+   "id": "rmse09vadw1nzw",
+   "jobId": "4439165321",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4439165321/",
+   "company": "Corpay",
+   "title": "Business Development Manager",
+   "hirers": [],
+   "ts": 1785808502453,
+   "applicants": "10",
+   "tenure": "2.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0319ta1ret",
    "jobId": "4447983714",
