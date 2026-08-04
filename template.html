@@ -874,6 +874,8 @@
     },
     hirers: function (r) {
       var td = document.createElement('td');
+      // Jobstreet 不公开招聘负责人，这一格一律写站点名，和 LinkedIn 的「没抓到」区分开
+      if (r.site === 'jobstreet') { td.textContent = 'Jobstreet'; return td; }
       if (r.hirers && r.hirers.length) {
         r.hirers.forEach(function (h) {
           var name = h.name || h.url || '(未知)';
@@ -1171,7 +1173,9 @@
     if (r.scout) add('人事主动 scout', '🌟 是');
     add('更新时间', fmtDT(r.updatedAt || r.ts) + (r.updatedAt ? '' : '（未改动过，同投递时间）'));
     add('投递时间', fmtDT(r.ts) + '（' + daysSince(r.ts) + ' 天前）');
-    if (r.hirers && r.hirers.length) {
+    if (r.site === 'jobstreet') {
+      add('Hiring team', 'Jobstreet');
+    } else if (r.hirers && r.hirers.length) {
       var box = document.createElement('div');
       r.hirers.forEach(function (h) {
         var line = document.createElement('div');

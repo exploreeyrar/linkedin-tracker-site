@@ -86,6 +86,17 @@ def url(v):
     return t if SAFE_URL.match(t) else ""
 
 
+# 有 site 字段就信它，没有（早期记录）就看链接域名，最后一律当 LinkedIn
+SITES = ("linkedin", "jobstreet")
+
+
+def site_of(raw, job_url):
+    site = s(raw.get("site"), 20).lower()
+    if site in SITES:
+        return site
+    return "jobstreet" if "jobstreet." in job_url.lower() else "linkedin"
+
+
 def to_ms(v):
     """时间戳统一成毫秒整数。接受数字或 ISO 字符串。"""
     if isinstance(v, (int, float)) and v > 0:
@@ -119,13 +130,15 @@ def normalize(raw):
 
     status = canon_status(s(raw.get("status"), 40))
     job_id = re.sub(r"\D", "", s(raw.get("jobId"), 24))[:24]
+    job_url = url(raw.get("jobUrl"))
     return {
         "ts": ts,
+        "site": site_of(raw, job_url),            # 'linkedin' | 'jobstreet'
         "jobId": job_id,                          # 看板锚点用（#job-<id>）
         "updatedAt": to_ms(raw.get("updatedAt")),  # 最后一次改 MEMO / 状态的时间
         "company": s(raw.get("company"), 120),
         "title": s(raw.get("title"), 200),
-        "jobUrl": url(raw.get("jobUrl")),
+        "jobUrl": job_url,
         "hirers": hirers,
         "applicants": s(raw.get("applicants"), 20),
         "tenure": s(raw.get("tenure"), 30),
