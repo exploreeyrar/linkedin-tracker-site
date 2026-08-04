@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T07:11:30.525Z",
- "count": 80,
+ "updatedAt": "2026-08-04T07:12:25.395Z",
+ "count": 81,
  "records": [
+  {
+   "id": "rmseblzxsb5h4o",
+   "site": "jobstreet",
+   "jobId": "93686368",
+   "jobUrl": "https://sg.jobstreet.com/job/93686368",
+   "company": "Eaton Group",
+   "title": "Marketing & Business Intelligence Specialist, APAC",
+   "hirers": [],
+   "ts": 1785827544112,
+   "applicants": "",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse9jcthvfd7w",
    "jobId": "4448199391",
