@@ -1,8 +1,29 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:03:50.653Z",
- "count": 41,
+ "updatedAt": "2026-08-04T02:04:32.706Z",
+ "count": 42,
  "records": [
+  {
+   "id": "rmse0lzfd5tzf6",
+   "jobId": "4447921187",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447921187/",
+   "company": "Argyll Scott",
+   "title": "SaaS BD Manager (SG and SEA markets)",
+   "hirers": [
+    {
+     "name": "Foo K.",
+     "url": "https://www.linkedin.com/in/liewfookin/",
+     "role": "Senior Specialist Recruiter - Sales & Marketing (Luxury & Consumer Retail) | Former Luxury Fashion Insider"
+    }
+   ],
+   "ts": 1785809067684,
+   "applicants": "14",
+   "tenure": "5.2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0l2y6yw1sq",
    "jobId": "4439799997",
