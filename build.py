@@ -129,6 +129,10 @@ def normalize(raw):
         "status": status,
         "memo": s(raw.get("memo"), 1000),
         "scout": bool(raw.get("scout")),          # 人事主动 scout 的
+        # EP 所属行业与按年龄算好的 C1 门槛，由油猴脚本算好后推上来
+        "sector": s(raw.get("sector"), 120),
+        "epMonthly": max(0, int(raw.get("epMonthly") or 0)),
+        "epAnnual": max(0, int(raw.get("epAnnual") or 0)),
     }
 
 

@@ -575,11 +575,18 @@
     { key: 'updatedAt',  label: '更新时间',    sort: 'updatedAt' },
     { key: 'ts',         label: '投递时间',    sort: 'ts' },
     { key: 'applicants', label: '申请数',      sort: 'applicants', align: 'right' },
-    { key: 'tenure',     label: '中位任职',    sort: 'tenure',     align: 'right' }
+    { key: 'tenure',     label: '中位任职',    sort: 'tenure',     align: 'right' },
+    { key: 'sector',     label: 'EP 所属行业', sort: 'sector' },
+    { key: 'epMonthly',  label: '最低月 base', sort: 'epMonthly',  align: 'right' },
+    { key: 'epAnnual',   label: '年总所需',    sort: 'epAnnual',   align: 'right' }
   ];
   var COL_BY_KEY = {};
   COLUMNS.forEach(function (c) { COL_BY_KEY[c.key] = c; });
   var DEFAULT_HIDDEN = { ts: 1, applicants: 1, tenure: 1 };
+  // 三个 EP 列在没有任何数据时整列不出现
+  var HAS_EP = RECORDS.some(function (r) { return r.sector || r.epMonthly || r.epAnnual; });
+  var EP_KEYS = { sector: 1, epMonthly: 1, epAnnual: 1 };
+  function money(n) { return Number(n || 0).toLocaleString('en-US'); }
 
   /** 当前生效的列顺序（补上新增列、剔除已删列） */
   function colOrder() {
@@ -589,6 +596,7 @@
     return out;
   }
   function colHidden(key) {
+    if (EP_KEYS[key] && !HAS_EP) return true;      // 没填过就别占位置
     var h = (prefs.cols && prefs.cols.hidden) || null;
     return h ? !!h[key] : !!DEFAULT_HIDDEN[key];
   }
@@ -855,7 +863,10 @@
       return td;
     },
     applicants: function (r) { return el('td', 'num', r.applicants || '—'); },
-    tenure: function (r) { return el('td', 'num', r.tenure || '—'); }
+    tenure: function (r) { return el('td', 'num', r.tenure || '—'); },
+    sector: function (r) { return el('td', null, r.sector || '—'); },
+    epMonthly: function (r) { return el('td', 'num', r.epMonthly ? ('S$' + money(r.epMonthly)) : '—'); },
+    epAnnual: function (r) { return el('td', 'num', r.epAnnual ? ('S$' + money(r.epAnnual)) : '—'); }
   };
 
   function buildHead() {
@@ -921,6 +932,7 @@
         if (isNaN(ny)) return -1;
         return (nx - ny) * sortDir;
       }
+      if (sortKey === 'epMonthly' || sortKey === 'epAnnual') return ((x || 0) - (y || 0)) * sortDir;
       if (sortKey === 'ts') return (x - y) * sortDir;
       if (sortKey === 'updatedAt') return ((a.updatedAt || a.ts) - (b.updatedAt || b.ts)) * sortDir;
       if (sortKey === 'status') {
@@ -1022,6 +1034,7 @@
     box.textContent = '';
     var order = colOrder();
     order.forEach(function (key) {
+      if (EP_KEYS[key] && !HAS_EP) return;
       var c = COL_BY_KEY[key];
       var item = el('div', 'colitem');
       item.draggable = true;
@@ -1109,6 +1122,9 @@
       });
       add('Hiring team', null, box);
     } else add('Hiring team', '');
+    if (r.sector) add('EP 所属行业', r.sector);
+    if (r.epMonthly) add('最低月 base', 'S$' + money(r.epMonthly));
+    if (r.epAnnual) add('年总所需', 'S$' + money(r.epAnnual));
     add('申请数', r.applicants);
     add('中位任职', r.tenure);
     add('MEMO', r.memo);
