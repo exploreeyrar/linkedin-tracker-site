@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:11:26.051Z",
+ "updatedAt": "2026-08-04T05:14:32.047Z",
  "count": 76,
  "records": [
   {
@@ -13,11 +13,11 @@
    "ts": 1785820280498,
    "applicants": "10",
    "tenure": "",
-   "memo": "",
+   "memo": "Please complete the questions below as part of the Sales Development Representative job application process.\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
    "status": "已投递等联络",
    "scout": false,
    "sector": "",
-   "updatedAt": 0,
+   "updatedAt": 1785820466065,
    "epMonthly": 0,
    "epAnnual": 0
   },
