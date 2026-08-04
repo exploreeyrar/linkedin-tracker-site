@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T07:12:25.395Z",
- "count": 81,
+ "updatedAt": "2026-08-04T07:12:39.748Z",
+ "count": 82,
  "records": [
+  {
+   "id": "rmsebm85686mza",
+   "site": "jobstreet",
+   "jobId": "93347505",
+   "jobUrl": "https://sg.jobstreet.com/job/93347505",
+   "company": "IDEMIA Public Security",
+   "title": "Service Delivery Manager",
+   "hirers": [],
+   "ts": 1785827554746,
+   "applicants": "",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmseblzxsb5h4o",
    "site": "jobstreet",
