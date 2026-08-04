@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T06:29:04.991Z",
- "count": 80,
+ "updatedAt": "2026-08-04T07:02:16.580Z",
+ "count": 81,
  "records": [
+  {
+   "id": "rmseb8vaxnesyq",
+   "site": "jobstreet",
+   "jobId": "93639151",
+   "jobUrl": "https://sg.jobstreet.com/job/93639151",
+   "company": "Snowflake",
+   "title": "Enterprise Account Executive - Acquisition",
+   "hirers": [],
+   "ts": 1785826931577,
+   "applicants": "",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse9jcthvfd7w",
    "jobId": "4448199391",
