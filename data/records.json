@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:04:52.610Z",
- "count": 43,
+ "updatedAt": "2026-08-04T02:07:29.321Z",
+ "count": 44,
  "records": [
+  {
+   "id": "rmse0pros7bn7e",
+   "jobId": "4448318166",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448318166/",
+   "company": "Argus Media",
+   "title": "Sales Specialist - Genfuels",
+   "hirers": [],
+   "ts": 1785809244289,
+   "applicants": "10",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0mes6pv5gl",
    "jobId": "4448684197",
