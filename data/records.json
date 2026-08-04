@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:17:40.053Z",
- "count": 49,
+ "updatedAt": "2026-08-04T02:18:54.621Z",
+ "count": 50,
  "records": [
+  {
+   "id": "rmse14gg9ouvqn",
+   "jobId": "4448170811",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448170811/",
+   "company": "Microsoft",
+   "title": "Solution Specialists-Digital Native",
+   "hirers": [],
+   "ts": 1785809929574,
+   "applicants": "10",
+   "tenure": "5.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse12ub2ld8cs",
    "jobId": "4378846834",
