@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:30:59.081Z",
- "count": 76,
+ "updatedAt": "2026-08-04T05:35:58.792Z",
+ "count": 77,
  "records": [
+  {
+   "id": "rmse85v4rzc8th",
+   "jobId": "4444585921",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4444585921/",
+   "company": "EY",
+   "title": "Account Manager",
+   "hirers": [],
+   "ts": 1785821752559,
+   "applicants": "10",
+   "tenure": "3.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse7zgjt8pbom",
    "jobId": "4436223607",
