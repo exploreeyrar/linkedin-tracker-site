@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:09:55.532Z",
- "count": 46,
+ "updatedAt": "2026-08-04T02:10:12.771Z",
+ "count": 47,
  "records": [
+  {
+   "id": "rmse0t9tsz70w0",
+   "jobId": "4427469646",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4427469646/",
+   "company": "Tiger Brokers Singapore",
+   "title": "Business Development Manager (North Asia)",
+   "hirers": [],
+   "ts": 1785809407753,
+   "applicants": "20",
+   "tenure": "1.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0swi5hdt5h",
    "jobId": "4418339162",
