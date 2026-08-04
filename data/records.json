@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:50:21.656Z",
- "count": 65,
+ "updatedAt": "2026-08-04T04:52:25.054Z",
+ "count": 66,
  "records": [
+  {
+   "id": "rmse6lvatwlbuz",
+   "jobId": "4446071837",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446071837/",
+   "company": "Alteryx",
+   "title": "Manager, Sales Development",
+   "hirers": [],
+   "ts": 1785819140032,
+   "applicants": "10",
+   "tenure": "3.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6j805qaaf1",
    "jobId": "4421182374",
