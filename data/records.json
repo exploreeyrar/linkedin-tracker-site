@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:35:36.685Z",
- "count": 60,
+ "updatedAt": "2026-08-04T04:38:59.298Z",
+ "count": 61,
  "records": [
+  {
+   "id": "rmse64lk14x2jl",
+   "jobId": "4437005503",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4437005503/",
+   "company": "Lenovo",
+   "title": "Mid-Market Sales Representative",
+   "hirers": [],
+   "ts": 1785818334251,
+   "applicants": "10",
+   "tenure": "7.2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6097h5kt5h",
    "jobId": "4430940611",
