@@ -14,3 +14,13 @@ ALLOWED_ORIGINS = "https://exploreeyrar.github.io,https://www.linkedin.com,null"
 
 # TG_TOKEN は Secret として登録する（wrangler secret put TG_TOKEN）。ここには書かない。
 # APP_KEY を Secret に登録すると X-App-Key ヘッダーの一致も必須になる（任意）。
+
+# 予約送信のキュー。先に KV namespace を作って id を貼ること：
+#   npx wrangler kv namespace create SCHEDULE
+[[kv_namespaces]]
+binding = "SCHEDULE"
+id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"
+
+# 5 分ごとにキューを見て、時間が来たものを送る
+[triggers]
+crons = ["*/5 * * * *"]

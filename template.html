@@ -180,6 +180,31 @@
 
   tr.clickable { cursor: pointer; }
 
+  /* 已设定时发送的项目 */
+  tr.scheduled > td { background: #12315c !important; color: #dbeafe !important; }
+  tr.scheduled > td a { color: #93c5fd !important; }
+  tr.scheduled .badge { color: #bfdbfe !important; }
+  .schednote {
+    margin-top: 5px; font-size: 11.5px; line-height: 1.55; color: #bfdbfe;
+    background: rgba(255,255,255,.08); border: 1px solid #2c5fa8; border-radius: 8px; padding: 6px 8px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .schednote b { display: block; color: #e0f2fe; }
+  .schednote .row2 { display: flex; gap: 6px; margin-top: 6px; }
+  .schednote button {
+    font: inherit; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 7px;
+    border: 0; cursor: pointer; background: #3b82f6; color: #fff;
+  }
+  .schednote button.ghost { background: transparent; color: #bfdbfe; border: 1px solid #3b82f6; }
+  .schednote button:hover { filter: brightness(1.1); }
+
+  /* 上次访问之后新增的项目：渐进高亮，鼠标扫过即消 */
+  @keyframes freshin { from { background: transparent; } to { background: var(--fresh); } }
+  tr.fresh > td { animation: freshin 1.1s ease-out forwards; }
+  tr.fresh:hover > td { animation: none; background: transparent; transition: background .35s ease; }
+  :root { --fresh: #d8f0ff; }
+  @media (prefers-color-scheme: dark) { :root { --fresh: #14384d; } }
+
   /* 列管理 */
   .collist { border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
   .colitem {
@@ -428,6 +453,11 @@
       <input type="checkbox" id="rmLink" checked>
       <span>附上看板链接（点开直接定位并高亮这一条）</span>
     </label>
+    <label class="chk">
+      <input type="checkbox" id="rmSched">
+      <span>定时发送<small>交给 Cloudflare Worker 定时投递，浏览器关掉也会照常发出</small></span>
+    </label>
+    <input type="datetime-local" id="rmSchedAt" hidden>
 
     <div class="previewhdr">
       <span>预览 —— 实际发送的内容</span>
@@ -621,6 +651,11 @@
     var d = new Date(ms), p = function (n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
+  // 这三个的初始化要等 prefs 就绪，见下方（这里只声明）
+  var LAST_VISIT = 0;
+  var SCHEDULED = {};        // jobId -> [预约项]，从 Worker 拉回来
+  var FRESH_SEEN = {};       // 已经被鼠标扫过的，不再高亮
+
   /** 当天零点（本地时区） */
   function startOfDay(ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
   /** 本周一零点（本地时区），和下面的周趋势图口径一致 */
@@ -650,7 +685,7 @@
   /* ---------- 本地偏好 ---------- */
   var PK = 'sgjob_prefs_v1';
   var prefs = {
-    cols: null,
+    cols: null, lastVisit: 0,
     showDot: true, notify: true, notifyDefaulted: false,
     lastRead: 0,
     board: { x: 0, y: 0, w: 380, h: 440, placed: false }
@@ -666,6 +701,9 @@
 
   // 之前版本默认不勾，做一次性迁移并立刻落盘；之后仍然尊重用户自己的选择
   if (!prefs.notifyDefaulted) { prefs.notify = true; prefs.notifyDefaulted = true; savePrefs(); }
+
+  // 上次浏览这个页面的时刻；本次渲染完会更新，所以要先取快照
+  LAST_VISIT = prefs.lastVisit || 0;
 
   /* ---------- 顶部信息 ---------- */
   $('m-total').textContent = RECORDS.length;
@@ -911,10 +949,23 @@
     if (CLOSED[r.status]) tr.className = 'closed';
     if (r.jobId) tr.id = 'job-' + r.jobId;      // Telegram 链接的锚点
     tr.classList.add('clickable');
+
+    // 上次访问之后才出现的记录
+    var fid = r.jobId || (r.company + '|' + r.title);
+    if (LAST_VISIT && r.ts > LAST_VISIT && !FRESH_SEEN[fid]) {
+      tr.classList.add('fresh');
+      tr.title = '上次浏览之后新增';
+      tr.addEventListener('mouseenter', function () {
+        FRESH_SEEN[fid] = 1;
+        tr.classList.remove('fresh');
+        tr.removeAttribute('title');
+      }, { once: true });
+    }
     colOrder().forEach(function (key) {
       if (colHidden(key)) return;
       tr.appendChild(CELL[key](r));
     });
+    decorateScheduled(tr, r);
     tr.addEventListener('click', function () { openDetail(r); });
     return tr;
   }
@@ -1169,6 +1220,67 @@
     if (r) openRemind(r);
   });
 
+  /* ---------- 预约发送（Worker + KV + Cron） ---------- */
+  function tgAction(payload) {
+    var endpoint = CONFIG.tgEndpoint;
+    if (!endpoint) return Promise.reject(new Error('还没有配置 Telegram 中继（config.json 的 tgEndpoint）'));
+    var opts = { method: 'POST', body: new URLSearchParams(payload) };
+    if (CONFIG.tgAppKey) opts.headers = { 'X-App-Key': CONFIG.tgAppKey };
+    return fetch(endpoint, opts)
+      .then(function (res) { return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; }); })
+      .then(function (data) { if (!data.ok) throw new Error(data.description || 'unknown error'); return data; });
+  }
+
+  function loadScheduled() {
+    if (!CONFIG.tgEndpoint) return Promise.resolve();
+    return tgAction({ action: 'list' }).then(function (data) {
+      SCHEDULED = {};
+      (data.items || []).forEach(function (it) {
+        var jid = (it.meta && it.meta.jobId) || '';
+        if (!jid) return;
+        (SCHEDULED[jid] = SCHEDULED[jid] || []).push(it);
+      });
+      apply();
+    }).catch(function (e) {
+      // 没绑 KV 或网络不通都不该让页面挂掉，静默降级
+      if (String(e.message || '').indexOf('KV') === -1) console.warn('预约列表拉取失败:', e.message);
+    });
+  }
+
+  /** 给已预约的行加深蓝背景与说明条 */
+  function decorateScheduled(tr, r) {
+    var list = r.jobId && SCHEDULED[r.jobId];
+    if (!list || !list.length) return;
+    tr.classList.add('scheduled');
+    var host = tr.querySelector('td');          // 挂在第一格（状态列）下方
+    list.slice().sort(function (a, b) { return a.at - b.at; }).forEach(function (it) {
+      var box = el('div', 'schednote');
+      box.appendChild(el('b', null, '⏰ ' + fmtDT(it.at) + ' 发送'));
+      box.appendChild(document.createTextNode(it.text));
+      var row = el('div', 'row2');
+      var now = el('button', null, '立刻发送');
+      var cancel = el('button', 'ghost', '取消');
+      now.type = cancel.type = 'button';
+      now.addEventListener('click', function (e) {
+        e.stopPropagation();
+        now.disabled = true;
+        tgAction({ action: 'sendnow', id: it.id })
+          .then(function () { toast('已发送'); return loadScheduled(); })
+          .catch(function (err) { toast('发送失败：' + err.message); now.disabled = false; });
+      });
+      cancel.addEventListener('click', function (e) {
+        e.stopPropagation();
+        cancel.disabled = true;
+        tgAction({ action: 'cancel', id: it.id })
+          .then(function () { toast('已取消预约'); return loadScheduled(); })
+          .catch(function (err) { toast('取消失败：' + err.message); cancel.disabled = false; });
+      });
+      row.appendChild(now); row.appendChild(cancel);
+      box.appendChild(row);
+      host.appendChild(box);
+    });
+  }
+
   /* ---------- 提醒弹窗 ---------- */
   var remindTarget = null;
   var remindCloseTimer = null;
@@ -1224,6 +1336,10 @@
     $('rmStatus').textContent = '';
     $('rmStatus').className = 'status';
     $('rmSend').disabled = false;
+    $('rmSched').checked = false;
+    $('rmSchedAt').hidden = true;
+    $('rmSchedAt').value = '';
+    $('rmSend').textContent = '发送到 Telegram';
     updateRemindPreview();
     $('remindMask').hidden = false;
     $('rmMemo').focus();
@@ -1235,6 +1351,17 @@
   $('rmPriority').addEventListener('change', updateRemindPreview);
   $('rmWith').addEventListener('change', updateRemindPreview);
   $('rmLink').addEventListener('change', updateRemindPreview);
+  $('rmSched').addEventListener('change', function () {
+    $('rmSchedAt').hidden = !this.checked;
+    if (this.checked && !$('rmSchedAt').value) {
+      var d = new Date(Date.now() + 3600000);   // 默认一小时后
+      d.setSeconds(0, 0);
+      var p = function (n) { return String(n).padStart(2, '0'); };
+      $('rmSchedAt').value = d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate())
+                           + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    $('rmSend').textContent = this.checked ? '设定定时发送' : '发送到 Telegram';
+  });
 
   $('rmSend').addEventListener('click', function () {
     if (!remindTarget) return;
@@ -1242,17 +1369,37 @@
     var text = buildRemindText(r, $('rmMemo').value.trim());
 
     var btn = this;
+    var sched = $('rmSched').checked;
+    var at = sched ? Date.parse($('rmSchedAt').value) : 0;
+    if (sched && (!at || isNaN(at))) {
+      $('rmStatus').className = 'status err';
+      $('rmStatus').textContent = '请选择发送时间';
+      return;
+    }
+    if (sched && at < Date.now() + 60000) {
+      $('rmStatus').className = 'status err';
+      $('rmStatus').textContent = '时间要至少在一分钟之后';
+      return;
+    }
+
     btn.disabled = true;
     $('rmStatus').className = 'status';
-    $('rmStatus').textContent = '发送中…';
-    tgSend(text).then(function () {
+    $('rmStatus').textContent = sched ? '设定中…' : '发送中…';
+
+    var job = sched
+      ? tgAction({ action: 'schedule', text: text, at: String(at),
+                   meta: JSON.stringify({ jobId: r.jobId || '', company: r.company || '', title: r.title || '' }) })
+      : tgSend(text);
+
+    job.then(function () {
       $('rmStatus').className = 'status ok';
-      $('rmStatus').textContent = '已发送到 Telegram 群';
-      toast('提醒已发送');
+      $('rmStatus').textContent = sched ? ('已设定：' + fmtDT(at) + ' 发送') : '已发送到 Telegram 群';
+      toast(sched ? '已设定定时发送' : '提醒已发送');
+      if (sched) loadScheduled();
       remindCloseTimer = setTimeout(function () { $('remindMask').hidden = true; }, 900);
     }).catch(function (e) {
       $('rmStatus').className = 'status err';
-      $('rmStatus').textContent = '发送失败：' + (e.message || e);
+      $('rmStatus').textContent = (sched ? '设定失败：' : '发送失败：') + (e.message || e);
       btn.disabled = false;
     });
   });
@@ -1472,8 +1619,13 @@
   });
 
   /* ---------- 启动 ---------- */
+  // 记下这次访问的时间，供下次对比
+  prefs.lastVisit = Date.now();
+  savePrefs();
+
   renderColList();
   buildStatusPanel();
+  loadScheduled();
   apply();
   applyHighlight(true);
   renderBoard();
