@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:48:01.077Z",
- "count": 64,
+ "updatedAt": "2026-08-04T04:50:21.656Z",
+ "count": 65,
  "records": [
+  {
+   "id": "rmse6j805qaaf1",
+   "jobId": "4421182374",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4421182374/",
+   "company": "Vimeo",
+   "title": "Junior Business Development Manager (APAC)",
+   "hirers": [],
+   "ts": 1785819016529,
+   "applicants": "10",
+   "tenure": "4.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6g7lblgtxx",
    "jobId": "4446541445",
