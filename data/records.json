@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:27:06.009Z",
- "count": 76,
+ "updatedAt": "2026-08-04T05:28:11.043Z",
+ "count": 77,
  "records": [
+  {
+   "id": "rmse7vv5mbj9i5",
+   "jobId": "4446544860",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446544860/",
+   "company": "Snowflake",
+   "title": "Enterprise Account Executive - Acquisition",
+   "hirers": [
+    {
+     "name": "Jenny Koh",
+     "url": "https://www.linkedin.com/in/jennyksk/",
+     "role": "Country Manager at Snowflake Singapore - The AI Data Cloud"
+    }
+   ],
+   "ts": 1785821286019,
+   "applicants": "10",
+   "tenure": "2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse7abaizfsao",
    "jobId": "4441516259",
