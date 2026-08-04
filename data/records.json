@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:35:58.792Z",
- "count": 77,
+ "updatedAt": "2026-08-04T05:36:53.566Z",
+ "count": 78,
  "records": [
+  {
+   "id": "rmse872bypgr3n",
+   "jobId": "4423636831",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4423636831/",
+   "company": "CrowdStrike",
+   "title": "Manager, Sales Development - Southeast and North Asia",
+   "hirers": [],
+   "ts": 1785821808541,
+   "applicants": "10",
+   "tenure": "2.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse85v4rzc8th",
    "jobId": "4444585921",
