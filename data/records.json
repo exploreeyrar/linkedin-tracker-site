@@ -1,47 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:28:27.130Z",
- "count": 77,
+ "updatedAt": "2026-08-04T05:30:59.081Z",
+ "count": 76,
  "records": [
   {
-   "id": "rmse7vv5mbj9i5",
-   "jobId": "4446544860",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4446544860/",
-   "company": "Snowflake",
-   "title": "Enterprise Account Executive - Acquisition",
-   "hirers": [
-    {
-     "name": "Jenny Koh",
-     "url": "https://www.linkedin.com/in/jennyksk/",
-     "role": "Country Manager at Snowflake Singapore - The AI Data Cloud"
-    }
-   ],
-   "ts": 1785821286019,
+   "id": "rmse7zgjt8pbom",
+   "jobId": "4436223607",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4436223607/",
+   "company": "Accenture Southeast Asia",
+   "title": "Account Sales Lead",
+   "hirers": [],
+   "ts": 1785821453715,
    "applicants": "10",
-   "tenure": "2 years",
+   "tenure": "3.2 years",
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
    "sector": "",
    "updatedAt": 0,
-   "epMonthly": 0,
-   "epAnnual": 0
-  },
-  {
-   "id": "rmse7abaizfsao",
-   "jobId": "4441516259",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4441516259/",
-   "company": "CrowdStrike",
-   "title": "Sales Development Representative",
-   "hirers": [],
-   "ts": 1785820280498,
-   "applicants": "10",
-   "tenure": "",
-   "memo": "投递所需信息：\nPlease complete the questions below as part of the Sales Development Representative job application process.\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
-   "status": "等己方处理(XR ball)",
-   "scout": false,
-   "sector": "",
-   "updatedAt": 1785821221008,
    "epMonthly": 0,
    "epAnnual": 0
   },
