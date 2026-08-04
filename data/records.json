@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:52:25.054Z",
- "count": 66,
+ "updatedAt": "2026-08-04T04:55:27.522Z",
+ "count": 67,
  "records": [
+  {
+   "id": "rmse6ps2p6hr2c",
+   "jobId": "4297751003",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4297751003/",
+   "company": "Databricks",
+   "title": "Account Executive, Singapore",
+   "hirers": [
+    {
+     "name": "Harsh Shukla",
+     "url": "https://www.linkedin.com/in/harshshukla89/",
+     "role": "Helping Businesses Unlock the Full Potential of Data & AI"
+    }
+   ],
+   "ts": 1785819322479,
+   "applicants": "10",
+   "tenure": "2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6lvatwlbuz",
    "jobId": "4446071837",
