@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:10:58.883Z",
- "count": 48,
+ "updatedAt": "2026-08-04T02:17:40.053Z",
+ "count": 49,
  "records": [
+  {
+   "id": "rmse12ub2ld8cs",
+   "jobId": "4378846834",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4378846834/",
+   "company": "OffSec",
+   "title": "Strategic Account Executive; Southeast Asia",
+   "hirers": [],
+   "ts": 1785809854210,
+   "applicants": "10",
+   "tenure": "4.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0u9e37nrs9",
    "jobId": "4447997451",
