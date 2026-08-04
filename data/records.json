@@ -1,8 +1,775 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T01:49:48.628Z",
- "count": 39,
+ "updatedAt": "2026-08-04T05:53:50.199Z",
+ "count": 79,
  "records": [
+  {
+   "id": "rmse8surtjg1hr",
+   "jobId": "4417887701",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4417887701/",
+   "company": "Siemens",
+   "title": "Commercial Sales Manager",
+   "hirers": [],
+   "ts": 1785822825172,
+   "applicants": "10",
+   "tenure": "5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse872bypgr3n",
+   "jobId": "4423636831",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4423636831/",
+   "company": "CrowdStrike",
+   "title": "Manager, Sales Development - Southeast and North Asia",
+   "hirers": [],
+   "ts": 1785821808541,
+   "applicants": "10",
+   "tenure": "2.7 years",
+   "memo": "Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
+   "status": "等己方处理(XR ball)",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 1785821835310,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse85v4rzc8th",
+   "jobId": "4444585921",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4444585921/",
+   "company": "EY",
+   "title": "Account Manager",
+   "hirers": [],
+   "ts": 1785821752559,
+   "applicants": "10",
+   "tenure": "3.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse7zgjt8pbom",
+   "jobId": "4436223607",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4436223607/",
+   "company": "Accenture Southeast Asia",
+   "title": "Account Sales Lead",
+   "hirers": [],
+   "ts": 1785821453715,
+   "applicants": "10",
+   "tenure": "3.2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse77q4kcaari",
+   "jobId": "4446979770",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446979770/",
+   "company": "Advantech",
+   "title": "Sales Manager",
+   "hirers": [
+    {
+     "name": "Cherie Chow",
+     "url": "https://www.linkedin.com/in/cheriechow99/",
+     "role": "Bachelor's Degree in Human Resource Management"
+    }
+   ],
+   "ts": 1785820159757,
+   "applicants": "77",
+   "tenure": "8.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse74xwx7htxb",
+   "jobId": "4429663519",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4429663519/",
+   "company": "Baringa",
+   "title": "Account Manager - APAC Power Markets & Insights",
+   "hirers": [],
+   "ts": 1785820029905,
+   "applicants": "10",
+   "tenure": "3.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse72jnyjyax1",
+   "jobId": "4447223717",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447223717/",
+   "company": "SpaceX",
+   "title": "Sales Manager, APAC (Global Starlink Enterprise Sales)",
+   "hirers": [
+    {
+     "name": "Ashley Neale",
+     "url": "https://www.linkedin.com/in/ashleyneale/",
+     "role": "Director, Starlink Enterprise - APAC | We Connect the World"
+    }
+   ],
+   "ts": 1785819918104,
+   "applicants": "10",
+   "tenure": "2.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse70gi9rf063",
+   "jobId": "4437737754",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4437737754/",
+   "company": "EDB",
+   "title": "Sales Development Rep",
+   "hirers": [],
+   "ts": 1785819820713,
+   "applicants": "236",
+   "tenure": "3.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6zxmdc7r0r",
+   "jobId": "4443272826",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4443272826/",
+   "company": "Addepar",
+   "title": "Sr. Account Executive - Enterprise",
+   "hirers": [],
+   "ts": 1785819796238,
+   "applicants": "133",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6venqffywc",
+   "jobId": "4431932624",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4431932624/",
+   "company": "PEI",
+   "title": "Client Sales Executive",
+   "hirers": [
+    {
+     "name": "Jessica Love",
+     "url": "https://www.linkedin.com/in/jessica-love-3917641aa/",
+     "role": "Junior Talent Partner"
+    }
+   ],
+   "ts": 1785819585029,
+   "applicants": "10",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6sjluz2r7o",
+   "jobId": "4429123809",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4429123809/",
+   "company": "Zscaler",
+   "title": "Account Executive - Majors (FSI)",
+   "hirers": [],
+   "ts": 1785819451484,
+   "applicants": "10",
+   "tenure": "2.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6r49nokix0",
+   "jobId": "4433255638",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4433255638/",
+   "company": "Shopify",
+   "title": "Sales Development Representative (Singapore)",
+   "hirers": [],
+   "ts": 1785819384935,
+   "applicants": "10",
+   "tenure": "2.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6ps2p6hr2c",
+   "jobId": "4297751003",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4297751003/",
+   "company": "Databricks",
+   "title": "Account Executive, Singapore",
+   "hirers": [
+    {
+     "name": "Harsh Shukla",
+     "url": "https://www.linkedin.com/in/harshshukla89/",
+     "role": "Helping Businesses Unlock the Full Potential of Data & AI"
+    }
+   ],
+   "ts": 1785819322479,
+   "applicants": "10",
+   "tenure": "2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6lvatwlbuz",
+   "jobId": "4446071837",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446071837/",
+   "company": "Alteryx",
+   "title": "Manager, Sales Development",
+   "hirers": [],
+   "ts": 1785819140032,
+   "applicants": "10",
+   "tenure": "3.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6j805qaaf1",
+   "jobId": "4421182374",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4421182374/",
+   "company": "Vimeo",
+   "title": "Junior Business Development Manager (APAC)",
+   "hirers": [],
+   "ts": 1785819016529,
+   "applicants": "10",
+   "tenure": "4.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6g7lblgtxx",
+   "jobId": "4446541445",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446541445/",
+   "company": "LinkedIn",
+   "title": "SMB Account Executive, Talent Solutions",
+   "hirers": [],
+   "ts": 1785818876040,
+   "applicants": "177",
+   "tenure": "4.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6dqdbklhuq",
+   "jobId": "4428091138",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4428091138/",
+   "company": "Gartner",
+   "title": "Business Development Executive - Singapore Market",
+   "hirers": [],
+   "ts": 1785818760404,
+   "applicants": "10",
+   "tenure": "4.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse68r8r57jjj",
+   "jobId": "4408996737",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4408996737/",
+   "company": "Autodesk",
+   "title": "Territory Account Representative",
+   "hirers": [],
+   "ts": 1785818528247,
+   "applicants": "10",
+   "tenure": "5.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse64lk14x2jl",
+   "jobId": "4437005503",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4437005503/",
+   "company": "Lenovo",
+   "title": "Mid-Market Sales Representative",
+   "hirers": [],
+   "ts": 1785818334251,
+   "applicants": "10",
+   "tenure": "7.2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse6097h5kt5h",
+   "jobId": "4430940611",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4430940611/",
+   "company": "Gong",
+   "title": "Mid Market Account Executive",
+   "hirers": [],
+   "ts": 1785818131640,
+   "applicants": "",
+   "tenure": "2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5ygb70fxps",
+   "jobId": "4447565578",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447565578/",
+   "company": "Salesforce",
+   "title": "Business Development Representative, Singapore Market",
+   "hirers": [],
+   "ts": 1785818047518,
+   "applicants": "",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5v7ij5xtau",
+   "jobId": "4434129922",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4434129922/",
+   "company": "Planview",
+   "title": "Enterprise Account Executive",
+   "hirers": [
+    {
+     "name": "Kerry Brocker",
+     "url": "https://www.linkedin.com/in/kerrybrocker1/",
+     "role": "Senior Recruiter at Planview"
+    }
+   ],
+   "ts": 1785817896150,
+   "applicants": "261",
+   "tenure": "3.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5uu5rq4vu1",
+   "jobId": "4444797874",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4444797874/",
+   "company": "GitLab",
+   "title": "Enterprise Account Executive - Singapore",
+   "hirers": [],
+   "ts": 1785817878843,
+   "applicants": "",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5t83dbd4es",
+   "jobId": "4443359642",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4443359642/",
+   "company": "Rippling",
+   "title": "Account Manager, Mid-Market APAC",
+   "hirers": [
+    {
+     "name": "Haris Qureshi",
+     "url": "https://www.linkedin.com/in/harisqureshi/",
+     "role": "AM Leader @ Rippling | Writing about Australian Startups at news.harisq.com"
+    }
+   ],
+   "ts": 1785817803600,
+   "applicants": "",
+   "tenure": "1.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5s2faphu9e",
+   "jobId": "4440910641",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4440910641/",
+   "company": "Postman",
+   "title": "Account Development Representative",
+   "hirers": [
+    {
+     "name": "Dongwoo Kim",
+     "url": "https://www.linkedin.com/in/dongwoo-kim-74435946/",
+     "role": "Head of Account Development, APAC at Postman"
+    }
+   ],
+   "ts": 1785817749585,
+   "applicants": "",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5qkcv1ol1i",
+   "jobId": "4345240133",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4345240133/",
+   "company": "WalkMe",
+   "title": "Asia Partner Business Manager",
+   "hirers": [],
+   "ts": 1785817679532,
+   "applicants": "",
+   "tenure": "3.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse5o57mbhayp",
+   "jobId": "4430718182",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4430718182/",
+   "company": "Bloomreach",
+   "title": "Strategic Account Executive (ASEAN)",
+   "hirers": [
+    {
+     "name": "Kris Fagan",
+     "url": "https://www.linkedin.com/in/krisfagan/",
+     "role": "Bringing Limitless Customer Experiences to Brands in APAC"
+    }
+   ],
+   "ts": 1785817566574,
+   "applicants": "",
+   "tenure": "4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse1dh953kdlc",
+   "jobId": "4448170925",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448170925/",
+   "company": "IDC",
+   "title": "Senior Sales Manager",
+   "hirers": [],
+   "ts": 1785810350505,
+   "applicants": "10",
+   "tenure": "6.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse1909umyk0i",
+   "jobId": "4448640206",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448640206/",
+   "company": "Mercer",
+   "title": "Client Relationship Executive",
+   "hirers": [],
+   "ts": 1785810141875,
+   "applicants": "10",
+   "tenure": "5.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse14gg9ouvqn",
+   "jobId": "4448170811",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448170811/",
+   "company": "Microsoft",
+   "title": "Solution Specialists-Digital Native",
+   "hirers": [],
+   "ts": 1785809929574,
+   "applicants": "10",
+   "tenure": "5.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse12ub2ld8cs",
+   "jobId": "4378846834",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4378846834/",
+   "company": "OffSec",
+   "title": "Strategic Account Executive; Southeast Asia",
+   "hirers": [],
+   "ts": 1785809854210,
+   "applicants": "10",
+   "tenure": "4.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0u9e37nrs9",
+   "jobId": "4447997451",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447997451/",
+   "company": "Docusign Women in Sales",
+   "title": "Sr Account Executive, Commercial",
+   "hirers": [],
+   "ts": 1785809453852,
+   "applicants": "10",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0t9tsz70w0",
+   "jobId": "4427469646",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4427469646/",
+   "company": "Tiger Brokers Singapore",
+   "title": "Business Development Manager (North Asia)",
+   "hirers": [],
+   "ts": 1785809407753,
+   "applicants": "20",
+   "tenure": "1.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0swi5hdt5h",
+   "jobId": "4418339162",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4418339162/",
+   "company": "Cloudflare",
+   "title": "Territory Account Executive, iGaming (Thailand)",
+   "hirers": [
+    {
+     "name": "Joyce Zhao",
+     "url": "https://www.linkedin.com/in/joycezhao/",
+     "role": "Senior Talent Acquisition Business Partner, APAC at Cloudflare"
+    }
+   ],
+   "ts": 1785809390496,
+   "applicants": "10",
+   "tenure": "1.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0rk75g5u4h",
+   "jobId": "4447910146",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447910146/",
+   "company": "M1 Limited",
+   "title": "Account Manager (Enterprise Sales)",
+   "hirers": [],
+   "ts": 1785809327883,
+   "applicants": "8",
+   "tenure": "6.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0pros7bn7e",
+   "jobId": "4448318166",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448318166/",
+   "company": "Argus Media",
+   "title": "Sales Specialist - Genfuels",
+   "hirers": [],
+   "ts": 1785809244289,
+   "applicants": "10",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0mes6pv5gl",
+   "jobId": "4448684197",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448684197/",
+   "company": "Anradus Pte Ltd",
+   "title": "Sales Executive #10220",
+   "hirers": [],
+   "ts": 1785809087585,
+   "applicants": "10",
+   "tenure": "2.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0lzfd5tzf6",
+   "jobId": "4447921187",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447921187/",
+   "company": "Argyll Scott",
+   "title": "SaaS BD Manager (SG and SEA markets)",
+   "hirers": [
+    {
+     "name": "Foo K.",
+     "url": "https://www.linkedin.com/in/liewfookin/",
+     "role": "Senior Specialist Recruiter - Sales & Marketing (Luxury & Consumer Retail) | Former Luxury Fashion Insider"
+    }
+   ],
+   "ts": 1785809067684,
+   "applicants": "14",
+   "tenure": "5.2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse0l2y6yw1sq",
+   "jobId": "4439799997",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4439799997/",
+   "company": "Brink’s Inc",
+   "title": "Senior Business Development Manager",
+   "hirers": [],
+   "ts": 1785809025603,
+   "applicants": "10",
+   "tenure": "5.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmse09vadw1nzw",
+   "jobId": "4439165321",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4439165321/",
+   "company": "Corpay",
+   "title": "Business Development Manager",
+   "hirers": [],
+   "ts": 1785808502453,
+   "applicants": "10",
+   "tenure": "2.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse0319ta1ret",
    "jobId": "4447983714",
@@ -16,7 +783,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmse01nanht9ga",
@@ -31,7 +800,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsdzp8687092i",
@@ -46,7 +817,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsddunvx7dhqy",
@@ -67,7 +840,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsddsj03gcyn2",
@@ -88,7 +863,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd8jvcu5msdy",
@@ -103,7 +880,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd7w4owu1rm3",
@@ -118,7 +897,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd12q0c0uql6",
@@ -133,7 +914,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd0uejw46te5",
@@ -148,7 +931,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd0rz1k16ubk",
@@ -163,7 +948,9 @@
    "memo": "疑似明文要求 5天出社",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 1785748901287
+   "updatedAt": 1785748901287,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd0ke6zocup6",
@@ -178,7 +965,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd01mkd3j8fj",
@@ -193,7 +982,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxzahe4imkh",
@@ -208,7 +999,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxvci4uryhp",
@@ -223,7 +1016,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxsxn1npiuq",
@@ -238,7 +1033,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxok6jxjidm",
@@ -253,7 +1050,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscx6hi07hn7d",
@@ -268,7 +1067,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscwqz6eho89q",
@@ -283,7 +1084,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscwp0z1y62dr",
@@ -298,7 +1101,9 @@
    "memo": "Congratulations, your application has been submitted. The confirmation number is 2AT7nKXJ. You must save this confirmation number now, in case you need it for future reference.",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 1785742053338
+   "updatedAt": 1785742053338,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscwcfvgmos55",
@@ -313,7 +1118,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscw9rnhs32ii",
@@ -328,7 +1135,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscw4whsz539m",
@@ -343,7 +1152,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscvxo1lwudc9",
@@ -358,7 +1169,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscvbtfoz0vgh",
@@ -373,7 +1186,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscv9x4dz8mzf",
@@ -394,7 +1209,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscv9cnchj9dw",
@@ -415,7 +1232,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscv2sjkaivi8",
@@ -430,7 +1249,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscu26pohoacv",
@@ -445,7 +1266,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctwgv8awxu3",
@@ -460,7 +1283,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctrf6ctto3b",
@@ -481,7 +1306,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctmjpz3xpt9",
@@ -496,7 +1323,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctf7iywmp7e",
@@ -511,7 +1340,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsct1crni7bu7",
@@ -532,7 +1363,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbxo452kndkl",
@@ -545,7 +1378,9 @@
    "applicants": "",
    "tenure": "1 years",
    "memo": "",
-   "status": "已投递等联络"
+   "status": "已投递等联络",
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbxi74i30e6w",
@@ -558,7 +1393,9 @@
    "applicants": "",
    "tenure": "6.5 years",
    "memo": "",
-   "status": "已投递等联络"
+   "status": "已投递等联络",
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbwqsy9bjqmp",
@@ -572,7 +1409,9 @@
    "tenure": "1.4 years",
    "memo": "应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenrrging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?",
    "status": "已投递等联络",
-   "updatedAt": 1785767695777
+   "updatedAt": 1785767695777,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbvqs2jly0pc",
@@ -585,7 +1424,9 @@
    "applicants": "",
    "tenure": "3.4 years",
    "memo": "",
-   "status": "已投递等联络"
+   "status": "已投递等联络",
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbqx31qom94x",
@@ -605,7 +1446,9 @@
    "tenure": "8.8 years",
    "memo": "Jason _.  (He/Him)  9:45 AM\nCanon Singapore - Future Employer of your choice\nThank you for your application for the above position.\n\nTo support a more comprehensive initial screening process, we would appreciate it if you could provide the following information:\n\nReason for leaving your current role/company\n\nCurrent and expected monthly salary, with a breakdown of:\nBasic salary \nCommission (if applicable) \nIncentives / bonuses (if applicable) \n\nYour motivation for applying for this role and how it aligns with your medium‑ to long‑term career plans\n\nYour current notice period\n\nWhether you require a work pass or employment visa to work in Singapore\n\nThe above information will be used as part of the initial qualifying stage prior to shortlisting.\nPlease be assured that all details shared will be kept confidential within Canon Singapore and used strictly for recruitment purposes.\n\nWe look forward to hearing from you.\n\nCANON SINGAPORE PTE LTD\nHR Department\nHR DM 来联络要信息了。\n有空请确认",
    "status": "已投递等联络",
-   "updatedAt": 1785767702561
+   "updatedAt": 1785767702561,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbut5tme2qbm",
@@ -625,7 +1468,9 @@
    "tenure": "3.7 years",
    "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち",
    "status": "一次人事面谈结束、等对方联络",
-   "scout": true
+   "scout": true,
+   "epMonthly": 0,
+   "epAnnual": 0
   }
  ],
  "messages": [],
