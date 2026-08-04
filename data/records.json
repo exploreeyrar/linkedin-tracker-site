@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:30:08.643Z",
- "count": 56,
+ "updatedAt": "2026-08-04T04:31:23.867Z",
+ "count": 57,
  "records": [
+  {
+   "id": "rmse5uu5rq4vu1",
+   "jobId": "4444797874",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4444797874/",
+   "company": "GitLab",
+   "title": "Enterprise Account Executive - Singapore",
+   "hirers": [],
+   "ts": 1785817878843,
+   "applicants": "",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse5t83dbd4es",
    "jobId": "4443359642",
