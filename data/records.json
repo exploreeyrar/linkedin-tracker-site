@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:59:51.124Z",
- "count": 70,
+ "updatedAt": "2026-08-04T05:03:21.277Z",
+ "count": 71,
  "records": [
+  {
+   "id": "rmse6zxmdc7r0r",
+   "jobId": "4443272826",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4443272826/",
+   "company": "Addepar",
+   "title": "Sr. Account Executive - Enterprise",
+   "hirers": [],
+   "ts": 1785819796238,
+   "applicants": "133",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6venqffywc",
    "jobId": "4431932624",
