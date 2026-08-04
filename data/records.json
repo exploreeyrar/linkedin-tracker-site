@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:57:36.537Z",
- "count": 69,
+ "updatedAt": "2026-08-04T04:59:51.124Z",
+ "count": 70,
  "records": [
+  {
+   "id": "rmse6venqffywc",
+   "jobId": "4431932624",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4431932624/",
+   "company": "PEI",
+   "title": "Client Sales Executive",
+   "hirers": [
+    {
+     "name": "Jessica Love",
+     "url": "https://www.linkedin.com/in/jessica-love-3917641aa/",
+     "role": "Junior Talent Partner"
+    }
+   ],
+   "ts": 1785819585029,
+   "applicants": "10",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse6sjluz2r7o",
    "jobId": "4429123809",
