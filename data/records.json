@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:22:27.502Z",
- "count": 51,
+ "updatedAt": "2026-08-04T02:25:56.059Z",
+ "count": 52,
  "records": [
+  {
+   "id": "rmse1dh953kdlc",
+   "jobId": "4448170925",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448170925/",
+   "company": "IDC",
+   "title": "Senior Sales Manager",
+   "hirers": [],
+   "ts": 1785810350505,
+   "applicants": "10",
+   "tenure": "6.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse1909umyk0i",
    "jobId": "4448640206",
