@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:34:12.539Z",
- "count": 59,
+ "updatedAt": "2026-08-04T04:35:36.685Z",
+ "count": 60,
  "records": [
+  {
+   "id": "rmse6097h5kt5h",
+   "jobId": "4430940611",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4430940611/",
+   "company": "Gong",
+   "title": "Mid Market Account Executive",
+   "hirers": [],
+   "ts": 1785818131640,
+   "applicants": "",
+   "tenure": "2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse5ygb70fxps",
    "jobId": "4447565578",
