@@ -621,7 +621,21 @@
     var d = new Date(ms), p = function (n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
-  function daysSince(ms) { return Math.floor((Date.now() - ms) / 86400000); }
+  /** 当天零点（本地时区） */
+  function startOfDay(ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  /** 本周一零点（本地时区），和下面的周趋势图口径一致 */
+  function startOfWeek(ms) {
+    var d = new Date(startOfDay(ms));
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getTime();
+  }
+  /**
+   * 差几个「日历天」——不是差几个 24 小时。
+   * 昨晚 23:34 到今早 10:46 只过了 11 小时，但那是昨天，要算 1 天前。
+   */
+  function daysSince(ms) {
+    return Math.round((startOfDay(Date.now()) - startOfDay(ms)) / 86400000);
+  }
   function num(v) { var m = String(v == null ? '' : v).match(/[\d.]+/); return m ? parseFloat(m[0]) : NaN; }
 
   var toastTimer = null;
@@ -660,7 +674,7 @@
 
   /* ---------- KPI ---------- */
   (function () {
-    var weekAgo = Date.now() - 7 * 86400000;
+    var weekStart = startOfWeek(Date.now());   // 本周一起算，和周趋势图同口径
     var closed = 0, advanced = 0, waiting = 0, recent = 0, stale = 0, scouted = 0;
     RECORDS.forEach(function (r) {
       if (CLOSED[r.status]) closed++;
@@ -669,7 +683,7 @@
         waiting++;
         if (daysSince(r.ts) >= STALE_DAYS) stale++;
       }
-      if (r.ts >= weekAgo) recent++;
+      if (r.ts >= weekStart) recent++;
       if (r.scout) scouted++;
     });
     var kpis = [
@@ -731,10 +745,8 @@
 
   /* ---------- 近 12 周趋势 ---------- */
   (function () {
-    var WEEKS = 12, now = new Date();
-    now.setHours(0, 0, 0, 0);
-    var monday = new Date(now);
-    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    var WEEKS = 12;
+    var monday = new Date(startOfWeek(Date.now()));
     var buckets = [];
     for (var i = WEEKS - 1; i >= 0; i--) {
       var s = new Date(monday); s.setDate(s.getDate() - i * 7);
