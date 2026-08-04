@@ -1,8 +1,25 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-03T15:38:17.067Z",
- "count": 36,
+ "updatedAt": "2026-08-04T01:45:14.450Z",
+ "count": 37,
  "records": [
+  {
+   "id": "rmsdzp8687092i",
+   "jobId": "4445891678",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4445891678/",
+   "company": "Corning Incorporated",
+   "title": "Global Account Manager, MTDC, APAC",
+   "hirers": [],
+   "ts": 1785807539368,
+   "applicants": "",
+   "tenure": "6.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsddunvx7dhqy",
    "jobId": "4420292859",
@@ -22,7 +39,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsddsj03gcyn2",
@@ -43,7 +62,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd8jvcu5msdy",
@@ -58,7 +79,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd7w4owu1rm3",
@@ -73,7 +96,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd12q0c0uql6",
@@ -88,7 +113,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd0uejw46te5",
@@ -103,7 +130,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd0rz1k16ubk",
@@ -118,7 +147,9 @@
    "memo": "疑似明文要求 5天出社",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 1785748901287
+   "updatedAt": 1785748901287,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd0ke6zocup6",
@@ -133,7 +164,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsd01mkd3j8fj",
@@ -148,7 +181,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxzahe4imkh",
@@ -163,7 +198,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxvci4uryhp",
@@ -178,7 +215,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxsxn1npiuq",
@@ -193,7 +232,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscxok6jxjidm",
@@ -208,7 +249,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscx6hi07hn7d",
@@ -223,7 +266,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscwqz6eho89q",
@@ -238,7 +283,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscwp0z1y62dr",
@@ -253,7 +300,9 @@
    "memo": "Congratulations, your application has been submitted. The confirmation number is 2AT7nKXJ. You must save this confirmation number now, in case you need it for future reference.",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 1785742053338
+   "updatedAt": 1785742053338,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscwcfvgmos55",
@@ -268,7 +317,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscw9rnhs32ii",
@@ -283,7 +334,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscw4whsz539m",
@@ -298,7 +351,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscvxo1lwudc9",
@@ -313,7 +368,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscvbtfoz0vgh",
@@ -328,7 +385,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscv9x4dz8mzf",
@@ -349,7 +408,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscv9cnchj9dw",
@@ -370,7 +431,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscv2sjkaivi8",
@@ -385,7 +448,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmscu26pohoacv",
@@ -400,7 +465,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctwgv8awxu3",
@@ -415,7 +482,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctrf6ctto3b",
@@ -436,7 +505,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctmjpz3xpt9",
@@ -451,7 +522,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsctf7iywmp7e",
@@ -466,7 +539,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsct1crni7bu7",
@@ -487,7 +562,9 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 0
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbxo452kndkl",
@@ -500,7 +577,9 @@
    "applicants": "",
    "tenure": "1 years",
    "memo": "",
-   "status": "已投递等联络"
+   "status": "已投递等联络",
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbxi74i30e6w",
@@ -513,7 +592,9 @@
    "applicants": "",
    "tenure": "6.5 years",
    "memo": "",
-   "status": "已投递等联络"
+   "status": "已投递等联络",
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbwqsy9bjqmp",
@@ -527,7 +608,9 @@
    "tenure": "1.4 years",
    "memo": "应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenrrging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?",
    "status": "已投递等联络",
-   "updatedAt": 1785767695777
+   "updatedAt": 1785767695777,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbvqs2jly0pc",
@@ -540,7 +623,9 @@
    "applicants": "",
    "tenure": "3.4 years",
    "memo": "",
-   "status": "已投递等联络"
+   "status": "已投递等联络",
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbqx31qom94x",
@@ -560,7 +645,9 @@
    "tenure": "8.8 years",
    "memo": "Jason _.  (He/Him)  9:45 AM\nCanon Singapore - Future Employer of your choice\nThank you for your application for the above position.\n\nTo support a more comprehensive initial screening process, we would appreciate it if you could provide the following information:\n\nReason for leaving your current role/company\n\nCurrent and expected monthly salary, with a breakdown of:\nBasic salary \nCommission (if applicable) \nIncentives / bonuses (if applicable) \n\nYour motivation for applying for this role and how it aligns with your medium‑ to long‑term career plans\n\nYour current notice period\n\nWhether you require a work pass or employment visa to work in Singapore\n\nThe above information will be used as part of the initial qualifying stage prior to shortlisting.\nPlease be assured that all details shared will be kept confidential within Canon Singapore and used strictly for recruitment purposes.\n\nWe look forward to hearing from you.\n\nCANON SINGAPORE PTE LTD\nHR Department\nHR DM 来联络要信息了。\n有空请确认",
    "status": "已投递等联络",
-   "updatedAt": 1785767702561
+   "updatedAt": 1785767702561,
+   "epMonthly": 0,
+   "epAnnual": 0
   },
   {
    "id": "rmsbut5tme2qbm",
@@ -580,7 +667,9 @@
    "tenure": "3.7 years",
    "memo": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち",
    "status": "一次人事面谈结束、等对方联络",
-   "scout": true
+   "scout": true,
+   "epMonthly": 0,
+   "epAnnual": 0
   }
  ],
  "messages": [],
