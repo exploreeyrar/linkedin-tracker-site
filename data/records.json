@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:42:13.272Z",
- "count": 62,
+ "updatedAt": "2026-08-04T04:46:05.444Z",
+ "count": 63,
  "records": [
+  {
+   "id": "rmse6dqdbklhuq",
+   "jobId": "4428091138",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4428091138/",
+   "company": "Gartner",
+   "title": "Business Development Executive - Singapore Market",
+   "hirers": [],
+   "ts": 1785818760404,
+   "applicants": "10",
+   "tenure": "4.6 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse68r8r57jjj",
    "jobId": "4408996737",
