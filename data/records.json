@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:37:20.312Z",
- "count": 78,
+ "updatedAt": "2026-08-04T05:53:50.199Z",
+ "count": 79,
  "records": [
+  {
+   "id": "rmse8surtjg1hr",
+   "jobId": "4417887701",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4417887701/",
+   "company": "Siemens",
+   "title": "Commercial Sales Manager",
+   "hirers": [],
+   "ts": 1785822825172,
+   "applicants": "10",
+   "tenure": "5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse872bypgr3n",
    "jobId": "4423636831",
