@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:07:29.321Z",
- "count": 44,
+ "updatedAt": "2026-08-04T02:08:52.906Z",
+ "count": 45,
  "records": [
+  {
+   "id": "rmse0rk75g5u4h",
+   "jobId": "4447910146",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447910146/",
+   "company": "M1 Limited",
+   "title": "Account Manager (Enterprise Sales)",
+   "hirers": [],
+   "ts": 1785809327883,
+   "applicants": "8",
+   "tenure": "6.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0pros7bn7e",
    "jobId": "4448318166",
