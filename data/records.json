@@ -1,8 +1,29 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:08:52.906Z",
- "count": 45,
+ "updatedAt": "2026-08-04T02:09:55.532Z",
+ "count": 46,
  "records": [
+  {
+   "id": "rmse0swi5hdt5h",
+   "jobId": "4418339162",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4418339162/",
+   "company": "Cloudflare",
+   "title": "Territory Account Executive, iGaming (Thailand)",
+   "hirers": [
+    {
+     "name": "Joyce Zhao",
+     "url": "https://www.linkedin.com/in/joycezhao/",
+     "role": "Senior Talent Acquisition Business Partner, APAC at Cloudflare"
+    }
+   ],
+   "ts": 1785809390496,
+   "applicants": "10",
+   "tenure": "1.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0rk75g5u4h",
    "jobId": "4447910146",
