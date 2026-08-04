@@ -1,8 +1,23 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T02:10:12.771Z",
- "count": 47,
+ "updatedAt": "2026-08-04T02:10:58.883Z",
+ "count": 48,
  "records": [
+  {
+   "id": "rmse0u9e37nrs9",
+   "jobId": "4447997451",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447997451/",
+   "company": "Docusign Women in Sales",
+   "title": "Sr Account Executive, Commercial",
+   "hirers": [],
+   "ts": 1785809453852,
+   "applicants": "10",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "updatedAt": 0
+  },
   {
    "id": "rmse0t9tsz70w0",
    "jobId": "4427469646",
