@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:38:59.298Z",
- "count": 61,
+ "updatedAt": "2026-08-04T04:42:13.272Z",
+ "count": 62,
  "records": [
+  {
+   "id": "rmse68r8r57jjj",
+   "jobId": "4408996737",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4408996737/",
+   "company": "Autodesk",
+   "title": "Territory Account Representative",
+   "hirers": [],
+   "ts": 1785818528247,
+   "applicants": "10",
+   "tenure": "5.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse64lk14x2jl",
    "jobId": "4437005503",
