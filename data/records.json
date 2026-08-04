@@ -1,8 +1,26 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:26:11.615Z",
- "count": 53,
+ "updatedAt": "2026-08-04T04:28:04.586Z",
+ "count": 54,
  "records": [
+  {
+   "id": "rmse5qkcv1ol1i",
+   "jobId": "4345240133",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4345240133/",
+   "company": "WalkMe",
+   "title": "Asia Partner Business Manager",
+   "hirers": [],
+   "ts": 1785817679532,
+   "applicants": "",
+   "tenure": "3.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse5o57mbhayp",
    "jobId": "4430718182",
