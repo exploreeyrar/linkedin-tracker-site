@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T05:07:15.046Z",
- "count": 74,
+ "updatedAt": "2026-08-04T05:09:24.782Z",
+ "count": 75,
  "records": [
+  {
+   "id": "rmse77q4kcaari",
+   "jobId": "4446979770",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4446979770/",
+   "company": "Advantech",
+   "title": "Sales Manager",
+   "hirers": [
+    {
+     "name": "Cherie Chow",
+     "url": "https://www.linkedin.com/in/cheriechow99/",
+     "role": "Bachelor's Degree in Human Resource Management"
+    }
+   ],
+   "ts": 1785820159757,
+   "applicants": "77",
+   "tenure": "8.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse74xwx7htxb",
    "jobId": "4429663519",
