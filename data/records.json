@@ -1,8 +1,32 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T04:31:23.867Z",
- "count": 57,
+ "updatedAt": "2026-08-04T04:31:41.176Z",
+ "count": 58,
  "records": [
+  {
+   "id": "rmse5v7ij5xtau",
+   "jobId": "4434129922",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4434129922/",
+   "company": "Planview",
+   "title": "Enterprise Account Executive",
+   "hirers": [
+    {
+     "name": "Kerry Brocker",
+     "url": "https://www.linkedin.com/in/kerrybrocker1/",
+     "role": "Senior Recruiter at Planview"
+    }
+   ],
+   "ts": 1785817896150,
+   "applicants": "261",
+   "tenure": "3.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmse5uu5rq4vu1",
    "jobId": "4444797874",
