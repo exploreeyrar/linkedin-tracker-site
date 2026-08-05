@@ -1,7 +1,7 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T06:04:29.063Z",
- "count": 89,
+ "updatedAt": "2026-08-05T06:35:02.535Z",
+ "count": 90,
  "records": [
   {
    "id": "rmsfg76t7ay3it",
@@ -164,6 +164,31 @@
    "scout": false,
    "sector": "",
    "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmsfppi92ce4q6",
+   "site": "linkedin",
+   "jobId": "4413503985",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4413503985/",
+   "company": "AVEVA",
+   "title": "Lead Development Representative (LDR)",
+   "hirers": [
+    {
+     "name": "Niña Gallegos",
+     "url": "https://www.linkedin.com/in/ninagallegos/",
+     "role": "25 Years in tech industry | Sales, Ops & Demand Mgmt | Experience with SAP, Cisco, Microsoft | Regional leadership in APAC"
+    }
+   ],
+   "ts": 1785825240000,
+   "applicants": "",
+   "tenure": "5.2 years",
+   "memo": "",
+   "status": "书类落了",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 1785911693027,
    "epMonthly": 0,
    "epAnnual": 0
   },
