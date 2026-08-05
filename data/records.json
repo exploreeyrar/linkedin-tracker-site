@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T14:47:22.227Z",
- "count": 90,
+ "updatedAt": "2026-08-05T14:59:25.776Z",
+ "count": 91,
  "records": [
+  {
+   "id": "rmsg7qcddksdry",
+   "site": "linkedin",
+   "jobId": "4440594137",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4440594137/",
+   "company": "Wood Mackenzie",
+   "title": "Account Management - All Levels",
+   "hirers": [],
+   "ts": 1785941960755,
+   "applicants": "10",
+   "tenure": "3.2 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsfg76t7ay3it",
    "site": "linkedin",
