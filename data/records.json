@@ -1,8 +1,52 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T01:33:11.651Z",
- "count": 84,
+ "updatedAt": "2026-08-05T01:46:42.328Z",
+ "count": 86,
  "records": [
+  {
+   "id": "rmsffew6jcss5s",
+   "site": "linkedin",
+   "jobId": "4438196370",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4438196370/",
+   "company": "IPC Systems",
+   "title": "Associate Account Executive",
+   "hirers": [
+    {
+     "name": "Selvadevan S Selvam",
+     "url": "https://www.linkedin.com/in/selvadevan-s-selvam-8849aa230/",
+     "role": "Technical Recruiter"
+    }
+   ],
+   "ts": 1785894397301,
+   "applicants": "283",
+   "tenure": "8.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmsff7nqdx18j1",
+   "site": "linkedin",
+   "jobId": "4447311557",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4447311557/",
+   "company": "Profound",
+   "title": "GTM Associate",
+   "hirers": [],
+   "ts": 1785894059758,
+   "applicants": "10",
+   "tenure": "0.5 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsfexinyicfck",
    "site": "linkedin",
