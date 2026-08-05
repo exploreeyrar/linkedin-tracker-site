@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T15:14:33.692Z",
- "count": 92,
+ "updatedAt": "2026-08-05T15:21:51.931Z",
+ "count": 93,
  "records": [
+  {
+   "id": "rmsg8j72b9x521",
+   "site": "linkedin",
+   "jobId": "4440205104",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4440205104/",
+   "company": "Wise",
+   "title": "Partnerships Manager APAC",
+   "hirers": [],
+   "ts": 1785943306896,
+   "applicants": "10",
+   "tenure": "1.7 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsg89sxarh1wb",
    "site": "linkedin",
