@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T16:01:58.172Z",
- "count": 93,
+ "updatedAt": "2026-08-05T16:04:11.606Z",
+ "count": 94,
  "records": [
+  {
+   "id": "rmsga1mnndgpqm",
+   "site": "linkedin",
+   "jobId": "4449074739",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4449074739/",
+   "company": "HP",
+   "title": "Cyber Security Software Sales Executive - APJ",
+   "hirers": [],
+   "ts": 1785945846546,
+   "applicants": "10",
+   "tenure": "6.8 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsg8j72b9x521",
    "site": "linkedin",
