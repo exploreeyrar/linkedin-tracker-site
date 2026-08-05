@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T01:46:42.328Z",
- "count": 86,
+ "updatedAt": "2026-08-05T01:47:54.413Z",
+ "count": 87,
  "records": [
+  {
+   "id": "rmsffgfszs8qjq",
+   "site": "linkedin",
+   "jobId": "4440548102",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4440548102/",
+   "company": "Pinterest",
+   "title": "Client Account Manager - Greater China Region",
+   "hirers": [],
+   "ts": 1785894469391,
+   "applicants": "10",
+   "tenure": "2.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsffew6jcss5s",
    "site": "linkedin",
