@@ -108,12 +108,44 @@ export default {
     if (env.APP_KEY && request.headers.get('X-App-Key') !== env.APP_KEY) {
       return json({ ok: false, description: 'bad app key' }, 403, headers);
     }
-    if (!env.TG_TOKEN) {
-      return json({ ok: false, description: 'TG_TOKEN is not configured on the worker' }, 500, headers);
-    }
 
     const body = await readBody(request);
     const action = String(body.action || 'send');
+
+    // ---- Claude 中继（判定公司的 EP 行业用）----
+    // 这条路不需要 TG_TOKEN，所以放在下面那道检查之前。
+    // API Key 存在 Worker 的 Secret 里，浏览器全程不接触密钥。
+    if (action === 'ai') {
+      if (!env.ANTHROPIC_API_KEY) {
+        return json({ ok: false, description: 'ANTHROPIC_API_KEY 未配置在 Worker 上' }, 501, headers);
+      }
+      const payload = body.payload;
+      if (!payload || typeof payload !== 'object') {
+        return json({ ok: false, description: 'missing payload' }, 400, headers);
+      }
+      // 只放行分类这一种用法：限制模型和输出长度，避免 Worker 被人当免费 API 用
+      payload.max_tokens = Math.min(Number(payload.max_tokens) || 1024, 4000);
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+        return json({ ok: false, description: msg }, res.status, headers);
+      }
+      return json({ ok: true, result: data }, 200, headers);
+    }
+
+    if (!env.TG_TOKEN) {
+      return json({ ok: false, description: 'TG_TOKEN is not configured on the worker' }, 500, headers);
+    }
 
     // ---- 查询待发队列 ----
     if (action === 'list') {
