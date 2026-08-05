@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T01:23:55.497Z",
+ "updatedAt": "2026-08-05T01:29:11.497Z",
  "count": 83,
  "records": [
   {
@@ -894,11 +894,11 @@
    "ts": 1785806460000,
    "applicants": "10",
    "tenure": "3.1 years",
-   "memo": "8.5 8.28AM 落",
+   "memo": "8.5 8.28AM 落\n原因分析：\nFluency in Bahasa is required.\nCantonese language skills.",
    "status": "书类落了",
    "scout": false,
    "sector": "",
-   "updatedAt": 1785893030491,
+   "updatedAt": 1785893346493,
    "epMonthly": 0,
    "epAnnual": 0
   },
