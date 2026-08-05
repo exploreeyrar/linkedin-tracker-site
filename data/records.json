@@ -1,8 +1,33 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T01:29:11.497Z",
- "count": 83,
+ "updatedAt": "2026-08-05T01:33:11.651Z",
+ "count": 84,
  "records": [
+  {
+   "id": "rmsfexinyicfck",
+   "site": "linkedin",
+   "jobId": "4438794980",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4438794980/",
+   "company": "sensen.ai",
+   "title": "Sales Executive",
+   "hirers": [
+    {
+     "name": "Niharika Ram",
+     "url": "https://www.linkedin.com/in/niharika-ram-01319310/",
+     "role": "Human Resources Manager"
+    }
+   ],
+   "ts": 1785893586630,
+   "applicants": "243",
+   "tenure": "5.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsekiyvleq5p1",
    "site": "jobstreet",
