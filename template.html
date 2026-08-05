@@ -376,7 +376,7 @@
       <div class="slist" id="slist"></div>
     </div>
     <div class="card">
-      <h2>近 12 周投递量</h2>
+      <h2>近 5 日投递量</h2>
       <div class="chart" id="chart"></div>
     </div>
   </section>
@@ -781,30 +781,33 @@
     if (!total) list.appendChild(el('div', 'srow', '暂无数据'));
   }
 
-  /* ---------- 近 12 周趋势 ---------- */
+  /* ---------- 近 5 日趋势（一天一根） ---------- */
   (function () {
-    var WEEKS = 12;
-    var monday = new Date(startOfWeek(Date.now()));
+    var DAYS = 5;
+    var WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    var today = new Date(); today.setHours(0, 0, 0, 0);
     var buckets = [];
-    for (var i = WEEKS - 1; i >= 0; i--) {
-      var s = new Date(monday); s.setDate(s.getDate() - i * 7);
-      buckets.push({ start: s.getTime(), end: s.getTime() + 7 * 86400000, n: 0, label: (s.getMonth() + 1) + '/' + s.getDate() });
+    for (var i = DAYS - 1; i >= 0; i--) {
+      var s = new Date(today); s.setDate(s.getDate() - i);
+      buckets.push({ start: s.getTime(), n: 0, d: s });
     }
+    var first = buckets[0].start;
     RECORDS.forEach(function (r) {
-      for (var i = 0; i < buckets.length; i++) {
-        if (r.ts >= buckets[i].start && r.ts < buckets[i].end) { buckets[i].n++; break; }
-      }
+      if (r.ts < first) return;
+      var i = Math.floor((r.ts - first) / 86400000);   // 一天一格，直接算下标
+      if (i >= 0 && i < buckets.length) buckets[i].n++;
     });
     var max = Math.max.apply(null, buckets.map(function (b) { return b.n; }).concat([1]));
     var box = $('chart');
-    buckets.forEach(function (b) {
+    buckets.forEach(function (b, i) {
+      var label = (b.d.getMonth() + 1) + '/' + b.d.getDate();
       var col = el('div', 'col');
       col.appendChild(el('div', 'vl', b.n || ''));
       var bar = el('div', 'bar');
       bar.style.height = Math.max(2, b.n / max * 78) + 'px';
-      bar.title = b.label + ' 那周：' + b.n + ' 份';
+      bar.title = label + '（' + WD[b.d.getDay()] + '）：' + b.n + ' 份';
       col.appendChild(bar);
-      col.appendChild(el('div', 'lb', b.label));
+      col.appendChild(el('div', 'lb', i === buckets.length - 1 ? '今天' : label));
       box.appendChild(col);
     });
   })();
