@@ -1,8 +1,52 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-04T08:32:48.634Z",
- "count": 81,
+ "updatedAt": "2026-08-05T01:33:11.651Z",
+ "count": 84,
  "records": [
+  {
+   "id": "rmsfexinyicfck",
+   "site": "linkedin",
+   "jobId": "4438794980",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4438794980/",
+   "company": "sensen.ai",
+   "title": "Sales Executive",
+   "hirers": [
+    {
+     "name": "Niharika Ram",
+     "url": "https://www.linkedin.com/in/niharika-ram-01319310/",
+     "role": "Human Resources Manager"
+    }
+   ],
+   "ts": 1785893586630,
+   "applicants": "243",
+   "tenure": "5.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmsekiyvleq5p1",
+   "site": "jobstreet",
+   "jobId": "93639151",
+   "jobUrl": "https://sg.jobstreet.com/job/93639151",
+   "company": "Snowflake",
+   "title": "Enterprise Account Executive - Acquisition",
+   "hirers": [],
+   "ts": 1785842519313,
+   "applicants": "",
+   "tenure": "",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmseblzxsb5h4o",
    "site": "jobstreet",
@@ -855,6 +899,31 @@
    "status": "已投递等联络",
    "scout": false,
    "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmsfeivy9ds9fc",
+   "site": "linkedin",
+   "jobId": "4437737705",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4437737705/",
+   "company": "Darktrace",
+   "title": "Senior Sales Development Representative",
+   "hirers": [
+    {
+     "name": "Jeff Yeoh",
+     "url": "https://www.linkedin.com/in/jeff-yeoh/",
+     "role": "Building Sales Development Teams | Change Leadership | Coaching for Success | Using Data to Drive Performance | Leading APJ Sales Development at Darktrace"
+    }
+   ],
+   "ts": 1785806460000,
+   "applicants": "10",
+   "tenure": "3.1 years",
+   "memo": "8.5 8.28AM 落\n原因分析：\nFluency in Bahasa is required.\nCantonese language skills.",
+   "status": "书类落了",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 1785893346493,
    "epMonthly": 0,
    "epAnnual": 0
   },
