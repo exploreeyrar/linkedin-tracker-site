@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T02:03:37.873Z",
- "count": 88,
+ "updatedAt": "2026-08-05T02:08:42.474Z",
+ "count": 89,
  "records": [
+  {
+   "id": "rmsfg76t7ay3it",
+   "site": "linkedin",
+   "jobId": "4448910112",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4448910112/",
+   "company": "Manpower Singapore",
+   "title": "Client Hunter (Workforce Solutions)",
+   "hirers": [],
+   "ts": 1785895717448,
+   "applicants": "10",
+   "tenure": "3.3 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsfg0nr5hiimx",
    "site": "linkedin",
