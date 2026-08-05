@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T01:47:54.413Z",
- "count": 87,
+ "updatedAt": "2026-08-05T02:03:37.873Z",
+ "count": 88,
  "records": [
+  {
+   "id": "rmsfg0nr5hiimx",
+   "site": "linkedin",
+   "jobId": "4439852396",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4439852396/",
+   "company": "Ingram Micro",
+   "title": "Business Development Executive, AWS",
+   "hirers": [],
+   "ts": 1785895412830,
+   "applicants": "10",
+   "tenure": "5.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsffgfszs8qjq",
    "site": "linkedin",
