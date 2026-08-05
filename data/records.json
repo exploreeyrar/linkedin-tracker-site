@@ -1,33 +1,8 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-05T01:21:49.030Z",
+ "updatedAt": "2026-08-05T01:23:28.185Z",
  "count": 83,
  "records": [
-  {
-   "id": "rmsfeivy9ds9fc",
-   "site": "linkedin",
-   "jobId": "4437737705",
-   "jobUrl": "https://www.linkedin.com/jobs/view/4437737705/",
-   "company": "Darktrace",
-   "title": "Senior Sales Development Representative",
-   "hirers": [
-    {
-     "name": "Jeff Yeoh",
-     "url": "https://www.linkedin.com/in/jeff-yeoh/",
-     "role": "Building Sales Development Teams | Change Leadership | Coaching for Success | Using Data to Drive Performance | Leading APJ Sales Development at Darktrace"
-    }
-   ],
-   "ts": 1785892904009,
-   "applicants": "10",
-   "tenure": "3.1 years",
-   "memo": "",
-   "status": "已投递等联络",
-   "scout": false,
-   "sector": "",
-   "updatedAt": 0,
-   "epMonthly": 0,
-   "epAnnual": 0
-  },
   {
    "id": "rmsekiyvleq5p1",
    "site": "jobstreet",
@@ -898,6 +873,31 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
+  {
+   "id": "rmsfeivy9ds9fc",
+   "site": "linkedin",
+   "jobId": "4437737705",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4437737705/",
+   "company": "Darktrace",
+   "title": "Senior Sales Development Representative",
+   "hirers": [
+    {
+     "name": "Jeff Yeoh",
+     "url": "https://www.linkedin.com/in/jeff-yeoh/",
+     "role": "Building Sales Development Teams | Change Leadership | Coaching for Success | Using Data to Drive Performance | Leading APJ Sales Development at Darktrace"
+    }
+   ],
+   "ts": 1785806460000,
+   "applicants": "10",
+   "tenure": "3.1 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
    "updatedAt": 0,
    "epMonthly": 0,
    "epAnnual": 0
