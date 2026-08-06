@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T06:26:36.262Z",
+ "updatedAt": "2026-08-06T06:27:13.487Z",
  "count": 96,
  "records": [
   {
@@ -834,9 +834,7 @@
    "memo": "",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 1785997472886,
-   "followUpAt": 1786028400000,
-   "followUpNote": "test",
+   "updatedAt": 0,
    "epMonthly": 0,
    "epAnnual": 0
   },
@@ -1756,14 +1754,19 @@
    "status": "一次人事面谈结束、等对方联络",
    "scout": true,
    "priority": 3,
-   "updatedAt": 1785997592718,
-   "followUpAt": 1786633200000,
-   "followUpNote": "Linkedin 跟进对方情况如何了。",
+   "updatedAt": 1785980619509,
    "epMonthly": 0,
    "epAnnual": 0
   }
  ],
  "messages": [
+  {
+   "id": "gmsh4vhvibneo",
+   "text": "【留意】\n因目前堆积 XR ball 过多，为避免过负载影响质量，暂停投递",
+   "createdAt": 1785997628478,
+   "editedAt": 0,
+   "author": ""
+  },
   {
    "id": "gmsgzrt5675i6",
    "text": "Linkedin:\n## 文风差异对比\n\n**REF-2（Yoorim Kim）更\"抓眼球\"，REF-1（Wakatsuki Okuma）更\"稳重朴实\"**，具体体现在几个层面：\n\n**1. 视觉排版**\nREF-2 大量使用粗体 Unicode 字符（如 𝗶𝗻𝘁𝗲𝗿𝗻𝗮𝘁𝗶𝗼𝗻𝗮𝗹 𝗕𝟮𝗕 𝗽𝗿𝗼𝗳𝗲𝘀𝘀𝗶𝗼𝗻𝗮𝗹）和高亮 emoji（✅🇩🇪🎵📸🌇）来制造视觉层次，方便招聘者快速扫读重点。REF-1 全篇几乎是纯文本，只在结尾兴趣爱好处用了一个🏐，整体偏\"读文章\"而不是\"扫重点\"。\n\n**2. 量化程度**\n这是两者最大的差距。REF-2 的每条highlight都带具体数字：\"15+ vendor partners\"、\"EUR 200M+ growth pipeline\"、\"30x streaming growth\"、\"$400M total contract potential\"。这些数字直接给出可信度和冲击力。\nREF-1 的highlights则是纯描述性的，例如\"Full-cycle sales experience at Dell\"、\"Qualifying inbound and outbound leads\"——**没有一个数字**，无法体现具体业绩规模或成果强度。\n\n**3. 叙事线索**\n两人都采用了\"开场钩子 + 现职 + 前职铺垫 + 动机 + 求职方向 + 个人爱好\"的经典结构。\n- REF-2 的线索很清晰：\"跨境连接\"这个主题贯穿始终——从K-pop粉丝研究，到德国市场拓展，到跨国合作，首尾呼应感强。\n- REF-1 的线索也不错（\"cold lead变成信任关系\"，结尾用排球队友间的信任呼应），这是一个亮点，但中间的经历部分（Dell的3年）与这个主题的连接相对松散，更像是\"我做了什么\"的陈述，而不是\"这段经历如何印证我的主题\"。\n\n**4. 佐证材料**\nREF-2 附带了新闻稿、项目缩略图等媒体材料（如\"Taihan Secures 60BKRW Project in Germany\"），增强可信度和丰富度。REF-1 的Experience部分没有任何附件材料。\n\n---\n\n## REF-1 的改善空间\n\n1. **补充量化数据**：这是最优先要改的。哪怕是大致范围也好，比如：\n   - \"管理超过X个commercial/public sector账户的pipeline\"\n   - \"每月贡献X个qualified opportunities\"\n   - Dell时期：\"X年内完成Y笔交易/管理Z个渠道伙伴\"、\"达成/超额完成季度配额X%\"\n\n2. **把职责描述改成成果导向**：目前的bullet多是\"做了什么\"（proposed solutions, managed process），可以改写成\"结果是什么\"（如带来了多少增量收入、缩短了多少销售周期、提升了多少客户留存）。\n\n3. **适度使用视觉分隔**：不需要照搬REF-2的浓密emoji风格，但可以在highlights部分用1-2个简洁的图标或加粗关键词，帮助扫读。\n\n4. **加强主题呼应**：现在\"信任建立\"这条主线在开头和结尾（排球）都有体现，但中间Dell的经历部分几乎没有呼应这个主题。可以在Dell的描述里加一句体现\"如何建立长期信任关系\"的具体小故事或数据（比如复购率、客户满意度）。\n\n5. **考虑补充媒体材料**：如果有相关的成功案例、团队搭建的介绍性文章、或者Cohesity日本市场的相关报道，可以作为附件增加可信度和丰富度，像REF-2那样。\n\n总体来说，REF-1 的文字功底和叙事逻辑并不差，尤其是开头钩子和结尾呼应写得挺巧妙；短板主要在于**缺乏具体数字支撑**和**视觉呈现偏平淡**，这两点补上后会明显提升说服力和专业感。",
