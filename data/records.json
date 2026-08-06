@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T06:26:16.270Z",
+ "updatedAt": "2026-08-06T06:26:36.262Z",
  "count": 96,
  "records": [
   {
@@ -1756,8 +1756,8 @@
    "status": "一次人事面谈结束、等对方联络",
    "scout": true,
    "priority": 3,
-   "updatedAt": 1785997573877,
-   "followUpAt": 1786892400000,
+   "updatedAt": 1785997592718,
+   "followUpAt": 1786633200000,
    "followUpNote": "Linkedin 跟进对方情况如何了。",
    "epMonthly": 0,
    "epAnnual": 0
