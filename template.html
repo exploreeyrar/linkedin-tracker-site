@@ -496,6 +496,20 @@
   </div>
 </div>
 
+<!-- 当日速报 -->
+<div class="mask" id="reportMask" hidden>
+  <div class="dlg">
+    <h3>📣 当日新情况的速报</h3>
+    <div class="desc" id="reportWho">发送前先看一眼内容。发出后当天（JST）不能再发，21:30 的定时发送也会跳过。</div>
+    <div class="memofull" id="reportText"></div>
+    <div class="status" id="reportState"></div>
+    <div class="row">
+      <button class="primary" id="reportSend" type="button">发送到 Telegram</button>
+      <button class="sp" id="reportClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
 <!-- 设置弹窗 -->
 <div class="mask" id="prefsMask" hidden>
   <div class="dlg">
@@ -522,6 +536,7 @@
 </div>
 
 <div class="navbar">
+  <button class="navbtn" id="reportBtn" type="button" title="把今天有变化的项目整理成速报发到 Telegram">📣 当日速报</button>
   <a class="navbtn" href="https://www.linkedin.com/jobs/" target="_blank" rel="noopener">🔎 Linkedin 筛工作</a>
   <a class="navbtn" href="https://www.linkedin.com/jobs-tracker/" target="_blank" rel="noopener">🔖 Job Saved list</a>
 </div>
@@ -1609,6 +1624,71 @@
     } catch (e) { /* 通知失败不影响页面 */ }
   }
   notifyPending();
+
+  /* ---------- 📣 当日新情况的速报 ---------- */
+  (function () {
+    var btn = $('reportBtn'), mask = $('reportMask'), state = $('reportState'), send = $('reportSend');
+    if (!btn) return;
+    var currentText = '';
+
+    function lock(reason) {
+      btn.disabled = true;
+      btn.title = reason;
+      btn.textContent = '📣 今日已发';
+    }
+
+    // 页面一打开就问一次 Worker：今天发过没有
+    if (CONFIG.tgEndpoint) {
+      tgAction({ action: 'report_status' }).then(function (d) {
+        if (d.sent) lock('今天（JST ' + d.date + '）已经发过速报了');
+      }).catch(function () { /* 拿不到状态就让按钮保持可点，发的时候 Worker 还会再拦一次 */ });
+    } else {
+      btn.disabled = true;
+      btn.title = '还没有配置 Telegram 中继（config.json 的 tgEndpoint）';
+    }
+
+    btn.addEventListener('click', function () {
+      state.className = 'status';
+      state.textContent = '正在整理今天的变化…';
+      $('reportText').textContent = '';
+      send.disabled = true;
+      mask.hidden = false;
+      tgAction({ action: 'report_preview' }).then(function (d) {
+        currentText = d.text || '';
+        if (d.sent) { lock('今天已经发过速报了'); state.className = 'status'; state.textContent = '今天已经发过了，不能重复发。'; mask.hidden = false; }
+        if (!currentText) {
+          $('reportText').textContent = '（今天没有状态变化，不需要发速报）';
+          state.textContent = '';
+          return;
+        }
+        $('reportText').textContent = currentText;
+        state.textContent = currentText.length + ' 字';
+        send.disabled = !!d.sent;
+      }).catch(function (e) {
+        state.className = 'status err';
+        state.textContent = '拉取失败：' + e.message;
+      });
+    });
+
+    send.addEventListener('click', function () {
+      send.disabled = true;
+      state.className = 'status';
+      state.textContent = '发送中…';
+      tgAction({ action: 'report_send' }).then(function () {
+        state.className = 'status ok';
+        state.textContent = '已发送。今天不会再发第二条（定时也会跳过）。';
+        lock('今天已经发过速报了');
+        setTimeout(function () { mask.hidden = true; }, 1200);
+      }).catch(function (e) {
+        state.className = 'status err';
+        state.textContent = '发送失败：' + e.message;
+        send.disabled = false;
+      });
+    });
+
+    $('reportClose').addEventListener('click', function () { mask.hidden = true; });
+    mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  })();
 
   /* ---------- Telegram 链接定位 + 高亮 ---------- */
   function targetJobId() {

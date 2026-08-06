@@ -63,6 +63,104 @@ async function tgSend(env, text) {
   return await res.json().catch(() => ({ ok: false, description: 'invalid response from Telegram' }));
 }
 
+/* ==========================================================================
+ * 当日新情况的速报
+ *   每天 JST 21:30 自动发一次；页面上的按钮也能提前手动发。
+ *   两边都会往 KV 写一个当日标记，所以一天只会发出去一条。
+ * ========================================================================== */
+
+const REPORT_HOUR = 21;
+const REPORT_MIN = 30;
+const REPORT_TITLE = '当日新情况的速报';
+// 这两种不算「新情况」：状态还停在已投递等联络的，和当天刚投还没动过的
+const REPORT_SKIP_STATUS = { '已投递等联络': 1 };
+
+/** JST 的今天，形如 2026-08-06 */
+function jstDate(now) {
+  return new Date((now || Date.now()) + 9 * 3600000).toISOString().slice(0, 10);
+}
+
+/** JST 当天 0 点对应的 UTC 毫秒 */
+function jstDayStart(now) {
+  const d = jstDate(now);
+  return Date.parse(d + 'T00:00:00+09:00');
+}
+
+function reportKey(now) { return 'report:' + jstDate(now); }
+
+async function reportSent(env, now) {
+  if (!env.SCHEDULE) return null;
+  return await env.SCHEDULE.get(reportKey(now));
+}
+
+async function markReportSent(env, now, by) {
+  if (!env.SCHEDULE) return;
+  // 留 3 天足够了，KV 到期自动清
+  await env.SCHEDULE.put(reportKey(now), JSON.stringify({ at: Date.now(), by: by || 'auto' }),
+    { expirationTtl: 3 * 86400 });
+}
+
+/** 拉取看板数据源（油猴脚本推上去的那份 records.json） */
+async function fetchRecords(env) {
+  const url = env.RECORDS_URL;
+  if (!url) return null;
+  const res = await fetch(url, { headers: { 'User-Agent': 'sgjob-worker' } });
+  if (!res.ok) return null;
+  const blob = await res.json().catch(() => null);
+  if (!blob) return null;
+  return Array.isArray(blob) ? blob : (blob.records || []);
+}
+
+/**
+ * 把当天有状态变化的记录整理成一条简报。
+ * 没有变化就返回 null —— 没消息就不发，别每天定时打扰。
+ */
+function buildReport(records, now, boardUrl) {
+  const start = jstDayStart(now);
+  const end = start + 86400000;
+  const hits = (records || []).filter((r) => {
+    if (!r || !r.updatedAt) return false;                 // 没改过（含当天新投的）
+    if (r.updatedAt < start || r.updatedAt >= end) return false;
+    return !REPORT_SKIP_STATUS[r.status];
+  });
+  if (!hits.length) return null;
+
+  // 按状态归类，同状态内按更新时间从新到旧
+  const groups = new Map();
+  hits.sort((a, b) => b.updatedAt - a.updatedAt).forEach((r) => {
+    if (!groups.has(r.status)) groups.set(r.status, []);
+    groups.get(r.status).push(r);
+  });
+
+  const lines = [
+    HEADER_PREFIX + ' ' + REPORT_TITLE,
+    jstDate(now) + '（JST）　共 ' + hits.length + ' 家有新情况',
+  ];
+  for (const [status, list] of groups) {
+    lines.push('', '▸ ' + status + '（' + list.length + '）');
+    list.forEach((r) => {
+      const who = (r.company || '—') + ' / ' + (r.title || '—');
+      lines.push('  · ' + who);
+      // 当天写的 MEMO 里挑最新的一条，截短了当作变化要点
+      const memo = latestMemoOfDay(r, start, end);
+      if (memo) lines.push('    ' + memo.slice(0, 120) + (memo.length > 120 ? '…' : ''));
+    });
+  }
+  if (boardUrl) lines.push('', '看板：' + boardUrl);
+
+  let text = lines.join('\n');
+  if (text.length > MAX_LEN) text = text.slice(0, MAX_LEN - 12) + '\n…（已截断）';
+  return text;
+}
+
+function latestMemoOfDay(r, start, end) {
+  const blocks = Array.isArray(r.memos) ? r.memos : [];
+  const today = blocks
+    .filter((b) => b && b.text && b.ts >= start && b.ts < end)
+    .sort((a, b) => b.ts - a.ts);
+  return today.length ? String(today[0].text).replace(/\s+/g, ' ').trim() : '';
+}
+
 /** 队列 key 用零填充的时间戳打头，KV 按字典序 list 出来就是按时间先后 */
 function queueKey(at, id) {
   return 'sch:' + String(at).padStart(13, '0') + ':' + id;
@@ -143,6 +241,40 @@ export default {
       return json({ ok: true, result: data }, 200, headers);
     }
 
+    // ---- 当日速报：状态 / 预览 / 发送 ----
+    if (action === 'report_status' || action === 'report_preview' || action === 'report_send') {
+      const sentRaw = await reportSent(env, Date.now());
+      let sent = null;
+      if (sentRaw) { try { sent = JSON.parse(sentRaw); } catch (e) { sent = { at: 0 }; } }
+
+      if (action === 'report_status') {
+        return json({ ok: true, date: jstDate(), sent: !!sent, sentAt: sent ? sent.at : 0 }, 200, headers);
+      }
+
+      const records = await fetchRecords(env);
+      if (!records) {
+        return json({ ok: false, description: 'RECORDS_URL 未配置或拉取失败' }, 501, headers);
+      }
+      const text = buildReport(records, Date.now(), env.BOARD_URL || '');
+
+      if (action === 'report_preview') {
+        return json({ ok: true, date: jstDate(), sent: !!sent, text: text || '' }, 200, headers);
+      }
+      // ---- report_send ----
+      if (sent) {
+        return json({ ok: false, description: '今天已经发过了（' + jstDate() + '）' }, 409, headers);
+      }
+      if (!text) {
+        return json({ ok: false, description: '今天没有新情况，不发' }, 200, headers);
+      }
+      if (!env.TG_TOKEN) {
+        return json({ ok: false, description: 'TG_TOKEN is not configured on the worker' }, 500, headers);
+      }
+      const sendRes = await tgSend(env, text);
+      if (sendRes.ok) await markReportSent(env, Date.now(), 'manual');
+      return json(sendRes, sendRes.ok ? 200 : 502, headers);
+    }
+
     if (!env.TG_TOKEN) {
       return json({ ok: false, description: 'TG_TOKEN is not configured on the worker' }, 500, headers);
     }
@@ -221,10 +353,26 @@ export default {
     return json(data, data.ok ? 200 : 502, headers);
   },
 
-  /** Cron 触发：把到点的消息发出去 */
+  /** Cron 触发：把到点的消息发出去，顺带看看该不该发当日速报 */
   async scheduled(event, env, ctx) {
     if (!env.SCHEDULE || !env.TG_TOKEN) return;
     const now = Date.now();
+
+    // ---- 当日速报（JST 21:30 之后的第一次 cron）----
+    const jstNow = new Date(now + 9 * 3600000);
+    const mins = jstNow.getUTCHours() * 60 + jstNow.getUTCMinutes();
+    if (mins >= REPORT_HOUR * 60 + REPORT_MIN && !(await reportSent(env, now))) {
+      const records = await fetchRecords(env);
+      const text = records ? buildReport(records, now, env.BOARD_URL || '') : null;
+      if (text) {
+        const r = await tgSend(env, text);
+        if (r.ok) await markReportSent(env, now, 'auto');
+      } else if (records) {
+        // 今天没有新情况：也打上标记，免得每 5 分钟重新拉一次数据
+        await markReportSent(env, now, 'empty');
+      }
+    }
+
     const items = await listQueue(env, MAX_QUEUE);
     for (const item of items) {
       if (item.at > now) continue;              // key 按时间排序，但保险起见逐条判断

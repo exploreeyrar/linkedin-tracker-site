@@ -15,6 +15,12 @@ TG_CHAT = "-1003974378230"
 #       ここに無くても通る。fetch にフォールバックした時のための保険）
 ALLOWED_ORIGINS = "https://exploreeyrar.github.io,https://www.linkedin.com,https://sg.jobstreet.com,null"
 
+# 当日速报（JST 21:30 自动发一次）要用到的两个地址：
+#   RECORDS_URL —— 油猴脚本推上去的那份数据，Worker 从这里读当天的变化
+#   BOARD_URL   —— 速报末尾附的看板链接
+RECORDS_URL = "https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/data/records.json"
+BOARD_URL = "https://exploreeyrar.github.io/linkedin-tracker-site/"
+
 # TG_TOKEN は Secret として登録する（wrangler secret put TG_TOKEN）。ここには書かない。
 # APP_KEY を Secret に登録すると X-App-Key ヘッダーの一致も必須になる（任意）。
 
