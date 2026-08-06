@@ -1,8 +1,33 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T02:39:18.745Z",
- "count": 94,
+ "updatedAt": "2026-08-06T03:38:48.801Z",
+ "count": 95,
  "records": [
+  {
+   "id": "rmsgyux0vcfvjl",
+   "site": "linkedin",
+   "jobId": "4449463456",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4449463456/",
+   "company": "Panduit",
+   "title": "Territory Account Manager",
+   "hirers": [
+    {
+     "name": "Jasmine Nah",
+     "url": "https://www.linkedin.com/in/jasmine-nah-b14996234/",
+     "role": "--"
+    }
+   ],
+   "ts": 1785987523769,
+   "applicants": "18",
+   "tenure": "8.9 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsgwlivccaxol",
    "site": "linkedin",
