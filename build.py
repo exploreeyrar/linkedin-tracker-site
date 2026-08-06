@@ -39,6 +39,7 @@ STATUSES = [
     "面试落了",
     "书类落了",
     "对方招到人了",
+    "无消息疑似书类落了",
 ]
 
 # 新记录的初始状态（排序顺位与默认值是两回事，所以不取 STATUSES[0]）
@@ -111,6 +112,29 @@ def to_ms(v):
     return 0
 
 
+def memo_blocks(raw):
+    """
+    MEMO 的时间轴。新脚本推上来的是 memos 数组（一次一条，带时间）；
+    老记录只有一整段 memo，就当成一条，时间取最后改动时间。最多留 50 条。
+    """
+    out = []
+    for b in (raw.get("memos") or [])[:50]:
+        if not isinstance(b, dict):
+            continue
+        text = s(b.get("text"), 2000)
+        ts = to_ms(b.get("ts"))
+        if text and ts:
+            out.append({"ts": ts, "text": text})
+    if out:
+        out.sort(key=lambda b: -b["ts"])
+        return out
+    memo = s(raw.get("memo"), 2000)
+    if not memo:
+        return []
+    ts = to_ms(raw.get("updatedAt")) or to_ms(raw.get("ts"))
+    return [{"ts": ts, "text": memo}] if ts else []
+
+
 def normalize(raw):
     """清洗单条记录；返回 None 表示丢弃。"""
     if not isinstance(raw, dict):
@@ -144,6 +168,7 @@ def normalize(raw):
         "tenure": s(raw.get("tenure"), 30),
         "status": status,
         "memo": s(raw.get("memo"), 1000),
+        "memos": memo_blocks(raw),                # 时间轴形式的 MEMO（新 → 旧）
         "scout": bool(raw.get("scout")),          # 人事主动 scout 的
         # EP 所属行业与按年龄算好的 C1 门槛，由油猴脚本算好后推上来
         "sector": s(raw.get("sector"), 120),

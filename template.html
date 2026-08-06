@@ -149,6 +149,15 @@
   .age.stale { color: var(--c-rejitv); font-weight: 600; }
 
   /* 书类落了 / 面试落了：整行划掉并置灰 */
+  .memolog { max-height: 46vh; overflow: auto; }
+  .memoitem { border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 9px; padding: 8px 11px; margin-bottom: 8px; background: var(--bg); }
+  .memoitem.latest { border-left-color: var(--accent); }
+  .memohd { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .memots { font-size: 11px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .memotag { font-size: 10px; padding: 0 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+  .memobody { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
   tr.closed td, tr.closed td a { color: var(--c-dead); text-decoration: line-through; }
   tr.closed .badge { text-decoration: line-through; }
   tr.closed .star { text-decoration: none; }
@@ -571,9 +580,18 @@
     '已投递等联络': '--c-wait',
     '面试落了': '--c-rejitv',
     '书类落了': '--c-rejdoc',
-    '对方招到人了': '--c-taken'
+    '对方招到人了': '--c-taken',
+    '无消息疑似书类落了': '--c-dead'
   };
-  var CLOSED = { '书类落了': 1, '面试落了': 1, '对方招到人了': 1 };
+  // MEMO 的时间轴：新脚本推 memos 数组；老数据只有一整段 memo，当成一条
+  function memoBlocks(r) {
+    if (r.memos && r.memos.length) {
+      return r.memos.slice().sort(function (a, b) { return b.ts - a.ts; });
+    }
+    return r.memo ? [{ ts: r.updatedAt || r.ts, text: r.memo }] : [];
+  }
+
+  var CLOSED = { '书类落了': 1, '面试落了': 1, '对方招到人了': 1, '无消息疑似书类落了': 1 };
   var ADVANCED = {
     '已安排面试、面试准备中': 1,
     '一次面试通过、等対方安排下一轮': 1,
@@ -713,14 +731,11 @@
   /* ---------- KPI ---------- */
   (function () {
     var weekStart = startOfWeek(Date.now());   // 本周一起算，和周趋势图同口径
-    var closed = 0, advanced = 0, waiting = 0, recent = 0, stale = 0, scouted = 0;
+    var closed = 0, advanced = 0, waiting = 0, recent = 0, scouted = 0;
     RECORDS.forEach(function (r) {
       if (CLOSED[r.status]) closed++;
       if (ADVANCED[r.status]) advanced++;
-      if (WAITING[r.status]) {
-        waiting++;
-        if (daysSince(r.ts) >= STALE_DAYS) stale++;
-      }
+      if (WAITING[r.status]) waiting++;
       if (r.ts >= weekStart) recent++;
       if (r.scout) scouted++;
     });
@@ -730,8 +745,7 @@
       ['已进面试及以后', advanced, null],
       ['本周新投', recent, null],
       ['等待中', waiting, null],
-      ['人事主动 scout', scouted, null],
-      ['超 ' + STALE_DAYS + ' 天无进展', stale, stale > 0 ? 'var(--c-rejitv)' : null]
+      ['人事主动 scout', scouted, null]
     ];
     var box = $('kpis');
     kpis.forEach(function (k) {
@@ -853,7 +867,8 @@
     },
     memo: function (r) {
       var td = document.createElement('td');
-      var box = el('div', 'memo clamp', r.memo || '');
+      var bs = memoBlocks(r);
+      var box = el('div', 'memo clamp', bs.length ? bs[0].text : '');
       var more = el('button', 'morebtn', 'more..');
       more.type = 'button';
       more.hidden = true;
@@ -1197,7 +1212,21 @@
     if (r.epAnnual) add('年总所需', 'S$' + money(r.epAnnual));
     add('申请数', r.applicants);
     add('中位任职', r.tenure);
-    add('MEMO', r.memo);
+    var blocks = memoBlocks(r);
+    if (blocks.length) {
+      var mbox = document.createElement('div');
+      mbox.className = 'memolog';
+      blocks.forEach(function (b, i) {
+        var item = el('div', 'memoitem' + (i === 0 ? ' latest' : ''));
+        var hd = el('div', 'memohd');
+        hd.appendChild(el('span', 'memots', fmtDT(b.ts)));
+        if (i === 0) hd.appendChild(el('span', 'memotag', '最新'));
+        item.appendChild(hd);
+        item.appendChild(el('div', 'memobody', b.text));
+        mbox.appendChild(item);
+      });
+      add('MEMO（' + blocks.length + ' 条）', null, mbox);
+    } else add('MEMO', '');
 
     var open = $('dtOpen');
     if (r.jobUrl) { open.href = r.jobUrl; open.hidden = false; } else { open.hidden = true; }
@@ -1216,7 +1245,22 @@
   function openMemoFull(r) {
     memoFullTarget = r;
     $('memoWho').textContent = (r.company || '—') + ' / ' + (r.title || '—');
-    $('memoFull').textContent = r.memo || '(空)';
+    var full = $('memoFull');
+    full.textContent = '';
+    var bs = memoBlocks(r);
+    if (!bs.length) { full.textContent = '(空)'; }
+    else {
+      full.className = 'memolog';
+      bs.forEach(function (b, i) {
+        var item = el('div', 'memoitem' + (i === 0 ? ' latest' : ''));
+        var hd = el('div', 'memohd');
+        hd.appendChild(el('span', 'memots', fmtDT(b.ts)));
+        if (i === 0) hd.appendChild(el('span', 'memotag', '最新'));
+        item.appendChild(hd);
+        item.appendChild(el('div', 'memobody', b.text));
+        full.appendChild(item);
+      });
+    }
     $('memoMask').hidden = false;
   }
   $('memoClose').addEventListener('click', function () { $('memoMask').hidden = true; });
@@ -1568,8 +1612,20 @@
 
   /* ---------- Telegram 链接定位 + 高亮 ---------- */
   function targetJobId() {
-    var m = (location.hash || '').match(/^#job-(\d+)$/);
+    var m = (location.hash || '').match(/^#(?:job|memo)-(\d+)$/);
     return m ? m[1] : '';
+  }
+
+  // #memo-<jobId>：Telegram 里那条「MEMO 太长，点这里看全文」的链接，
+  // 定位之外还要直接把这条的 MEMO 时间轴弹出来。
+  function openMemoFromHash() {
+    var m = (location.hash || '').match(/^#memo-(\d+)$/);
+    if (!m) return;
+    var rec = null;
+    for (var i = 0; i < RECORDS.length; i++) {
+      if (String(RECORDS[i].jobId) === m[1]) { rec = RECORDS[i]; break; }
+    }
+    if (rec) openMemoFull(rec);
   }
 
   function applyHighlight(scroll) {
@@ -1603,7 +1659,7 @@
     // 清掉 hash，免得刷新后又亮起来
     history.replaceState(null, '', location.pathname + location.search);
   });
-  window.addEventListener('hashchange', function () { applyHighlight(true); });
+  window.addEventListener('hashchange', function () { applyHighlight(true); openMemoFromHash(); });
 
   /* ---------- 功能反馈 ---------- */
   $('fbSend').addEventListener('click', function () {
@@ -1647,6 +1703,7 @@
   loadScheduled();
   apply();
   applyHighlight(true);
+  openMemoFromHash();   // 带 #memo-<id> 进来时直接弹出 MEMO 时间轴
   renderBoard();
   refreshUnread();
 
