@@ -75,6 +75,27 @@ const REPORT_TITLE = '当日新情况的速报';
 // 这两种不算「新情况」：状态还停在已投递等联络的，和当天刚投还没动过的
 const REPORT_SKIP_STATUS = { '已投递等联络': 1 };
 
+// 内置的状态顺位，和油猴脚本 / build.py 里的 STATUSES 一致。
+// 数据源里带了 statusOrder 就以它为准（用户可能拖动调整过）。
+const DEFAULT_STATUS_ORDER = [
+  '等己方处理(XR ball)',
+  '等己方处理(己 ball)',
+  '已安排面试、面试准备中',
+  '対方来联络了',
+  '四次面试通过、等对方安排下一轮',
+  '三次面试通过、等对方安排下一轮',
+  '二次面试通过、等对方安排下一轮',
+  '一次面试通过、等対方安排下一轮',
+  '一次人事面谈结束、等对方联络',
+  '内定',
+  '人事 Offer Call',
+  '已投递等联络',
+  '面试落了',
+  '书类落了',
+  '对方招到人了',
+  '无消息疑似书类落了'
+];
+
 /** JST 的今天，形如 2026-08-06 */
 function jstDate(now) {
   return new Date((now || Date.now()) + 9 * 3600000).toISOString().slice(0, 10);
@@ -86,7 +107,22 @@ function jstDayStart(now) {
   return Date.parse(d + 'T00:00:00+09:00');
 }
 
+/**
+ * 前一天 JST 21:30 对应的 UTC 毫秒（= 当天 JST 零点往前推 2.5 小时）。
+ *
+ * 定时发送在 21:30，窗口若按自然日算（00:00–24:00），那么 21:30 到零点之间
+ * 发生的变化今天的速报赶不上、明天的窗口又不包含，就永远漏掉了。
+ * 所以窗口的默认起点是「前一日 21:30」，正好接上上一批。
+ */
+function prevReportBoundary(now) {
+  return jstDayStart(now) - 86400000 + (REPORT_HOUR * 60 + REPORT_MIN) * 60000;
+}
+
 function reportKey(now) { return 'report:' + jstDate(now); }
+const REPORT_CURSOR_KEY = 'report:cursor';   // 上一批速报统计到哪个时刻为止
+// 「今天没有新情况」的节流标记，和「已发过」分开存：
+// 否则一旦定时那一轮扫到空，当天就再也发不出手动速报了。
+function reportEmptyKey(now) { return 'reportempty:' + jstDate(now); }
 
 async function reportSent(env, now) {
   if (!env.SCHEDULE) return null;
@@ -100,6 +136,30 @@ async function markReportSent(env, now, by) {
     { expirationTtl: 3 * 86400 });
 }
 
+/**
+ * 这一批的统计起点。
+ * 上一批发到哪个时刻就从哪儿接着算，接不上（首次运行 / 游标过期 / 明显不合理）
+ * 才退回「前一日 21:30」。这样手动提前发过之后，那天剩下的变化也不会被漏掉。
+ */
+async function reportWindowStart(env, now) {
+  const fallback = prevReportBoundary(now);
+  if (!env.SCHEDULE) return fallback;
+  const raw = await env.SCHEDULE.get(REPORT_CURSOR_KEY);
+  if (!raw) return fallback;
+  let at = 0;
+  try { at = Number(JSON.parse(raw).at) || 0; } catch (e) { at = 0; }
+  // 游标太旧（超过 7 天没发过）就别把一大堆陈年变化翻出来
+  if (!at || at > now || at < now - 7 * 86400000) return fallback;
+  return at;
+}
+
+/** 记下这一批统计到哪儿为止，下一批从这里接着算 */
+async function saveReportCursor(env, end) {
+  if (!env.SCHEDULE) return;
+  await env.SCHEDULE.put(REPORT_CURSOR_KEY, JSON.stringify({ at: end }),
+    { expirationTtl: 30 * 86400 });
+}
+
 /** 拉取看板数据源（油猴脚本推上去的那份 records.json） */
 async function fetchRecords(env) {
   const url = env.RECORDS_URL;
@@ -108,40 +168,65 @@ async function fetchRecords(env) {
   if (!res.ok) return null;
   const blob = await res.json().catch(() => null);
   if (!blob) return null;
-  return Array.isArray(blob) ? blob : (blob.records || []);
+  if (Array.isArray(blob)) return { records: blob, statusOrder: DEFAULT_STATUS_ORDER };
+  const order = Array.isArray(blob.statusOrder) && blob.statusOrder.length
+    ? blob.statusOrder : DEFAULT_STATUS_ORDER;
+  return { records: blob.records || [], statusOrder: order };
 }
 
 /**
- * 把当天有状态变化的记录整理成一条简报。
+ * 清单里的显示顺位：重要度最优先，其次状态顺位，最后更新时间从新到旧。
+ * 和 index.html / 油猴清单里看到的顺序一致。
+ */
+function listOrderComparator(statusOrder) {
+  const rank = new Map();
+  (statusOrder || DEFAULT_STATUS_ORDER).forEach((s, i) => rank.set(s, i));
+  const rankOf = (s) => (rank.has(s) ? rank.get(s) : rank.size);
+  return (a, b) => {
+    const p = (Number(b.priority) || 0) - (Number(a.priority) || 0);
+    if (p !== 0) return p;
+    const d = rankOf(a.status) - rankOf(b.status);
+    if (d !== 0) return d;
+    return (b.updatedAt || b.ts || 0) - (a.updatedAt || a.ts || 0);
+  };
+}
+
+/**
+ * 把这一批窗口内有状态变化的记录整理成一条简报。
  * 没有变化就返回 null —— 没消息就不发，别每天定时打扰。
  */
-function buildReport(records, now, boardUrl) {
-  const start = jstDayStart(now);
-  const end = start + 86400000;
-  const hits = (records || []).filter((r) => {
+function buildReport(data, now, boardUrl, start) {
+  const records = (data && data.records) || [];
+  const end = now || Date.now();
+  const hits = records.filter((r) => {
     if (!r || !r.updatedAt) return false;                 // 没改过（含当天新投的）
-    if (r.updatedAt < start || r.updatedAt >= end) return false;
+    if (r.updatedAt < start || r.updatedAt > end) return false;
     return !REPORT_SKIP_STATUS[r.status];
   });
   if (!hits.length) return null;
 
-  // 按状态归类，同状态内按更新时间从新到旧
+  // 按状态归类；组的先后与组内顺序都照清单里的显示顺位来
+  const cmp = listOrderComparator(data && data.statusOrder);
   const groups = new Map();
-  hits.sort((a, b) => b.updatedAt - a.updatedAt).forEach((r) => {
+  hits.sort(cmp).forEach((r) => {
     if (!groups.has(r.status)) groups.set(r.status, []);
     groups.get(r.status).push(r);
   });
 
+  const fmt = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 16).replace('T', ' ');
   const lines = [
     HEADER_PREFIX + ' ' + REPORT_TITLE,
     jstDate(now) + '（JST）　共 ' + hits.length + ' 家有新情况',
+    '统计范围：' + fmt(start) + ' ～ ' + fmt(end) + '（JST）'
   ];
   for (const [status, list] of groups) {
     lines.push('', '▸ ' + status + '（' + list.length + '）');
     list.forEach((r) => {
-      const who = (r.company || '—') + ' / ' + (r.title || '—');
-      lines.push('  · ' + who);
-      // 当天写的 MEMO 里挑最新的一条，截短了当作变化要点
+      const star = (Number(r.priority) || 0) ? ('  ' + '✨'.repeat(Number(r.priority))) : '';
+      lines.push('  · ' + (r.company || '—') + ' / ' + (r.title || '—') + star);
+      // 项目名下面直接附职位链接，省得再去看板上找
+      if (r.jobUrl) lines.push('    ' + r.jobUrl);
+      // 窗口内写的 MEMO 里挑最新的一条，截短了当作变化要点
       const memo = latestMemoOfDay(r, start, end);
       if (memo) lines.push('    ' + memo.slice(0, 120) + (memo.length > 120 ? '…' : ''));
     });
@@ -251,29 +336,38 @@ export default {
         return json({ ok: true, date: jstDate(), sent: !!sent, sentAt: sent ? sent.at : 0 }, 200, headers);
       }
 
-      const records = await fetchRecords(env);
-      if (!records) {
+      const now = Date.now();
+      const data = await fetchRecords(env);
+      if (!data) {
         return json({ ok: false, description: 'RECORDS_URL 未配置或拉取失败' }, 501, headers);
       }
-      const text = buildReport(records, Date.now(), env.BOARD_URL || '');
+      const start = await reportWindowStart(env, now);
+      const text = buildReport(data, now, env.BOARD_URL || '', start);
 
       if (action === 'report_preview') {
-        return json({ ok: true, date: jstDate(), sent: !!sent, text: text || '' }, 200, headers);
+        return json({ ok: true, date: jstDate(), sent: !!sent, from: start, to: now, text: text || '' }, 200, headers);
       }
       // ---- report_send ----
       if (sent) {
         return json({ ok: false, description: '今天已经发过了（' + jstDate() + '）' }, 409, headers);
       }
       if (!text) {
-        return json({ ok: false, description: '今天没有新情况，不发' }, 200, headers);
+        return json({ ok: false, description: '这一批没有新情况，不发' }, 200, headers);
       }
       if (!env.TG_TOKEN) {
         return json({ ok: false, description: 'TG_TOKEN is not configured on the worker' }, 500, headers);
       }
       const sendRes = await tgSend(env, text);
-      if (sendRes.ok) await markReportSent(env, Date.now(), 'manual');
+      if (sendRes.ok) {
+        await markReportSent(env, now, 'manual');
+        await saveReportCursor(env, now);   // 下一批从这里接着算，中间不留缝
+      }
       return json(sendRes, sendRes.ok ? 200 : 502, headers);
     }
+
+    // ---- 看板上勾选若干项目后发的「选中项目速报」----
+    // 正文由页面组装（它手里就有完整清单），Worker 只负责转发；
+    // 校验沿用下面那条通用路径的前缀 + 长度限制。
 
     if (!env.TG_TOKEN) {
       return json({ ok: false, description: 'TG_TOKEN is not configured on the worker' }, 500, headers);
@@ -361,15 +455,23 @@ export default {
     // ---- 当日速报（JST 21:30 之后的第一次 cron）----
     const jstNow = new Date(now + 9 * 3600000);
     const mins = jstNow.getUTCHours() * 60 + jstNow.getUTCMinutes();
-    if (mins >= REPORT_HOUR * 60 + REPORT_MIN && !(await reportSent(env, now))) {
-      const records = await fetchRecords(env);
-      const text = records ? buildReport(records, now, env.BOARD_URL || '') : null;
+    if (mins >= REPORT_HOUR * 60 + REPORT_MIN && !(await reportSent(env, now))
+        && !(await env.SCHEDULE.get(reportEmptyKey(now)))) {
+      const data = await fetchRecords(env);
+      const start = await reportWindowStart(env, now);
+      const text = data ? buildReport(data, now, env.BOARD_URL || '', start) : null;
       if (text) {
         const r = await tgSend(env, text);
-        if (r.ok) await markReportSent(env, now, 'auto');
-      } else if (records) {
-        // 今天没有新情况：也打上标记，免得每 5 分钟重新拉一次数据
-        await markReportSent(env, now, 'empty');
+        if (r.ok) {
+          await markReportSent(env, now, 'auto');
+          await saveReportCursor(env, now);
+        }
+      } else if (data) {
+        // 这一批没有任何符合条件的状态变化 → 当天不自动发。
+        // 只打一个「空」标记做节流，不占用「已发过」——
+        // 之后手动点「当日速报」照样能发。
+        await env.SCHEDULE.put(reportEmptyKey(now),
+          JSON.stringify({ at: now }), { expirationTtl: 3 * 86400 });
       }
     }
 

@@ -112,6 +112,15 @@ def to_ms(v):
     return 0
 
 
+def clamp_int(v, lo, hi):
+    """脏数据不该让构建失败：认不出来就当 lo。"""
+    try:
+        n = int(float(v))
+    except (TypeError, ValueError):
+        return lo
+    return max(lo, min(hi, n))
+
+
 def memo_blocks(raw):
     """
     MEMO 的时间轴。新脚本推上来的是 memos 数组（一次一条，带时间）；
@@ -164,9 +173,17 @@ def normalize(raw):
         "title": s(raw.get("title"), 200),
         "jobUrl": job_url,
         "hirers": hirers,
-        "applicants": s(raw.get("applicants"), 20),
+        # 记录时从职位页抓下来的几项，详情页显示（「申请数」已废弃，不再接收）
+        "employees": s(raw.get("employees"), 20),
+        "years": s(raw.get("years"), 40),
+        "jobMatch": s(raw.get("jobMatch"), 40),
         "tenure": s(raw.get("tenure"), 30),
         "status": status,
+        # 重要度：看板排序时压过状态顺位与时间新旧
+        "priority": clamp_int(raw.get("priority"), 0, 3),
+        # 跟进提醒（当天 0 点的毫秒）与备注
+        "followUpAt": to_ms(raw.get("followUpAt")),
+        "followUpNote": s(raw.get("followUpNote"), 300),
         "memo": s(raw.get("memo"), 1000),
         "memos": memo_blocks(raw),                # 时间轴形式的 MEMO（新 → 旧）
         "scout": bool(raw.get("scout")),          # 人事主动 scout 的
@@ -242,9 +259,10 @@ def load():
     statuses += [x for x in STATUSES if x not in seen]
 
     records = [r for r in (normalize(x) for x in raw) if r]
-    # 先按状态顺位，同状态再按投递时间从新到旧
+    # 重要度最优先（★ 多的排最上面，无视状态与时间），
+    # 其次状态顺位，同状态再按投递时间从新到旧
     rank = {name: i for i, name in enumerate(statuses)}
-    records.sort(key=lambda r: (rank.get(r["status"], len(statuses)), -r["ts"]))
+    records.sort(key=lambda r: (-r["priority"], rank.get(r["status"], len(statuses)), -r["ts"]))
 
     messages = [m for m in (normalize_message(x) for x in raw_msgs) if m]
     messages.sort(key=lambda m: m["createdAt"], reverse=True)

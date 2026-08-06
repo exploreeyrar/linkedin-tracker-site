@@ -145,6 +145,15 @@
     white-space: nowrap; border: 1px solid currentColor; background: color-mix(in srgb, currentColor 12%, transparent);
   }
   .star { display: block; margin-top: 4px; font-size: 13px; }
+  /* 状态标签下方那排小标记：重要度 ✨ 与跟进提醒 🕐 */
+  .stars { display: block; margin-top: 4px; font-size: 13px; letter-spacing: -1px; }
+  .fuchip {
+    display: inline-block; margin-top: 4px; padding: 1px 7px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    border: 1px solid var(--sub); color: var(--sub); background: transparent;
+    font: inherit; font-size: 11px; cursor: pointer;
+  }
+  .fuchip.due { border-color: var(--c-rejitv); color: var(--c-rejitv); }
   .age { font-size: 11px; color: var(--sub); }
   .age.stale { color: var(--c-rejitv); font-weight: 600; }
 
@@ -353,6 +362,80 @@
     background: linear-gradient(135deg, transparent 0 48%, var(--line) 48% 58%, transparent 58% 70%, var(--line) 70% 80%, transparent 80%);
   }
 
+  /* 留言的 🔗 复制链接按钮 + 被链接定位到的那条 */
+  .msg .mm { display: flex; align-items: center; gap: 8px; }
+  .msg .mops { margin-left: auto; display: flex; gap: 2px; }
+  .msg .mops button {
+    border: 1px solid transparent; background: transparent; cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 6px; color: var(--sub);
+  }
+  .msg .mops button:hover { background: var(--line); color: var(--fg); }
+  .msg.hl { background: #fff5c2; border-radius: 8px; padding-left: 10px; padding-right: 10px; }
+  @media (prefers-color-scheme: dark) { .msg.hl { background: #4a4218; } }
+
+  /* ---------- 勾选项目 → 发送选中项目的速报 ---------- */
+  th.pick, td.pick { width: 34px; text-align: center; padding-left: 10px; padding-right: 4px; }
+  td.pick input, th.pick input { width: 15px; height: 15px; cursor: pointer; margin: 2px 0 0; }
+  tr.picked > td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .pickbar {
+    position: fixed; right: 20px; bottom: 136px; z-index: 46;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--accent); border-radius: 14px;
+    box-shadow: var(--pop); padding: 10px 12px 10px 16px; font-size: 13px;
+  }
+  .pickbar[hidden] { display: none; }
+  .pickbar b { font-variant-numeric: tabular-nums; }
+  .pickbar button {
+    font: inherit; font-size: 12px; font-weight: 700; padding: 7px 13px; border-radius: 9px;
+    border: 0; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .pickbar button.ghost { background: transparent; color: var(--sub); border: 1px solid var(--line); font-weight: 500; }
+  .pickbar button:hover { filter: brightness(1.08); }
+
+  /* ---------- 🕐 到期的跟进提醒：铺满视口，只有「取消」能关 ---------- */
+  .fumask {
+    position: fixed; inset: 0; z-index: 95; background: rgba(12,10,0,.86);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .fumask[hidden] { display: none; }
+  .fudlg {
+    width: min(680px, 100%); max-height: calc(100vh - 48px); overflow: auto;
+    background: #fff8d6; color: #3d3200; border: 3px solid #eab308; border-radius: 16px;
+    box-shadow: 0 12px 48px rgba(0,0,0,.5); padding: 26px 28px; text-align: center;
+  }
+  .futitle { font-size: 24px; font-weight: 900; line-height: 1.4; margin-bottom: 16px; }
+  .fulist { display: grid; gap: 9px; text-align: left; }
+  .fuitem {
+    background: rgba(255,255,255,.75); border: 1px solid #e6c200; border-radius: 10px;
+    padding: 10px 13px; font-size: 14px; line-height: 1.6;
+  }
+  .fuitem .fujob { font-weight: 800; color: #7a4b00; }
+  .fuitem .fumeta { font-size: 12px; color: #6b5a00; margin-top: 2px; }
+  .fuitem .funote { font-size: 13px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+  .furow { display: flex; justify-content: center; margin-top: 20px; }
+  .fubtn {
+    font: inherit; font-size: 15px; font-weight: 800; padding: 11px 40px; border-radius: 10px;
+    border: 0; background: #eab308; color: #2a2300; cursor: pointer;
+  }
+  .fubtn:hover { filter: brightness(1.06); }
+  .dlg input[type=date] {
+    width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--fg);
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .chips button {
+    font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  .chips button:hover { border-color: var(--accent); color: var(--accent); }
+  /* 待回传的改动提示 */
+  .pendbar {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; z-index: 47;
+    background: var(--card); border: 1px solid var(--accent); border-radius: 999px;
+    box-shadow: var(--pop); padding: 8px 16px; font-size: 12px; color: var(--sub);
+  }
+  .pendbar[hidden] { display: none; }
+
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
     background: rgba(20,20,20,.93); color: #fff; padding: 10px 18px; border-radius: 10px;
@@ -553,11 +636,65 @@
     <div class="dtgrid" id="dtBody"></div>
     <div class="row">
       <button class="primary" id="dtRemind" type="button">📢 请求更新状态</button>
+      <button id="dtFollow" type="button">🕐 跟进提醒</button>
       <a class="dtlink" id="dtOpen" target="_blank" rel="noopener">在 LinkedIn 打开</a>
       <button class="sp" id="dtClose" type="button">关闭</button>
     </div>
   </div>
 </div>
+
+<!-- 勾选若干项目后的批量速报 -->
+<div class="mask" id="pickMask" hidden>
+  <div class="dlg">
+    <h3>📣 发送选中项目的速报</h3>
+    <div class="desc">格式与「当日速报」一致，但只包含你勾选的项目，且不占用当天的速报名额。</div>
+    <div class="previewhdr"><span>预览 —— 实际发送的内容</span><span class="cnum" id="pickCount"></span></div>
+    <div class="memofull" id="pickText"></div>
+    <div class="status" id="pickState"></div>
+    <div class="row">
+      <button class="primary" id="pickSend" type="button">发送到 Telegram</button>
+      <button class="sp" id="pickCancel" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🕐 设置跟进提醒 -->
+<div class="mask" id="fuMask" hidden>
+  <div class="dlg">
+    <h3>🕐 设置跟进提醒</h3>
+    <div class="desc">到了这一天，打开这个看板会弹一个必须手动关掉的全屏提示，并尝试发一条 Chrome 通知。</div>
+    <div class="info" id="fuWho"></div>
+    <label>提醒日期</label>
+    <div class="chips" id="fuQuick"></div>
+    <input type="date" id="fuDate">
+    <label>备注</label>
+    <textarea id="fuNote" placeholder="到时候要做什么（可留空）…"></textarea>
+    <div class="tip" id="fuTip"></div>
+    <div class="status" id="fuState"></div>
+    <div class="row">
+      <button class="primary" id="fuSave" type="button">保存提醒</button>
+      <button id="fuClear" type="button">清除提醒</button>
+      <button class="sp" id="fuCancel" type="button">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🕐 到期提示：只有「取消」能关掉 -->
+<div class="fumask" id="fuAlert" hidden>
+  <div class="fudlg">
+    <div class="futitle">🕐 到了该项目的跟进提醒时间了</div>
+    <div class="fulist" id="fuAlertList"></div>
+    <div class="furow"><button class="fubtn" id="fuAlertOk" type="button">取消</button></div>
+  </div>
+</div>
+
+<div class="pickbar" id="pickBar" hidden>
+  <span>已选 <b id="pickN">0</b> 项</span>
+  <button type="button" id="pickGo">📣 发送速报</button>
+  <button class="ghost" type="button" id="pickClear">清空</button>
+</div>
+
+<div class="pendbar" id="pendBar" hidden></div>
 
 <div class="hlbar" id="hlbar" hidden>
   <span id="hlwho">已定位到该项目</span>
@@ -637,7 +774,6 @@
     { key: 'hirers',     label: 'Hiring team', sort: null },
     { key: 'updatedAt',  label: '更新时间',    sort: 'updatedAt' },
     { key: 'ts',         label: '投递时间',    sort: 'ts' },
-    { key: 'applicants', label: '申请数',      sort: 'applicants', align: 'right' },
     { key: 'tenure',     label: '中位任职',    sort: 'tenure',     align: 'right' },
     { key: 'sector',     label: 'EP 所属行业', sort: 'sector' },
     { key: 'epMonthly',  label: '最低月 base', sort: 'epMonthly',  align: 'right' },
@@ -645,7 +781,7 @@
   ];
   var COL_BY_KEY = {};
   COLUMNS.forEach(function (c) { COL_BY_KEY[c.key] = c; });
-  var DEFAULT_HIDDEN = { ts: 1, applicants: 1, tenure: 1 };
+  var DEFAULT_HIDDEN = { ts: 1, tenure: 1 };
   // 三个 EP 列在没有任何数据时整列不出现
   var HAS_EP = RECORDS.some(function (r) { return r.sector || r.epMonthly || r.epAnnual; });
   var EP_KEYS = { sector: 1, epMonthly: 1, epAnnual: 1 };
@@ -705,6 +841,27 @@
     return Math.round((startOfDay(Date.now()) - startOfDay(ms)) / 86400000);
   }
   function num(v) { var m = String(v == null ? '' : v).match(/[\d.]+/); return m ? parseFloat(m[0]) : NaN; }
+  function fmtDate(ms) {
+    if (!ms) return '';
+    var d = new Date(ms), p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function parseDate(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '').trim());
+    if (!m) return 0;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  /* ---------- 跟进提醒 ---------- */
+  // 一条记录在本机的标识。jobId 只在本站内唯一，所以要带上站点
+  function recKey(r) { return (r.site || 'linkedin') + ':' + (r.jobId || (r.company + '|' + r.title)); }
+  /** 生效的提醒 = 本机改过的优先，没改过就用构建进来的 */
+  function followUpOf(r) {
+    var local = prefs.followUp[recKey(r)];
+    if (local) return { at: local.at || 0, note: local.note || '' };
+    return { at: r.followUpAt || 0, note: r.followUpNote || '' };
+  }
 
   var toastTimer = null;
   function toast(msg) {
@@ -721,6 +878,10 @@
     cols: null, lastVisit: 0,
     showDot: true, notify: true, notifyDefaulted: false,
     lastRead: 0,
+    // 在这个页面上改的跟进提醒。页面是静态的，改不了 records.json，
+    // 所以先存本机顶掉构建进来的值，同时排进 OUTBOX 等油猴脚本回写。
+    followUp: {},
+    fuDone: {},                    // 已经弹过并被手动关掉的：'<key>@<日期>' → 关掉时间
     board: { x: 0, y: 0, w: 380, h: 440, placed: false }
   };
   try {
@@ -728,9 +889,40 @@
     if (saved && typeof saved === 'object') {
       Object.keys(prefs).forEach(function (k) { if (k in saved) prefs[k] = saved[k]; });
       prefs.board = Object.assign({ x: 0, y: 0, w: 380, h: 440, placed: false }, prefs.board || {});
+      if (!prefs.followUp || typeof prefs.followUp !== 'object') prefs.followUp = {};
+      if (!prefs.fuDone || typeof prefs.fuDone !== 'object') prefs.fuDone = {};
     }
   } catch (e) { /* 用默认值 */ }
   function savePrefs() { try { localStorage.setItem(PK, JSON.stringify(prefs)); } catch (e) {} }
+
+  /* ---------- 回写队列（油猴脚本在本页面上取走并推回 GitHub）---------- */
+  var OUTBOX = 'sgjob_outbox_v1';
+  var OUTBOX_ACK = 'sgjob_outbox_ack_v1';
+
+  function outboxRead() {
+    try {
+      var v = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function outboxPush(op) {
+    var list = outboxRead();
+    op.opId = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    // 同一条记录的同类操作只留最后一次，别让队列越堆越长
+    list = list.filter(function (x) { return !(x && x.op === op.op && x.jobId === op.jobId); });
+    list.push(op);
+    try { localStorage.setItem(OUTBOX, JSON.stringify(list.slice(-200))); } catch (e) {}
+    refreshPending();
+  }
+  function refreshPending() {
+    var n = outboxRead().length;
+    var bar = $('pendBar');
+    if (!bar) return;
+    bar.hidden = !n;
+    bar.textContent = n
+      ? ('⏳ ' + n + ' 项改动待回传：在 LinkedIn / 本页面开着油猴脚本时会自动写回仓库')
+      : '';
+  }
 
   // 之前版本默认不勾，做一次性迁移并立刻落盘；之后仍然尊重用户自己的选择
   if (!prefs.notifyDefaulted) { prefs.notify = true; prefs.notifyDefaulted = true; savePrefs(); }
@@ -842,7 +1034,54 @@
   })();
 
   /* ---------- 表格 ---------- */
-  var sortKey = 'status', sortDir = 1;   // 默认：状态顺位 → 同状态时间从新到旧
+  var sortKey = 'status', sortDir = 1;   // 默认：重要度 → 状态顺位 → 同状态时间从新到旧
+  var VISIBLE = [];        // 当前筛选 + 排序之后显示出来的那批（勾选、全选都以它为准）
+  // 勾中的记录：recKey → 记录本身（存记录而不是 1，这样改了筛选条件也不会丢选择）
+  var PICKED = {};
+  var lastPickIdx = -1;    // 上一次点的那一行，Shift 范围选的锚点
+
+  function setPicked(r, on) {
+    if (on) PICKED[recKey(r)] = r; else delete PICKED[recKey(r)];
+    var tr = document.querySelector('#tb tr[data-k="' + cssEsc(recKey(r)) + '"]');
+    if (tr) tr.classList.toggle('picked', !!on);
+  }
+  // recKey 里有冒号，直接塞进选择器会炸，转义一下
+  function cssEsc(v) {
+    return (window.CSS && CSS.escape) ? CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&');
+  }
+
+  /** 把 a..b（含两端）之间显示出来的行全部设成 on */
+  function pickRange(a, b, on) {
+    var lo = Math.min(a, b), hi = Math.max(a, b);
+    for (var i = lo; i <= hi; i++) {
+      var r = VISIBLE[i];
+      if (r) setPicked(r, on);
+    }
+    lastPickIdx = b;
+    // 勾选状态是逐行改的，复选框本身要跟着对上
+    [].forEach.call(document.querySelectorAll('#tb td.pick input'), function (cb, i) {
+      var rec = VISIBLE[i];
+      if (rec) cb.checked = !!PICKED[recKey(rec)];
+    });
+    refreshPickBar();
+  }
+
+  /** 勾中的记录，按清单里的显示顺序；被筛掉的排在后面（仍然算数） */
+  function pickedRecords() {
+    var out = [], seen = {};
+    VISIBLE.forEach(function (r) {
+      var k = recKey(r);
+      if (PICKED[k]) { out.push(r); seen[k] = 1; }
+    });
+    Object.keys(PICKED).forEach(function (k) { if (!seen[k]) out.push(PICKED[k]); });
+    return out;
+  }
+
+  function refreshPickBar() {
+    var n = Object.keys(PICKED).length;
+    $('pickBar').hidden = !n;
+    $('pickN').textContent = n;
+  }
 
   (function initFilter() {
     var sel = $('fstatus'), seen = {};
@@ -869,6 +1108,22 @@
         st.title = '人事主动 scout 的';
         td.appendChild(st);
       }
+      // 重要度：几级就几个 ✨，和 scout 的 🌟 一样挂在状态标签下方
+      if (r.priority) {
+        var sp = el('span', 'stars', '✨'.repeat(r.priority));
+        sp.title = '重要度 ' + r.priority + ' 级（排序时压过状态与时间）';
+        td.appendChild(sp);
+      }
+      var fu = followUpOf(r);
+      if (fu.at) {
+        var chip = el('button', 'fuchip' + (fu.at <= startOfDay(Date.now()) ? ' due' : ''),
+                      '🕐 ' + fmtDate(fu.at).slice(5));
+        chip.type = 'button';
+        chip.title = '跟进提醒：' + fmtDate(fu.at) + (fu.note ? ('\n' + fu.note) : '') + '\n点击可修改';
+        chip.addEventListener('click', function (e) { e.stopPropagation(); openFollowUp(r); });
+        td.appendChild(document.createElement('br'));
+        td.appendChild(chip);
+      }
       return td;
     },
     act: function (r) {
@@ -883,13 +1138,21 @@
     memo: function (r) {
       var td = document.createElement('td');
       var bs = memoBlocks(r);
+      // 格子里只放最新的一条；有多条时标出总数，点 more.. 看完整时间轴
+      if (bs.length > 1) {
+        var cnt = el('div', 'age', '最新的 MEMO 内容（共 ' + bs.length + ' 条）');
+        cnt.style.marginBottom = '3px';
+        td.appendChild(cnt);
+      }
       var box = el('div', 'memo clamp', bs.length ? bs[0].text : '');
-      var more = el('button', 'morebtn', 'more..');
+      var more = el('button', 'morebtn', bs.length > 1 ? ('查看全部 ' + bs.length + ' 条') : 'more..');
       more.type = 'button';
       more.hidden = true;
       more.addEventListener('click', function (e) { e.stopPropagation(); openMemoFull(r); });
       td.appendChild(box);
       td.appendChild(more);
+      // 有多条时按钮一定要露出来，不管最新那条有没有被截断
+      if (bs.length > 1) more.dataset.always = '1';
       return td;
     },
     company: function (r) { return el('td', 'co', r.company || '—'); },
@@ -947,7 +1210,6 @@
       td.appendChild(el('div', 'age', d === 0 ? '今天' : d + ' 天前'));
       return td;
     },
-    applicants: function (r) { return el('td', 'num', r.applicants || '—'); },
     tenure: function (r) { return el('td', 'num', r.tenure || '—'); },
     sector: function (r) { return el('td', null, r.sector || '—'); },
     epMonthly: function (r) { return el('td', 'num', r.epMonthly ? ('S$' + money(r.epMonthly)) : '—'); },
@@ -957,6 +1219,24 @@
   function buildHead() {
     var tr = $('thead-row');
     tr.textContent = '';
+
+    // 勾选列固定在最前面，不参与列管理（隐藏掉就没法批量操作了）
+    var pth = el('th', 'pick');
+    var all = document.createElement('input');
+    all.type = 'checkbox';
+    all.title = '全选 / 取消当前筛选出来的项目';
+    all.checked = VISIBLE.length > 0 && VISIBLE.every(function (r) { return PICKED[recKey(r)]; });
+    all.addEventListener('click', function (e) { e.stopPropagation(); });
+    all.addEventListener('change', function () {
+      VISIBLE.forEach(function (r) {
+        if (all.checked) PICKED[recKey(r)] = 1; else delete PICKED[recKey(r)];
+      });
+      lastPickIdx = -1;
+      apply();
+    });
+    pth.appendChild(all);
+    tr.appendChild(pth);
+
     colOrder().forEach(function (key) {
       if (colHidden(key)) return;
       var c = COL_BY_KEY[key];
@@ -979,11 +1259,41 @@
     });
   }
 
-  function rowNode(r) {
+  function rowNode(r, idx) {
     var tr = document.createElement('tr');
     if (CLOSED[r.status]) tr.className = 'closed';
     if (r.jobId) tr.id = 'job-' + r.jobId;      // Telegram 链接的锚点
+    tr.dataset.k = recKey(r);
     tr.classList.add('clickable');
+    if (PICKED[recKey(r)]) tr.classList.add('picked');
+
+    /* 勾选：单击切一条；按住 Shift 再点（或划过）就把上一次点的那条到这条之间
+       全部选上 —— 一次挑一批项目发速报时省事得多。 */
+    var ptd = el('td', 'pick');
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!PICKED[recKey(r)];
+    cb.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (e.shiftKey && lastPickIdx >= 0) { pickRange(lastPickIdx, idx, cb.checked); return; }
+      setPicked(r, cb.checked);
+      lastPickIdx = idx;
+      refreshPickBar();
+    });
+    // 按住 Shift 从已选那条一路划过来，中间的全部跟着选上
+    cb.addEventListener('mouseenter', function (e) {
+      if (!e.shiftKey || lastPickIdx < 0 || lastPickIdx === idx) return;
+      pickRange(lastPickIdx, idx, true);
+    });
+    ptd.appendChild(cb);
+    ptd.addEventListener('click', function (e) { e.stopPropagation(); });
+    tr.appendChild(ptd);
+
+    // 右键：直接设置这一条的跟进提醒
+    tr.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      openFollowUp(r);
+    });
 
     // 上次访问之后才出现的记录
     var fid = r.jobId || (r.company + '|' + r.title);
@@ -1006,7 +1316,6 @@
   }
 
   function apply() {
-    buildHead();
     var q = $('q').value.trim().toLowerCase();
     var fs = $('fstatus').value;
     var scoutOnly = $('fscout').classList.contains('on');
@@ -1022,6 +1331,12 @@
     });
 
     rows.sort(function (a, b) {
+      // 重要度压过一切：设了 ★ 的一定排在最上面，和状态顺位、时间新旧都无关。
+      // 手动点表头按别的列排序时不适用 —— 那是明确的「我要按这一列看」。
+      if (sortKey === 'status') {
+        var dp = (b.priority || 0) - (a.priority || 0);
+        if (dp !== 0) return dp;
+      }
       var x = a[sortKey], y = b[sortKey];
       if (sortKey === 'applicants' || sortKey === 'tenure') {
         var nx = num(x), ny = num(y);
@@ -1040,17 +1355,23 @@
       return String(x || '').localeCompare(String(y || ''), 'zh') * sortDir;
     });
 
+    // 表头里的全选框要知道当前筛选出来的是哪些，所以先定下 VISIBLE 再画表头
+    VISIBLE = rows;
+    buildHead();
+
     var tb = $('tb');
     tb.textContent = '';
     var frag = document.createDocumentFragment();
-    rows.forEach(function (r) { frag.appendChild(rowNode(r)); });
+    rows.forEach(function (r, i) { frag.appendChild(rowNode(r, i)); });
     tb.appendChild(frag);
 
     // -webkit-line-clamp 是视觉截断，只有排版完才知道有没有被截，所以在这里判断
     [].forEach.call(tb.querySelectorAll('.memo.clamp'), function (box) {
       var btn = box.nextElementSibling;
-      if (btn) btn.hidden = box.scrollHeight <= box.clientHeight + 1;
+      if (!btn) return;
+      btn.hidden = btn.dataset.always !== '1' && box.scrollHeight <= box.clientHeight + 1;
     });
+    refreshPickBar();
 
     $('empty').hidden = rows.length > 0;
     $('shown').textContent = rows.length === RECORDS.length
@@ -1225,8 +1546,14 @@
     if (r.sector) add('EP 所属行业', r.sector);
     if (r.epMonthly) add('最低月 base', 'S$' + money(r.epMonthly));
     if (r.epAnnual) add('年总所需', 'S$' + money(r.epAnnual));
-    add('申请数', r.applicants);
+    // 记录时从职位页抓下来的三项
+    add('总员工数', r.employees);
+    add('要求年限', r.years);
+    add('Job match', r.jobMatch);
     add('中位任职', r.tenure);
+    var fu = followUpOf(r);
+    add('跟进提醒', fu.at ? (fmtDate(fu.at) + (fu.note ? '　' + fu.note : '')) : '');
+
     var blocks = memoBlocks(r);
     if (blocks.length) {
       var mbox = document.createElement('div');
@@ -1240,7 +1567,18 @@
         item.appendChild(el('div', 'memobody', b.text));
         mbox.appendChild(item);
       });
-      add('MEMO（' + blocks.length + ' 条）', null, mbox);
+      // 项目名（这一格的标题）下面放「一键复制全部 MEMO」
+      var dt = document.createElement('dt');
+      dt.appendChild(el('div', null, 'MEMO（' + blocks.length + ' 条）'));
+      var copyAll = el('button', 'morebtn', '⧉ 复制全部');
+      copyAll.type = 'button';
+      copyAll.title = '把这条项目的全部 MEMO（含时间戳）复制到剪贴板';
+      copyAll.addEventListener('click', function () { copyAllMemos(r); });
+      dt.appendChild(copyAll);
+      g.appendChild(dt);
+      var dd = document.createElement('dd');
+      dd.appendChild(mbox);
+      g.appendChild(dd);
     } else add('MEMO', '');
 
     var open = $('dtOpen');
@@ -1253,6 +1591,165 @@
     var r = detailTarget;
     $('detailMask').hidden = true;
     if (r) openRemind(r);
+  });
+  $('dtFollow').addEventListener('click', function () {
+    var r = detailTarget;
+    $('detailMask').hidden = true;
+    if (r) openFollowUp(r);
+  });
+
+  /* ---------- 剪贴板 ---------- */
+  function copyText(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { toast(okMsg || '已复制'); },
+        function () { copyFallback(text, okMsg); }
+      );
+    } else {
+      copyFallback(text, okMsg);
+    }
+  }
+  // http:// 或旧浏览器上没有 clipboard API，退回 execCommand
+  function copyFallback(text, okMsg) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    toast(ok ? (okMsg || '已复制') : '复制失败，请手动选中');
+  }
+
+  /** 一条项目的全部 MEMO，按时间从新到旧，带时间戳 */
+  function copyAllMemos(r) {
+    var bs = memoBlocks(r);
+    if (!bs.length) { toast('这条还没有 MEMO'); return; }
+    var text = [(r.company || '—') + ' / ' + (r.title || '—'), ''].concat(
+      bs.map(function (b) { return '[' + fmtDT(b.ts) + ']\n' + b.text; })
+    ).join('\n\n');
+    copyText(text, '已复制 ' + bs.length + ' 条 MEMO');
+  }
+
+  /* ---------- 🕐 跟进提醒 ---------- */
+  var fuTarget = null;
+
+  function openFollowUp(r) {
+    fuTarget = r;
+    var fu = followUpOf(r);
+    $('fuWho').textContent = (r.company || '—') + ' / ' + (r.title || '—')
+      + '\n投递时间：' + fmtDT(r.ts) + '　当前状态：' + r.status;
+    $('fuDate').value = fu.at ? fmtDate(fu.at) : '';
+    $('fuNote').value = fu.note || '';
+    $('fuState').textContent = '';
+    $('fuState').className = 'status';
+    $('fuClear').hidden = !fu.at;
+    $('fuTip').textContent = r.jobId
+      ? '改动先存在这台机器上，等油猴脚本（在 LinkedIn 或本页面）跑起来时写回仓库。'
+      : '这条没有 Job ID，改动只能存在这台机器上，回传不了。';
+
+    var quick = $('fuQuick');
+    quick.textContent = '';
+    [['明天', 1], ['3 天后', 3], ['1 周后', 7], ['2 周后', 14], ['1 个月后', 30]].forEach(function (p) {
+      var b = el('button', null, p[0]);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        $('fuDate').value = fmtDate(startOfDay(Date.now()) + p[1] * 86400000);
+      });
+      quick.appendChild(b);
+    });
+
+    $('fuMask').hidden = false;
+    $('fuDate').focus();
+  }
+
+  function saveFollowUp(at, note) {
+    var r = fuTarget;
+    if (!r) return;
+    prefs.followUp[recKey(r)] = { at: at, note: note, ts: Date.now() };
+    savePrefs();
+    if (r.jobId) {
+      outboxPush({ op: 'followUp', jobId: String(r.jobId), site: r.site || 'linkedin',
+                   at: at, note: note, ts: Date.now() });
+    }
+    $('fuMask').hidden = true;
+    apply();
+    toast(at ? ('跟进提醒已设为 ' + fmtDate(at)) : '已清除跟进提醒');
+  }
+
+  $('fuSave').addEventListener('click', function () {
+    var at = parseDate($('fuDate').value);
+    if (!at) {
+      $('fuState').className = 'status err';
+      $('fuState').textContent = '请先选一个日期';
+      return;
+    }
+    saveFollowUp(at, $('fuNote').value.trim());
+  });
+  $('fuClear').addEventListener('click', function () { saveFollowUp(0, ''); });
+  $('fuCancel').addEventListener('click', function () { $('fuMask').hidden = true; });
+  $('fuMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+
+  /** 今天（或更早）该跟进、这一轮还没被手动关掉的 */
+  function dueFollowUps() {
+    var today = startOfDay(Date.now());
+    return RECORDS.filter(function (r) {
+      var fu = followUpOf(r);
+      return fu.at && fu.at <= today && !prefs.fuDone[recKey(r) + '@' + fu.at];
+    }).sort(function (a, b) { return followUpOf(a).at - followUpOf(b).at; });
+  }
+
+  var fuNotified = false;
+  function checkFollowUps() {
+    var due = dueFollowUps();
+    if (!due.length) { $('fuAlert').hidden = true; return; }
+
+    var box = $('fuAlertList');
+    box.textContent = '';
+    due.forEach(function (r) {
+      var fu = followUpOf(r);
+      var item = el('div', 'fuitem');
+      if (r.jobUrl) {
+        var a = el('a', 'fujob', (r.company || '—') + ' / ' + (r.title || '—'));
+        a.href = r.jobUrl; a.target = '_blank'; a.rel = 'noopener';
+        item.appendChild(a);
+      } else {
+        item.appendChild(el('div', 'fujob', (r.company || '—') + ' / ' + (r.title || '—')));
+      }
+      item.appendChild(el('div', 'fumeta',
+        '提醒日期：' + fmtDate(fu.at) + '　当前状态：' + r.status + '　投递于 ' + fmtDate(r.ts)));
+      if (fu.note) item.appendChild(el('div', 'funote', fu.note));
+      box.appendChild(item);
+    });
+    $('fuAlert').hidden = false;
+
+    if (!fuNotified && ('Notification' in window)) {
+      fuNotified = true;
+      var fire = function () {
+        try {
+          var n = new Notification('到了跟进提醒时间（' + due.length + ' 项）', {
+            body: due.map(function (r) { return (r.company || '—') + ' / ' + (r.title || '—'); })
+                     .join('\n').slice(0, 200),
+            tag: 'sgjob-followup',
+            icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="26">🕐</text></svg>')
+          });
+          n.onclick = function () { window.focus(); n.close(); };
+        } catch (e) { /* 通知失败不影响全屏提示 */ }
+      };
+      if (Notification.permission === 'granted') fire();
+      else if (Notification.permission === 'default') {
+        try { Notification.requestPermission().then(function (p) { if (p === 'granted') fire(); }); }
+        catch (e) { /* 老浏览器的回调式 API */ }
+      }
+    }
+  }
+
+  // 只有这个按钮能关掉；关掉就记下来，同一个提醒不再反复弹
+  $('fuAlertOk').addEventListener('click', function () {
+    dueFollowUps().forEach(function (r) { prefs.fuDone[recKey(r) + '@' + followUpOf(r).at] = Date.now(); });
+    savePrefs();
+    $('fuAlert').hidden = true;
   });
 
   /* ---------- MEMO 全文弹窗 ---------- */
@@ -1497,15 +1994,53 @@
       return;
     }
     var lastRead = prefs.lastRead || 0;
+    var target = targetMsgId();
     MESSAGES.forEach(function (m) {
       var box = el('div', 'msg' + (msgStamp(m) > lastRead ? ' unread' : ''));
+      box.id = 'msg-' + m.id;
+      if (target && target === m.id) box.classList.add('hl');
       box.appendChild(el('div', 'mt', m.text));
       var meta = fmtDT(m.createdAt);
       if (m.editedAt) meta += ' · 编辑于 ' + fmtDT(m.editedAt);
       if (m.author) meta += ' · ' + m.author;
-      box.appendChild(el('div', 'mm', meta));
+
+      // 🔗 每条留言都有自己的直达链接，点开会展开通知板并高亮这一条
+      var link = el('button', null, '🔗');
+      link.type = 'button';
+      link.title = '复制这条留言的直达链接';
+      link.addEventListener('click', function (e) {
+        e.stopPropagation();
+        copyText(msgLinkFor(m), '已复制这条留言的链接');
+      });
+      var mm = el('div', 'mm');
+      mm.appendChild(el('span', null, meta));
+      var ops = el('span', 'mops');
+      ops.appendChild(link);
+      mm.appendChild(ops);
+      box.appendChild(mm);
       list.appendChild(box);
     });
+  }
+
+  function msgLinkFor(m) {
+    return location.origin + location.pathname + '#msg-' + m.id;
+  }
+  function targetMsgId() {
+    var m = (location.hash || '').match(/^#msg-([A-Za-z0-9_-]+)$/);
+    return m ? m[1] : '';
+  }
+
+  /** 带 #msg-<id> 进来时：展开通知板、滚过去、高亮那一条 */
+  function openMsgFromHash() {
+    var id = targetMsgId();
+    if (!id) return;
+    if ($('board').hidden) openBoard({ keepUnread: true });
+    else renderBoard();
+    setTimeout(function () {
+      var node = document.getElementById('msg-' + id);
+      if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      else toast('链接指向的留言不在当前通知板里');
+    }, 60);
   }
 
   function refreshUnread() {
@@ -1687,6 +2222,85 @@
     });
 
     $('reportClose').addEventListener('click', function () { mask.hidden = true; });
+    mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  })();
+
+  /* ---------- 📣 勾选项目的速报 ---------- */
+  (function () {
+    var mask = $('pickMask'), state = $('pickState'), send = $('pickSend');
+    var currentText = '';
+
+    /** 和「当日速报」同一套排版：按状态分组，组内附链接与最新 MEMO */
+    function buildPickReport(list) {
+      var groups = [];
+      var byStatus = {};
+      list.forEach(function (r) {
+        if (!byStatus[r.status]) { byStatus[r.status] = []; groups.push(r.status); }
+        byStatus[r.status].push(r);
+      });
+      var lines = [
+        TG_PREFIX + ' 选中项目的速报',
+        fmtDT(Date.now()) + '　共 ' + list.length + ' 个项目'
+      ];
+      groups.forEach(function (st) {
+        var g = byStatus[st];
+        lines.push('', '▸ ' + st + '（' + g.length + '）');
+        g.forEach(function (r) {
+          var star = r.priority ? ('  ' + '✨'.repeat(r.priority)) : '';
+          lines.push('  · ' + (r.company || '—') + ' / ' + (r.title || '—') + star);
+          if (r.jobUrl) lines.push('    ' + r.jobUrl);
+          var bs = memoBlocks(r);
+          if (bs.length) {
+            var m = String(bs[0].text).replace(/\s+/g, ' ').trim();
+            lines.push('    ' + m.slice(0, 120) + (m.length > 120 ? '…' : ''));
+          }
+        });
+      });
+      lines.push('', '看板：' + location.origin + location.pathname);
+      var text = lines.join('\n');
+      return text.length > TG_LIMIT ? (text.slice(0, TG_LIMIT - 12) + '\n…（已截断）') : text;
+    }
+
+    $('pickGo').addEventListener('click', function () {
+      var list = pickedRecords();
+      if (!list.length) { toast('还没有勾选任何项目'); return; }
+      currentText = buildPickReport(list);
+      $('pickText').textContent = currentText;
+      $('pickCount').textContent = currentText.length + ' / ' + TG_LIMIT + ' 字';
+      $('pickCount').classList.toggle('over', currentText.length > TG_LIMIT);
+      state.className = 'status';
+      state.textContent = '';
+      send.disabled = !CONFIG.tgEndpoint;
+      if (!CONFIG.tgEndpoint) {
+        state.className = 'status err';
+        state.textContent = '还没有配置 Telegram 中继（config.json 的 tgEndpoint）';
+      }
+      mask.hidden = false;
+    });
+
+    $('pickClear').addEventListener('click', function () {
+      PICKED = {};
+      lastPickIdx = -1;
+      apply();
+    });
+
+    send.addEventListener('click', function () {
+      send.disabled = true;
+      state.className = 'status';
+      state.textContent = '发送中…';
+      tgSend(currentText).then(function () {
+        state.className = 'status ok';
+        state.textContent = '已发送到 Telegram 群';
+        toast('速报已发送');
+        setTimeout(function () { mask.hidden = true; }, 1000);
+      }).catch(function (e) {
+        state.className = 'status err';
+        state.textContent = '发送失败：' + (e.message || e);
+        send.disabled = false;
+      });
+    });
+
+    $('pickCancel').addEventListener('click', function () { mask.hidden = true; });
     mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   })();
 
