@@ -373,10 +373,12 @@
   .msg.hl { background: #fff5c2; border-radius: 8px; padding-left: 10px; padding-right: 10px; }
   @media (prefers-color-scheme: dark) { .msg.hl { background: #4a4218; } }
 
-  /* ---------- 勾选项目 → 发送选中项目的速报 ---------- */
-  th.pick, td.pick { width: 34px; text-align: center; padding-left: 10px; padding-right: 4px; }
-  td.pick input, th.pick input { width: 15px; height: 15px; cursor: pointer; margin: 2px 0 0; }
-  tr.picked > td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  /* ---------- 选中项目 → 发送选中项目的速报 ----------
+     没有复选框：按住 Shift 划过或点击就选上，选中的行整行染色 + 左侧色条。 */
+  tr.picked > td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  tr.picked > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  /* 选中模式里单击是「选/不选」，不再弹详情，光标别再暗示可点开 */
+  body.selmode tr.clickable { cursor: cell; }
   .pickbar {
     position: fixed; right: 20px; bottom: 136px; z-index: 46;
     display: flex; align-items: center; gap: 10px;
@@ -385,6 +387,7 @@
   }
   .pickbar[hidden] { display: none; }
   .pickbar b { font-variant-numeric: tabular-nums; }
+  .pickbar .hint { display: block; color: var(--sub); font-size: 11px; }
   .pickbar button {
     font: inherit; font-size: 12px; font-weight: 700; padding: 7px 13px; border-radius: 9px;
     border: 0; background: var(--accent); color: #fff; cursor: pointer;
@@ -428,9 +431,9 @@
     border: 1px solid var(--line); background: var(--bg); color: var(--fg);
   }
   .chips button:hover { border-color: var(--accent); color: var(--accent); }
-  /* 待回传的改动提示 */
+  /* 待回传的改动提示。抬高一点，把最底下让给 toast */
   .pendbar {
-    position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; z-index: 47;
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 72px; z-index: 47;
     background: var(--card); border: 1px solid var(--accent); border-radius: 999px;
     box-shadow: var(--pop); padding: 8px 16px; font-size: 12px; color: var(--sub);
   }
@@ -479,6 +482,7 @@
     <button class="toggle" id="fscout" type="button" aria-pressed="false">🌟 人事主动 scout 的案件</button>
     <button class="toggle" id="openPrefs" type="button" title="显示设置">⚙ 设置</button>
     <span class="hint" id="shown"></span>
+    <span class="hint" title="按住 Shift 后鼠标划过或点击若干行即可多选，右下角会出现「发送速报」">⇧ 多选</span>
   </div>
 
   <div class="tblwrap">
@@ -689,7 +693,7 @@
 </div>
 
 <div class="pickbar" id="pickBar" hidden>
-  <span>已选 <b id="pickN">0</b> 项</span>
+  <span>已选 <b id="pickN">0</b> 项<small class="hint">单击继续选／取消，点「清空」退出选中模式</small></span>
   <button type="button" id="pickGo">📣 发送速报</button>
   <button class="ghost" type="button" id="pickClear">清空</button>
 </div>
@@ -1040,6 +1044,9 @@
   var PICKED = {};
   var lastPickIdx = -1;    // 上一次点的那一行，Shift 范围选的锚点
 
+  /** 选中模式：只要还有选中的项目就一直生效，这期间单击行不弹详情 */
+  function selMode() { return Object.keys(PICKED).length > 0; }
+
   function setPicked(r, on) {
     if (on) PICKED[recKey(r)] = r; else delete PICKED[recKey(r)];
     var tr = document.querySelector('#tb tr[data-k="' + cssEsc(recKey(r)) + '"]');
@@ -1050,23 +1057,7 @@
     return (window.CSS && CSS.escape) ? CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&');
   }
 
-  /** 把 a..b（含两端）之间显示出来的行全部设成 on */
-  function pickRange(a, b, on) {
-    var lo = Math.min(a, b), hi = Math.max(a, b);
-    for (var i = lo; i <= hi; i++) {
-      var r = VISIBLE[i];
-      if (r) setPicked(r, on);
-    }
-    lastPickIdx = b;
-    // 勾选状态是逐行改的，复选框本身要跟着对上
-    [].forEach.call(document.querySelectorAll('#tb td.pick input'), function (cb, i) {
-      var rec = VISIBLE[i];
-      if (rec) cb.checked = !!PICKED[recKey(rec)];
-    });
-    refreshPickBar();
-  }
-
-  /** 勾中的记录，按清单里的显示顺序；被筛掉的排在后面（仍然算数） */
+  /** 选中的记录，按清单里的显示顺序；被筛掉的排在后面（仍然算数） */
   function pickedRecords() {
     var out = [], seen = {};
     VISIBLE.forEach(function (r) {
@@ -1081,6 +1072,8 @@
     var n = Object.keys(PICKED).length;
     $('pickBar').hidden = !n;
     $('pickN').textContent = n;
+    // 选中模式下单击不再弹详情，光标也别再暗示「可点开」
+    document.body.classList.toggle('selmode', n > 0);
   }
 
   (function initFilter() {
@@ -1220,23 +1213,6 @@
     var tr = $('thead-row');
     tr.textContent = '';
 
-    // 勾选列固定在最前面，不参与列管理（隐藏掉就没法批量操作了）
-    var pth = el('th', 'pick');
-    var all = document.createElement('input');
-    all.type = 'checkbox';
-    all.title = '全选 / 取消当前筛选出来的项目';
-    all.checked = VISIBLE.length > 0 && VISIBLE.every(function (r) { return PICKED[recKey(r)]; });
-    all.addEventListener('click', function (e) { e.stopPropagation(); });
-    all.addEventListener('change', function () {
-      VISIBLE.forEach(function (r) {
-        if (all.checked) PICKED[recKey(r)] = 1; else delete PICKED[recKey(r)];
-      });
-      lastPickIdx = -1;
-      apply();
-    });
-    pth.appendChild(all);
-    tr.appendChild(pth);
-
     colOrder().forEach(function (key) {
       if (colHidden(key)) return;
       var c = COL_BY_KEY[key];
@@ -1251,7 +1227,7 @@
         th.addEventListener('click', function () {
           var k = c.sort;
           if (k === sortKey) sortDir = -sortDir;
-          else { sortKey = k; sortDir = (k === 'ts' || k === 'updatedAt' || k === 'applicants') ? -1 : 1; }
+          else { sortKey = k; sortDir = (k === 'ts' || k === 'updatedAt') ? -1 : 1; }
           apply();
         });
       }
@@ -1267,27 +1243,15 @@
     tr.classList.add('clickable');
     if (PICKED[recKey(r)]) tr.classList.add('picked');
 
-    /* 勾选：单击切一条；按住 Shift 再点（或划过）就把上一次点的那条到这条之间
-       全部选上 —— 一次挑一批项目发速报时省事得多。 */
-    var ptd = el('td', 'pick');
-    var cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = !!PICKED[recKey(r)];
-    cb.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (e.shiftKey && lastPickIdx >= 0) { pickRange(lastPickIdx, idx, cb.checked); return; }
-      setPicked(r, cb.checked);
+    /* 选中项目：按住 Shift 不放，鼠标划过或点击就一条条选上（连着划就是多选）。
+       一旦选中过任何一条就进入「选中模式」，这时普通单击是切换选中，
+       不再弹详情 —— 直到点「清空」退出为止。 */
+    tr.addEventListener('mouseenter', function (e) {
+      if (!e.shiftKey) return;
+      setPicked(r, true);
       lastPickIdx = idx;
       refreshPickBar();
     });
-    // 按住 Shift 从已选那条一路划过来，中间的全部跟着选上
-    cb.addEventListener('mouseenter', function (e) {
-      if (!e.shiftKey || lastPickIdx < 0 || lastPickIdx === idx) return;
-      pickRange(lastPickIdx, idx, true);
-    });
-    ptd.appendChild(cb);
-    ptd.addEventListener('click', function (e) { e.stopPropagation(); });
-    tr.appendChild(ptd);
 
     // 右键：直接设置这一条的跟进提醒
     tr.addEventListener('contextmenu', function (e) {
@@ -1311,7 +1275,16 @@
       tr.appendChild(CELL[key](r));
     });
     decorateScheduled(tr, r);
-    tr.addEventListener('click', function () { openDetail(r); });
+    tr.addEventListener('click', function (e) {
+      // Shift 点、或者已经在选中模式里 → 这一下是「选/不选」，不是「看详情」
+      if (e.shiftKey || selMode()) {
+        setPicked(r, !PICKED[recKey(r)]);
+        lastPickIdx = idx;
+        refreshPickBar();
+        return;
+      }
+      openDetail(r);
+    });
     return tr;
   }
 
@@ -1338,7 +1311,7 @@
         if (dp !== 0) return dp;
       }
       var x = a[sortKey], y = b[sortKey];
-      if (sortKey === 'applicants' || sortKey === 'tenure') {
+      if (sortKey === 'tenure') {
         var nx = num(x), ny = num(y);
         if (isNaN(nx) && isNaN(ny)) return 0;
         if (isNaN(nx)) return 1;
@@ -2030,12 +2003,12 @@
     return m ? m[1] : '';
   }
 
-  /** 带 #msg-<id> 进来时：展开通知板、滚过去、高亮那一条 */
+  /** 带 #msg-<id> 进来时：展开通知板并最大化、滚过去、高亮那一条 */
   function openMsgFromHash() {
     var id = targetMsgId();
     if (!id) return;
-    if ($('board').hidden) openBoard({ keepUnread: true });
-    else renderBoard();
+    maximizeBoard();
+    openBoard({ keepUnread: true });
     setTimeout(function () {
       var node = document.getElementById('msg-' + id);
       if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -2057,6 +2030,18 @@
     refreshUnread();
   }
 
+  /** 把通知板铺到接近满屏 —— 从留言链接点进来时看全文用 */
+  function maximizeBoard() {
+    var b = prefs.board;
+    b.w = Math.max(300, window.innerWidth - 40);
+    b.h = Math.max(200, window.innerHeight - 40);
+    b.x = 20;
+    b.y = 20;
+    b.placed = true;
+    savePrefs();
+    placeBoard();
+  }
+
   function placeBoard() {
     var b = prefs.board;
     if (!b.placed) {
@@ -2075,12 +2060,16 @@
     n.style.width = b.w + 'px'; n.style.height = b.h + 'px';
   }
 
-  function openBoard() {
+  /**
+   * opts.keepUnread：未读标记先留着，别自动清。
+   * 有未读时页面一加载就是展开的，这时候如果 1.2 秒后自动标为已读，
+   * 「哪几条是新的」就看不出来了 —— 只有手动点「全部标为已读」或「收起」才算看过。
+   */
+  function openBoard(opts) {
     placeBoard();
     $('board').hidden = false;
     renderBoard();
-    // 打开即视为已读，但先渲染出未读标记再清
-    setTimeout(markAllRead, 1200);
+    if (!(opts && opts.keepUnread)) setTimeout(markAllRead, 1200);
   }
 
   $('boardFab').addEventListener('click', function () {
@@ -2088,7 +2077,11 @@
     else $('board').hidden = true;
   });
   $('boardClose').addEventListener('click', function () { $('board').hidden = true; });
-  $('boardMarkRead').addEventListener('click', markAllRead);
+  // 标为已读之后板子就没什么可看的了，顺手收起来
+  $('boardMarkRead').addEventListener('click', function () {
+    markAllRead();
+    $('board').hidden = true;
+  });
 
   // 拖拽 + 缩放
   (function () {
@@ -2353,7 +2346,11 @@
     // 清掉 hash，免得刷新后又亮起来
     history.replaceState(null, '', location.pathname + location.search);
   });
-  window.addEventListener('hashchange', function () { applyHighlight(true); openMemoFromHash(); });
+  window.addEventListener('hashchange', function () {
+    applyHighlight(true);
+    openMemoFromHash();
+    openMsgFromHash();
+  });
 
   /* ---------- 功能反馈 ---------- */
   $('fbSend').addEventListener('click', function () {
@@ -2400,12 +2397,31 @@
   openMemoFromHash();   // 带 #memo-<id> 进来时直接弹出 MEMO 时间轴
   renderBoard();
   refreshUnread();
+  refreshPending();
+
+  // 有未读留言就直接展开通知板，不用先去点右下角那个按钮。
+  // 未读标记留着不清，直到手动点「全部标为已读」或「收起」。
+  if (unreadList().length && !targetMsgId()) openBoard({ keepUnread: true });
+  openMsgFromHash();    // 带 #msg-<id> 进来时展开并最大化通知板，滚到那一条
+
+  checkFollowUps();               // 到期的跟进提醒，一进页面就弹
+  setInterval(checkFollowUps, 5 * 60000);   // 页面开一整天时跨过零点也能弹
+
+  // 回传队列被油猴脚本取走后更新提示；storage 事件只在别的标签页写入时触发，
+  // 所以本页面的桥接落地要靠这个轮询兜底。
+  setInterval(refreshPending, 5000);
+  window.addEventListener('storage', function (e) {
+    if (e.key === OUTBOX || e.key === OUTBOX_ACK) refreshPending();
+  });
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     $('remindMask').hidden = true;
     $('prefsMask').hidden = true;
     $('memoMask').hidden = true;
+    $('fuMask').hidden = true;
+    $('pickMask').hidden = true;
+    $('detailMask').hidden = true;
   });
 })();
 </script>
