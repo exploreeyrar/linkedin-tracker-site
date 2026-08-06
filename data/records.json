@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T03:39:12.405Z",
+ "updatedAt": "2026-08-06T03:57:28.320Z",
  "count": 96,
  "records": [
   {
@@ -173,10 +173,10 @@
    "applicants": "10",
    "tenure": "2.3 years",
    "memo": "",
-   "status": "已投递等联络",
+   "status": "无消息疑似书类落了",
    "scout": false,
    "sector": "",
-   "updatedAt": 0,
+   "updatedAt": 1785988643318,
    "epMonthly": 0,
    "epAnnual": 0
   },
@@ -1001,9 +1001,9 @@
    "applicants": "8",
    "tenure": "6.5 years",
    "memo": "",
-   "status": "已投递等联络",
+   "status": "无消息疑似书类落了",
    "scout": false,
-   "updatedAt": 0,
+   "updatedAt": 1785988638428,
    "epMonthly": 0,
    "epAnnual": 0
   },
