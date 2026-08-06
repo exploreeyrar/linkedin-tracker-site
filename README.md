@@ -13,10 +13,31 @@ LinkedIn 职位页
 
 另有每天一次的定时构建（`schedule`）作为兜底，即使某次推送没触发成功，页面也会被重建。
 
+## 安装与自动更新（油猴脚本）
+
+脚本已经在这个仓库里，头部带了 `@updateURL` / `@downloadURL`，所以只需要**装一次**：
+
+浏览器打开
+<https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js>
+→ Tampermonkey 弹出安装页 → 安装。
+
+之后 Tampermonkey 会定期（默认每天，也可以在管理面板手动「检查更新」）去那个地址比对版本，
+远端 `@version` 更大就自动换成新版，不用再手动复制粘贴。
+
+几点要注意：
+
+- **改完代码必须把 `@version` 往上加**，否则推上去也不会更新 —— 这是最容易忘的一步
+- `raw.githubusercontent.com` 有约 5 分钟 CDN 缓存，push 完不会立刻可见；想马上验证就等几分钟再点「检查更新」
+- 第一次必须从上面那个 URL 装。手动粘贴进编辑器的那份没有来源信息，Tampermonkey 不知道去哪儿查更新
+- 元数据里新增 `@connect` / `@grant` 时，更新可能会弹一次确认，不是每次都静默
+- **安全上要清楚**：开了自动更新，等于「谁能往 `main` 推代码，谁就能在你的 LinkedIn 页面里跑任意脚本」——
+  而这个脚本手里有 GitHub PAT、`@connect *` 和 `GM_xmlhttpRequest`。别把仓库写权限给别人
+
 ## 文件
 
 | 文件 | 作用 |
 |---|---|
+| `linkedin-applied-tracker.user.js` | 油猴脚本本体。装到 Tampermonkey 里跑，见下面「安装与自动更新」 |
 | `data/records.json` | 数据源（投递记录 + 通知板）。**由油猴脚本整文件覆盖写入**，不要手工编辑 |
 | `config.json` | 站点配置。目前只有 Telegram 中继地址 |
 | `template.html` | 页面模板，`__DATA__` 是数据注入点。想改配色/布局改这里 |
