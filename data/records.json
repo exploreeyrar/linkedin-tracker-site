@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T05:36:14.819Z",
+ "updatedAt": "2026-08-06T05:36:52.429Z",
  "count": 96,
  "records": [
   {
@@ -1767,9 +1767,19 @@
    "ts": 1785681641755,
    "applicants": "",
    "tenure": "1.4 years",
-   "memo": "应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenrrging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?",
+   "memo": "[2026-08-06 14:36] 已递交。\n\n[2026-08-03 23:34] 应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenrrging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?",
    "status": "已投递等联络",
-   "updatedAt": 1785767695777,
+   "updatedAt": 1785994607421,
+   "memos": [
+    {
+     "ts": 1785994607421,
+     "text": "已递交。"
+    },
+    {
+     "ts": 1785767695777,
+     "text": "应聘需填入以下问题：\n1\nDescribe the fastest #1 measurable outcome you initiated and delivered in the past 12 months.\nPlease include:\n• What made it particularly challenrrging?\n• The total timeline from start to finish\n• Learnings/reflection\n• The final outcome and business impact\n• Looking back, what you would do differently?\n\n2\nSearch Motivation: Please describe the reason for your selection:\n\nWhat is your current job search timeline? Are there any deadlines or competing processes we should be aware of?\n\n3\nWhy are you considering leaving your most recent or current position?"
+    }
+   ],
    "epMonthly": 0,
    "epAnnual": 0
   },
