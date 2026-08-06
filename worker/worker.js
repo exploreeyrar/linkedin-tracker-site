@@ -72,8 +72,20 @@ async function tgSend(env, text) {
 const REPORT_HOUR = 21;
 const REPORT_MIN = 30;
 const REPORT_TITLE = '当日新情况的速报';
-// 这两种不算「新情况」：状态还停在已投递等联络的，和当天刚投还没动过的
-const REPORT_SKIP_STATUS = { '已投递等联络': 1 };
+// 这两种不算「新情况」：状态还停在「默认状态」（投完在等，没实质进展）的，
+// 和当天刚投还没动过的。
+// 状态名在油猴脚本里可以改，所以「默认状态是哪条」要看数据里推上来的
+// statusDefs（role === 'default'）；没有定义时才退回这个内置名字。
+const REPORT_SKIP_FALLBACK = '已投递等联络';
+
+/** 这一批要跳过的状态名集合 */
+function reportSkipSet(data) {
+  const defs = (data && data.statusDefs) || [];
+  const hit = defs.filter((d) => d && d.role === 'default').map((d) => d.name);
+  const out = Object.create(null);
+  (hit.length ? hit : [REPORT_SKIP_FALLBACK]).forEach((n) => { out[n] = 1; });
+  return out;
+}
 
 // 内置的状态顺位，和油猴脚本 / build.py 里的 STATUSES 一致。
 // 数据源里带了 statusOrder 就以它为准（用户可能拖动调整过）。
@@ -168,10 +180,15 @@ async function fetchRecords(env) {
   if (!res.ok) return null;
   const blob = await res.json().catch(() => null);
   if (!blob) return null;
-  if (Array.isArray(blob)) return { records: blob, statusOrder: DEFAULT_STATUS_ORDER };
-  const order = Array.isArray(blob.statusOrder) && blob.statusOrder.length
-    ? blob.statusOrder : DEFAULT_STATUS_ORDER;
-  return { records: blob.records || [], statusOrder: order };
+  if (Array.isArray(blob)) return { records: blob, statusOrder: DEFAULT_STATUS_ORDER, statusDefs: [] };
+  const defs = Array.isArray(blob.statusDefs) ? blob.statusDefs : [];
+  // 顺位优先用 statusDefs（它才是权威），退而求其次用 statusOrder，最后才是内置顺序
+  let order = defs.length ? defs.map((d) => d && d.name).filter(Boolean) : [];
+  if (!order.length) {
+    order = Array.isArray(blob.statusOrder) && blob.statusOrder.length
+      ? blob.statusOrder : DEFAULT_STATUS_ORDER;
+  }
+  return { records: blob.records || [], statusOrder: order, statusDefs: defs };
 }
 
 /**
@@ -198,15 +215,18 @@ function listOrderComparator(statusOrder) {
 function buildReport(data, now, boardUrl, start) {
   const records = (data && data.records) || [];
   const end = now || Date.now();
+  const skip = reportSkipSet(data);
   const hits = records.filter((r) => {
     if (!r || !r.updatedAt) return false;                 // 没改过（含当天新投的）
     if (r.updatedAt < start || r.updatedAt > end) return false;
-    return !REPORT_SKIP_STATUS[r.status];
+    return !skip[r.status];
   });
   if (!hits.length) return null;
 
-  // 按状态归类；组的先后与组内顺序都照清单里的显示顺位来
-  const cmp = listOrderComparator(data && data.statusOrder);
+  // 按状态归类；组的先后与组内顺序都照清单里的显示顺位来。
+  // statusDefs 才是权威顺位，没有才退到 statusOrder，再没有就用内置顺序。
+  const defOrder = ((data && data.statusDefs) || []).map((d) => d && d.name).filter(Boolean);
+  const cmp = listOrderComparator(defOrder.length ? defOrder : (data && data.statusOrder));
   const groups = new Map();
   hits.sort(cmp).forEach((r) => {
     if (!groups.has(r.status)) groups.set(r.status, []);

@@ -22,7 +22,9 @@ CONFIG = os.path.join(ROOT, "config.json")
 TEMPLATE = os.path.join(ROOT, "template.html")
 OUTDIR = os.path.join(ROOT, "dist")
 
-# 顺序即看板的默认排序顺位，必须和油猴脚本里的 STATUSES 保持一致
+# 内置状态清单，顺序即看板的默认排序顺位。
+# 状态在油猴脚本里可以改名 / 新增 / 删除，改过之后脚本会把整份定义（statusDefs）
+# 推上来，那时候以推上来的为准；这里这份只是「数据里没带定义」时的兜底。
 STATUSES = [
     "等己方处理(XR ball)",
     "等己方处理(己 ball)",
@@ -54,17 +56,31 @@ STATUS_ALIAS = {
 
 # 逐字匹配之外再做一次「去标点 + 対/对 统一」的模糊匹配，老数据不会落到未知状态
 _PUNCT = str.maketrans("", "", "，,、･·・ \t")
-_LOOSE = {s.translate(_PUNCT).replace("対", "对"): s for s in STATUSES}
+
+# 当前生效的状态名（由 load() 按推上来的定义设置）。
+# 必须以它为准而不是内置的 STATUSES：用户把状态改成了近似的写法时，
+# 拿内置清单去模糊匹配会把改过的名字又「归一」回旧写法。
+_ACTIVE_NAMES = list(STATUSES)
+_ACTIVE_DEFAULT = DEFAULT_STATUS
+
+
+def set_active_statuses(names, default_name):
+    global _ACTIVE_NAMES, _ACTIVE_DEFAULT
+    _ACTIVE_NAMES = list(names) or list(STATUSES)
+    _ACTIVE_DEFAULT = default_name or _ACTIVE_NAMES[0]
 
 
 def canon_status(value):
     if not value:
-        return DEFAULT_STATUS
-    if value in STATUSES:
+        return _ACTIVE_DEFAULT
+    if value in _ACTIVE_NAMES:
         return value
-    if value in STATUS_ALIAS:
-        return STATUS_ALIAS[value]
-    return _LOOSE.get(value.translate(_PUNCT).replace("対", "对"), value)
+    # 内置别名只在目标名字确实还在用时才生效（用户可能已经把它改名或删掉了）
+    alias = STATUS_ALIAS.get(value)
+    if alias and alias in _ACTIVE_NAMES:
+        return alias
+    loose = {n.translate(_PUNCT).replace("対", "对"): n for n in _ACTIVE_NAMES}
+    return loose.get(value.translate(_PUNCT).replace("対", "对"), value)
 
 # 只允许指向招聘站本身的链接进入公开页面，避免脏数据把页面变成任意跳转。
 # jobstreet 各国站都是子域（sg./my./ph.…），另有 jobstreet.com.sg 这种老域名。
@@ -232,10 +248,78 @@ def load_config():
     return cfg
 
 
+def builtin_defs():
+    """内置状态的完整定义；数据里没带 statusDefs 时用它兜底。"""
+    closed = {"面试落了", "书类落了", "对方招到人了", "无消息疑似书类落了"}
+    rejected = {"面试落了", "书类落了"}
+    advanced = {
+        "已安排面试、面试准备中", "一次面试通过、等対方安排下一轮",
+        "二次面试通过、等对方安排下一轮", "三次面试通过、等对方安排下一轮",
+        "四次面试通过、等对方安排下一轮", "人事 Offer Call", "内定",
+    }
+    waiting = {
+        "已投递等联络", "等己方处理(XR ball)", "等己方处理(己 ball)",
+        "一次人事面谈结束、等对方联络",
+    }
+    roles = {"已投递等联络": "default", "无消息疑似书类落了": "nonews"}
+    return [
+        {
+            "id": f"b{i}", "name": n,
+            "closed": n in closed, "rejected": n in rejected,
+            "advanced": n in advanced, "waiting": n in waiting,
+            "role": roles.get(n, ""),
+        }
+        for i, n in enumerate(STATUSES)
+    ]
+
+
+def normalize_defs(raw_defs, order):
+    """
+    状态定义。油猴脚本里状态可以改名 / 新增 / 删除，所以这里**不做名字白名单**——
+    推上来的就是权威，否则用户自定义的状态会被整条丢掉。
+    只做类型清洗；一条有效的都没有才退回内置定义。
+    """
+    out, seen = [], set()
+    for i, d in enumerate(raw_defs or []):
+        if not isinstance(d, dict):
+            continue
+        name = s(d.get("name"), 40)
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        out.append({
+            "id": s(d.get("id"), 40) or f"s{i}",
+            "name": name,
+            "closed": bool(d.get("closed")),
+            "rejected": bool(d.get("rejected")),
+            "advanced": bool(d.get("advanced")),
+            "waiting": bool(d.get("waiting")),
+            "role": s(d.get("role"), 20),
+        })
+    if out:
+        return out
+
+    # 老版本只推了 statusOrder（纯名字数组）：按它排，属性从内置定义里认领
+    by_name = {d["name"]: d for d in builtin_defs()}
+    names = [x for x in (order or []) if isinstance(x, str) and x]
+    if not names:
+        return builtin_defs()
+    out = []
+    for i, n in enumerate(names):
+        if n in seen:
+            continue
+        seen.add(n)
+        out.append(by_name.get(n) or {
+            "id": f"o{i}", "name": n, "closed": False, "rejected": False,
+            "advanced": False, "waiting": False, "role": "",
+        })
+    return out
+
+
 def load():
     if not os.path.exists(DATA):
         print(f"! 找不到 {DATA}，按空清单构建", file=sys.stderr)
-        return [], "", [], list(STATUSES)
+        return [], "", [], builtin_defs()
     with open(DATA, encoding="utf-8") as f:
         try:
             blob = json.load(f)
@@ -247,16 +331,17 @@ def load():
         updated = s(blob.get("updatedAt"), 40)
         raw_msgs = blob.get("messages") or []
         order = blob.get("statusOrder") or []
+        raw_defs = blob.get("statusDefs") or []
     elif isinstance(blob, list):
-        raw, updated, raw_msgs, order = blob, "", [], []
+        raw, updated, raw_msgs, order, raw_defs = blob, "", [], [], []
     else:
         sys.exit("data/records.json 顶层必须是数组或对象")
 
-    # 油猴脚本里可以拖动调整状态优先级，推上来就以它为准；
-    # 只认已知状态，缺的按内置顺序补在后面，脏数据不会打乱排序。
-    statuses = [x for x in order if isinstance(x, str) and x in STATUSES]
-    seen = set(statuses)
-    statuses += [x for x in STATUSES if x not in seen]
+    defs = normalize_defs(raw_defs, order)
+    statuses = [d["name"] for d in defs]
+    # 记录清洗（canon_status）要按这份名字来，所以必须先设好
+    default_name = next((d["name"] for d in defs if d["role"] == "default"), statuses[0])
+    set_active_statuses(statuses, default_name)
 
     records = [r for r in (normalize(x) for x in raw) if r]
     # 重要度最优先（★ 多的排最上面，无视状态与时间），
@@ -270,11 +355,12 @@ def load():
     if not updated and records:
         newest = max(r["ts"] for r in records)      # 已不按时间排序，要取最大值
         updated = datetime.fromtimestamp(newest / 1000, timezone.utc).isoformat()
-    return records, updated, messages, statuses
+    return records, updated, messages, defs
 
 
 def main():
-    records, updated, messages, statuses = load()
+    records, updated, messages, defs = load()
+    statuses = [d["name"] for d in defs]
     cfg = load_config()
 
     with open(TEMPLATE, encoding="utf-8") as f:
@@ -286,7 +372,8 @@ def main():
         "count": len(records),
         "records": records,
         "messages": messages,
-        "statuses": statuses,
+        "statuses": statuses,       # 只要名字，顺序即显示顺位（页面排序用）
+        "statusDefs": defs,         # 带 closed / advanced / waiting / role 的完整定义
         "config": cfg,
     }
     # 嵌进 <script type="application/json">，必须堵死提前闭合标签的可能

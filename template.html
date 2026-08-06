@@ -747,8 +747,14 @@
     return r.memo ? [{ ts: r.updatedAt || r.ts, text: r.memo }] : [];
   }
 
-  var CLOSED = { '书类落了': 1, '面试落了': 1, '对方招到人了': 1, '无消息疑似书类落了': 1 };
-  var ADVANCED = {
+  /* 状态在油猴脚本里可以改名 / 新增，所以「算不算落选」这类语义不能按名字硬编码 ——
+     跟着 statusDefs 走。老数据没带定义时，退回下面这份按内置名字的表。 */
+  var STATUS_DEFS = PAYLOAD.statusDefs || [];
+  var DEF_BY_NAME = {};
+  STATUS_DEFS.forEach(function (d) { if (d && d.name) DEF_BY_NAME[d.name] = d; });
+
+  var LEGACY_CLOSED = { '书类落了': 1, '面试落了': 1, '对方招到人了': 1, '无消息疑似书类落了': 1 };
+  var LEGACY_ADVANCED = {
     '已安排面试、面试准备中': 1,
     '一次面试通过、等対方安排下一轮': 1,
     '二次面试通过、等对方安排下一轮': 1,
@@ -758,15 +764,48 @@
     '内定': 1
   };
   // 还没有下一步安排、在等着的：用于「等待中」与「超 N 天无进展」两个指标
-  var WAITING = {
+  var LEGACY_WAITING = {
     '已投递等联络': 1, '等己方处理(XR ball)': 1, '等己方处理(己 ball)': 1,
     '一次人事面谈结束、等对方联络': 1
   };
+  function statusFlag(name, key, legacy) {
+    var d = DEF_BY_NAME[name];
+    if (d) return !!d[key];
+    return !!legacy[name];
+  }
+  // 保持原来的写法（CLOSED[r.status]）可用，改成函数式的判断
+  var CLOSED   = { }; var ADVANCED = { }; var WAITING  = { };
+  (function seedFlagMaps() {
+    var names = {};
+    (PAYLOAD.statuses || []).forEach(function (n) { names[n] = 1; });
+    RECORDS.forEach(function (r) { names[r.status] = 1; });
+    Object.keys(names).forEach(function (n) {
+      if (statusFlag(n, 'closed', LEGACY_CLOSED)) CLOSED[n] = 1;
+      if (statusFlag(n, 'advanced', LEGACY_ADVANCED)) ADVANCED[n] = 1;
+      if (statusFlag(n, 'waiting', LEGACY_WAITING)) WAITING[n] = 1;
+    });
+  })();
   var STALE_DAYS = 14;
   var TG_PREFIX = '#SGJOB';
   var TG_LIMIT = 4096;          // Telegram 单条上限，Worker 也按这个值拦
 
   function statusRank(s) { var i = STATUS_ORDER.indexOf(s); return i === -1 ? STATUS_ORDER.length : i; }
+
+  /**
+   * 状态的显示颜色。内置的那批有专门调过的配色；
+   * 用户新增或改名之后的状态没有对应变量，就按名字算一个稳定的色相 ——
+   * 总比一律灰色分不清强，而且同一个名字每次算出来都一样。
+   */
+  var CUSTOM_COLOR = {};
+  function statusColor(name) {
+    if (STATUS_VAR[name]) return cssVar(STATUS_VAR[name]);
+    if (CUSTOM_COLOR[name]) return CUSTOM_COLOR[name];
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    var dark = matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+    CUSTOM_COLOR[name] = 'hsl(' + h + ',' + (dark ? '65%,70%' : '55%,38%') + ')';
+    return CUSTOM_COLOR[name];
+  }
 
   // 列的定义与默认顺序；顺序和显隐都可以在设置里改，存本机
   var COLUMNS = [
@@ -981,7 +1020,7 @@
     order.forEach(function (s) {
       var n = counts[s] || 0;
       if (!n) return;
-      var color = cssVar(STATUS_VAR[s] || '--sub');
+      var color = statusColor(s);
 
       var seg = el('i');
       seg.style.width = (n / total * 100) + '%';
@@ -1094,7 +1133,7 @@
     status: function (r) {
       var td = document.createElement('td');
       var b = el('span', 'badge', r.status || '—');
-      b.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
+      b.style.color = statusColor(r.status);
       td.appendChild(b);
       if (r.scout) {
         var st = el('span', 'star', '🌟');
@@ -1495,7 +1534,7 @@
       g.appendChild(dd);
     };
     var badge = el('span', 'badge', r.status || '—');
-    badge.style.color = cssVar(STATUS_VAR[r.status] || '--sub');
+    badge.style.color = statusColor(r.status);
     add('状态', null, badge);
     if (r.scout) add('人事主动 scout', '🌟 是');
     add('更新时间', fmtDT(r.updatedAt || r.ts) + (r.updatedAt ? '' : '（未改动过，同投递时间）'));
