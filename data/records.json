@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T03:38:48.801Z",
- "count": 95,
+ "updatedAt": "2026-08-06T03:39:12.405Z",
+ "count": 96,
  "records": [
+  {
+   "id": "rmsgyvex73xkqi",
+   "site": "linkedin",
+   "jobId": "4439978995",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4439978995/",
+   "company": "Infobip",
+   "title": "Account Executive",
+   "hirers": [],
+   "ts": 1785987546977,
+   "applicants": "10",
+   "tenure": "4.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsgyux0vcfvjl",
    "site": "linkedin",
