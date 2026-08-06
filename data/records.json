@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T06:29:05.447Z",
+ "updatedAt": "2026-08-06T06:30:03.584Z",
  "count": 96,
  "records": [
   {
@@ -132,8 +132,8 @@
    "status": "已投递等联络",
    "scout": false,
    "sector": "",
-   "updatedAt": 1785997740140,
-   "priority": 1,
+   "updatedAt": 1785997798579,
+   "priority": 0,
    "epMonthly": 0,
    "epAnnual": 0
   },
