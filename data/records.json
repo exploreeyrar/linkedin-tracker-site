@@ -1,8 +1,27 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-06T01:47:29.467Z",
- "count": 93,
+ "updatedAt": "2026-08-06T02:35:31.345Z",
+ "count": 94,
  "records": [
+  {
+   "id": "rmsgwlivccaxol",
+   "site": "linkedin",
+   "jobId": "4442609839",
+   "jobUrl": "https://www.linkedin.com/jobs/view/4442609839/",
+   "company": "Grab",
+   "title": "Merchant Sales Executive, OmniCommerce",
+   "hirers": [],
+   "ts": 1785983726301,
+   "applicants": "10",
+   "tenure": "5.4 years",
+   "memo": "",
+   "status": "已投递等联络",
+   "scout": false,
+   "sector": "",
+   "updatedAt": 0,
+   "epMonthly": 0,
+   "epAnnual": 0
+  },
   {
    "id": "rmsg8j72b9x521",
    "site": "linkedin",
