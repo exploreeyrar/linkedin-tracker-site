@@ -496,6 +496,23 @@ export class ChannelInbox {
     return hit;
   }
 
+  /**
+   * archive / 取回。存在服务端而不是各自的浏览器里 ——
+   * 这样谁 archive 的，所有人看到的都一样，且立刻广播出去。
+   */
+  async setArchived(uids, on) {
+    const all = await this.state.storage.list({ prefix: 'in:' });
+    const hit = [];
+    for (const [k, m] of all) {
+      if (!m || uids.indexOf(m.uid) === -1) continue;
+      m.archivedAt = on ? Date.now() : 0;
+      await this.state.storage.put(k, m);
+      hit.push(m.uid);
+    }
+    if (hit.length) this.broadcast({ type: 'arch', uids: hit, on: !!on, at: Date.now() });
+    return hit;
+  }
+
   async clear() {
     const all = await this.state.storage.list({ prefix: 'in:' });
     const uids = [...all.values()].map((m) => m && m.uid).filter(Boolean);
@@ -534,6 +551,12 @@ export class ChannelInbox {
       if (!msg) return new Response('bad', { status: 400 });
       await this.append(msg);
       return new Response('ok');
+    }
+    if (url.pathname === '/archive') {
+      const body = await request.json().catch(() => null);
+      const uids = (body && Array.isArray(body.uids)) ? body.uids : [];
+      const hit = await this.setArchived(uids, !!(body && body.on));
+      return new Response(JSON.stringify({ changed: hit }), { headers: { 'Content-Type': 'application/json' } });
     }
     if (url.pathname === '/delete') {
       const body = await request.json().catch(() => null);
@@ -588,6 +611,29 @@ async function inboxList(env, since) {
   const res = await stub.fetch('https://do/list?since=' + encodeURIComponent(since || 0));
   const data = await res.json().catch(() => ({ items: [] }));
   return { items: data.items || [], total: data.total || 0, gaps: data.gaps || [], live: true };
+}
+
+async function inboxArchive(env, uids, on) {
+  const stub = inboxStub(env);
+  if (!stub) {
+    // KV 兜底：整条重写一遍，只改 archivedAt
+    if (!env.SCHEDULE) return [];
+    const all = await kvInboxList(env, 0);
+    const hit = [];
+    for (const m of all) {
+      if (uids.indexOf(m.uid) === -1) continue;
+      m.archivedAt = on ? Date.now() : 0;
+      await env.SCHEDULE.put(inboxKey(m), JSON.stringify(m), { expirationTtl: 180 * 86400 });
+      hit.push(m.uid);
+    }
+    return hit;
+  }
+  const res = await stub.fetch('https://do/archive', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uids: uids, on: !!on })
+  });
+  const d = await res.json().catch(() => ({ changed: [] }));
+  return d.changed || [];
 }
 
 async function inboxDelete(env, uids) {
@@ -788,7 +834,20 @@ export default {
       }, 200, headers);
     }
 
-    // ---- 从看板上删掉某几条 / 全部清空（只动收件箱，不碰 Telegram 里的原消息）----
+    /* ---- archive / 取回 ----
+     * 存在服务端，不是各人的浏览器里：谁 archive 的，所有人看到的都一样。
+     * 消息本身留着，只是从主视图里收起来。 */
+    if (action === 'inbox_archive') {
+      let uids = [];
+      try { uids = JSON.parse(body.uids || '[]'); } catch (e) { uids = []; }
+      if (!Array.isArray(uids) || !uids.length) {
+        return json({ ok: false, description: 'missing uids' }, 400, headers);
+      }
+      const on = String(body.on == null ? '1' : body.on) !== '0';
+      return json({ ok: true, changed: await inboxArchive(env, uids.slice(0, 500), on) }, 200, headers);
+    }
+
+    // ---- 从收件箱里彻底删掉某几条 / 全部清空（不碰 Telegram 里的原消息）----
     if (action === 'inbox_delete') {
       let uids = [];
       try { uids = JSON.parse(body.uids || '[]'); } catch (e) { uids = []; }

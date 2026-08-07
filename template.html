@@ -18,6 +18,7 @@
     --c-offer: #047857; --c-final: #065f46;
     --c-taken: #78716c;
     --c-dead: #9aa3ad;
+    --c-urgent: #b91c1c;   /* 24 小时内到期 / 已超时的深红 */
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -31,6 +32,8 @@
       --c-offer: #34d399; --c-final: #6ee7b7;
       --c-taken: #a8a29e;
       --c-dead: #767f8a;
+      /* 深底上纯正深红几乎看不清，提亮到还能读出「红」的程度 */
+      --c-urgent: #ef4444;
     }
   }
   * { box-sizing: border-box; }
@@ -163,20 +166,20 @@
   .age { font-size: 11px; color: var(--sub); }
   .age.stale { color: var(--c-rejitv); font-weight: 600; }
 
-  /* ---------- ⏳ 截止处理时间 ---------- */
+  /* ---------- ⏳ 截止处理时间 ----------
+     就是一段普通文字，排版跟「公司」那一列一致，不加边框底色。
+     只有 24 小时以内到期（含已超时）才换成深红色。 */
   td.dl { white-space: nowrap; }
   .dlnone { color: var(--sub); }
   .dlchip {
-    font: inherit; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
-    padding: 4px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap;
-    border: 1px solid var(--c-pass1); background: color-mix(in srgb, var(--c-pass1) 12%, transparent);
-    color: var(--c-pass1);
+    font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+    padding: 0; margin: 0; border: 0; background: none; text-align: left;
+    color: var(--fg); cursor: pointer; white-space: nowrap;
   }
-  .dlchip.soon { border-color: var(--c-interview); background: color-mix(in srgb, var(--c-interview) 14%, transparent); color: var(--c-interview); }
-  .dlchip.over { border-color: var(--c-rejitv); background: color-mix(in srgb, var(--c-rejitv) 16%, transparent); color: var(--c-rejitv); }
-  .dlchip:hover { filter: brightness(1.12); text-decoration: line-through; }
+  .dlchip.soon, .dlchip.over { color: var(--c-urgent); }
   /* 划线的行也别让倒计时跟着变灰划掉 */
-  tr.closed .dlchip { text-decoration: none; }
+  tr.closed .dlchip { text-decoration: none; color: var(--fg); }
+  tr.closed .dlchip.soon, tr.closed .dlchip.over { color: var(--c-urgent); }
 
   /* 书类落了 / 面试落了：整行划掉并置灰 */
   .memolog { max-height: 46vh; overflow: auto; }
@@ -3084,10 +3087,9 @@
   refreshUnread();
   refreshPending();
 
-  // 有未读留言就直接展开通知板，不用先去点右下角那个按钮。
-  // 未读标记留着不清，直到手动点「全部标为已读」或「收起」。
-  if (unreadList().length && !targetMsgId()) openBoard({ keepUnread: true });
-  openMsgFromHash();    // 带 #msg-<id> 进来时展开并最大化通知板，滚到那一条
+  // 通知板一律不自动弹出 —— 有未读时右下角那个按钮上会挂红点，想看再点。
+  // 例外只有一个：带着 #msg-<id> 进来，那是冲着某条留言来的。
+  openMsgFromHash();
 
   checkFollowUps();               // 到期的跟进提醒，一进页面就弹
   setInterval(checkFollowUps, 5 * 60000);   // 页面开一整天时跨过零点也能弹
