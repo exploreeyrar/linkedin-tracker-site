@@ -286,7 +286,39 @@ function latestMemoOfDay(r, start, end) {
  *      （或者把 bot 设成管理员）；频道则必须把 bot 设成管理员。
  * ========================================================================== */
 
-/** 把一条 update 压成看板要显示的样子；不关心的类型返回 null */
+// 在 Telegram 里把某条消息编辑成这个内容 → 看板上删掉它。
+// Bot API 不发「消息被删除」的事件（见 README），这是唯一能从手机上遥控删除的办法。
+const DEL_MARKS = ['/del', '/delete', '删除'];
+
+/** Bot API 7.0 起 thumb 改名 thumbnail，两个都认 */
+function thumbOf(x) { return x && (x.thumbnail || x.thumb); }
+
+/** 这条消息里有没有能当图片显示的东西 */
+function mediaOf(m) {
+  if (m.photo && m.photo.length) {
+    const best = m.photo[m.photo.length - 1];      // 最后一个是最大尺寸
+    return { kind: 'photo', fileId: best.file_id, w: best.width || 0, h: best.height || 0 };
+  }
+  if (m.sticker) {
+    const t = thumbOf(m.sticker);
+    // 动态贴纸（tgs/webm）浏览器放不出来，退回缩略图
+    const use = (m.sticker.is_animated || m.sticker.is_video) ? t : m.sticker;
+    if (use) return { kind: 'photo', fileId: use.file_id, w: use.width || 0, h: use.height || 0 };
+  }
+  if (m.document && /^image\//i.test(m.document.mime_type || '')) {
+    return { kind: 'photo', fileId: m.document.file_id, w: 0, h: 0 };
+  }
+  // 视频 / 动图 / 非图片文件：能拿到缩略图就显示缩略图
+  const t = thumbOf(m.video) || thumbOf(m.animation) || thumbOf(m.document) || thumbOf(m.audio);
+  if (t) return { kind: 'thumb', fileId: t.file_id, w: t.width || 0, h: t.height || 0 };
+  return null;
+}
+
+/**
+ * 把一条 update 压成看板要显示的样子。
+ * 除了纯粹的「非消息」update（比如 poll_answer），一律要有产出 ——
+ * 早先这里对不认识的类型直接返回 null，结果消息在看板上凭空消失、数量对不上。
+ */
 function parseUpdate(u) {
   if (!u || typeof u !== 'object') return null;
   const edited = u.edited_channel_post || u.edited_message;
@@ -294,21 +326,23 @@ function parseUpdate(u) {
   if (!m || !m.chat) return null;
 
   const text = String(m.text || m.caption || '');
-  // 纯媒体没有文字时，至少标出来是什么，别让消息凭空消失
   let kind = '';
   if (m.photo) kind = '🖼 图片';
   else if (m.video) kind = '🎬 视频';
   else if (m.animation) kind = '🎞 动图';
   else if (m.voice) kind = '🎤 语音';
   else if (m.audio) kind = '🎵 音频';
+  else if (m.video_note) kind = '📹 视频留言';
   else if (m.sticker) kind = '🩹 贴纸 ' + (m.sticker.emoji || '');
   else if (m.document) kind = '📎 文件 ' + (m.document.file_name || '');
   else if (m.poll) kind = '📊 投票 ' + (m.poll.question || '');
-  else if (m.location) kind = '📍 位置';
+  else if (m.location || m.venue) kind = '📍 位置';
+  else if (m.contact) kind = '👤 联系人 ' + (m.contact.first_name || '');
   else if (m.new_chat_members) kind = '👋 有人加入';
   else if (m.left_chat_member) kind = '🚪 有人离开';
   else if (m.pinned_message) kind = '📌 置顶了一条消息';
-  if (!text && !kind) return null;
+  else if (m.new_chat_title) kind = '✏️ 改名为 ' + m.new_chat_title;
+  else if (!text) kind = '❓ 这个类型还没适配';    // 兜底：宁可显示得难看，也不能凭空少一条
 
   const from = m.from || {};
   const author = m.author_signature
@@ -330,7 +364,22 @@ function parseUpdate(u) {
     kind: kind.trim().slice(0, 60),
     text: text.slice(0, 4000),
     replyText: reply ? String(reply.text || reply.caption || '').slice(0, 120) : '',
+    media: mediaOf(m),
+    // 编辑成 /del 就是要把它从看板上撤掉
+    del: !!edited && DEL_MARKS.indexOf(text.trim().toLowerCase()) !== -1,
   };
+}
+
+/** msgId 是每个会话里连续递增的，缺号就是没收到的那些 */
+function msgIdGaps(items) {
+  const ids = items.map((m) => Number(m.msgId)).filter((n) => n > 0).sort((a, b) => a - b);
+  if (ids.length < 2) return [];
+  const gaps = [];
+  for (let i = 1; i < ids.length; i++) {
+    const from = ids[i - 1] + 1, to = ids[i] - 1;
+    if (to >= from) gaps.push([from, to]);
+  }
+  return gaps.slice(0, 40);
 }
 
 /** 收件箱的存储 key：零填充时间戳打头，list 出来就是时间序 */
@@ -352,6 +401,30 @@ async function kvInboxAppend(env, msg) {
   if (!env.SCHEDULE) return;
   await env.SCHEDULE.put(inboxKey(msg), JSON.stringify(msg),
     { expirationTtl: 180 * 86400 });
+  // 图片代理只放行确实出现在收件箱里的 file_id，免得 Worker 变成任人使用的下载代理
+  if (msg.media && msg.media.fileId) {
+    await env.SCHEDULE.put('fid:' + msg.media.fileId, '1', { expirationTtl: 180 * 86400 });
+  }
+}
+
+/** 返回真正删掉的 uid —— 和 DO 那条路的返回形状保持一致 */
+async function kvInboxDelete(env, uids) {
+  if (!env.SCHEDULE) return [];
+  const all = await kvInboxList(env, 0);
+  const hit = [];
+  for (const m of all) {
+    if (uids.indexOf(m.uid) === -1) continue;
+    await env.SCHEDULE.delete(inboxKey(m));
+    // 连带把图片的通行证收回：消息都删了，那张图不该还能下载
+    if (m.media && m.media.fileId) await env.SCHEDULE.delete('fid:' + m.media.fileId);
+    hit.push(m.uid);
+  }
+  return hit;
+}
+
+async function kvFileAllowed(env, fileId) {
+  if (!env.SCHEDULE) return false;
+  return !!(await env.SCHEDULE.get('fid:' + fileId));
 }
 
 async function kvInboxList(env, since) {
@@ -385,18 +458,54 @@ export class ChannelInbox {
     this.env = env;
   }
 
+  broadcast(obj) {
+    const payload = JSON.stringify(obj);
+    for (const ws of this.state.getWebSockets()) {
+      try { ws.send(payload); } catch (e) { /* 断了就断了，close 事件会清掉 */ }
+    }
+  }
+
   async append(msg) {
     await this.state.storage.put(inboxKey(msg), msg);
+    if (msg.media && msg.media.fileId) {
+      // 图片代理只放行确实出现在收件箱里的 file_id
+      await this.state.storage.put('fid:' + msg.media.fileId, 1);
+    }
     // 超出上限就把最老的删掉，别让存储无限长
     const all = await this.state.storage.list({ prefix: 'in:' });
     if (all.size > INBOX_MAX) {
       const keys = [...all.keys()].slice(0, all.size - INBOX_MAX);
       await this.state.storage.delete(keys);
     }
-    const payload = JSON.stringify({ type: 'msg', items: [msg] });
-    for (const ws of this.state.getWebSockets()) {
-      try { ws.send(payload); } catch (e) { /* 断了就断了，close 事件会清掉 */ }
+    this.broadcast({ type: 'msg', items: [msg] });
+  }
+
+  /** 按 uid 删除。返回真正删掉的 uid，好让页面知道该抹掉哪几条 */
+  async remove(uids) {
+    const all = await this.state.storage.list({ prefix: 'in:' });
+    const hit = [], keys = [];
+    for (const [k, m] of all) {
+      if (!m || uids.indexOf(m.uid) === -1) continue;
+      hit.push(m.uid);
+      keys.push(k);
+      // 连带把图片的通行证收回：消息都删了，那张图不该还能下载
+      if (m.media && m.media.fileId) keys.push('fid:' + m.media.fileId);
     }
+    if (keys.length) await this.state.storage.delete(keys);
+    if (hit.length) this.broadcast({ type: 'del', uids: hit });
+    return hit;
+  }
+
+  async clear() {
+    const all = await this.state.storage.list({ prefix: 'in:' });
+    const uids = [...all.values()].map((m) => m && m.uid).filter(Boolean);
+    await this.state.storage.deleteAll();
+    this.broadcast({ type: 'del', uids: uids });
+    return uids.length;
+  }
+
+  async fileAllowed(fileId) {
+    return !!(await this.state.storage.get('fid:' + fileId));
   }
 
   async list(since) {
@@ -426,11 +535,27 @@ export class ChannelInbox {
       await this.append(msg);
       return new Response('ok');
     }
+    if (url.pathname === '/delete') {
+      const body = await request.json().catch(() => null);
+      const uids = (body && Array.isArray(body.uids)) ? body.uids : [];
+      const hit = await this.remove(uids);
+      return new Response(JSON.stringify({ removed: hit }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (url.pathname === '/clear') {
+      const n = await this.clear();
+      return new Response(JSON.stringify({ removed: n }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (url.pathname === '/fileok') {
+      const ok = await this.fileAllowed(url.searchParams.get('id') || '');
+      return new Response(JSON.stringify({ ok: ok }), { headers: { 'Content-Type': 'application/json' } });
+    }
 
     // /list?since=<ms>
     const since = Number(url.searchParams.get('since') || 0);
     const items = await this.list(since);
-    return new Response(JSON.stringify({ items: items }),
+    // 缺号要按全量算，所以这里单独再取一次完整列表
+    const full = since ? await this.list(0) : items;
+    return new Response(JSON.stringify({ items: items, total: full.length, gaps: msgIdGaps(full) }),
       { headers: { 'Content-Type': 'application/json' } });
   }
 
@@ -455,10 +580,44 @@ async function inboxAppend(env, msg) {
 
 async function inboxList(env, since) {
   const stub = inboxStub(env);
-  if (!stub) return { items: await kvInboxList(env, since), live: false };
+  if (!stub) {
+    const all = await kvInboxList(env, 0);
+    const items = since ? all.filter((m) => (m.editedTs || m.ts) > since) : all;
+    return { items: items, total: all.length, gaps: msgIdGaps(all), live: false };
+  }
   const res = await stub.fetch('https://do/list?since=' + encodeURIComponent(since || 0));
   const data = await res.json().catch(() => ({ items: [] }));
-  return { items: data.items || [], live: true };
+  return { items: data.items || [], total: data.total || 0, gaps: data.gaps || [], live: true };
+}
+
+async function inboxDelete(env, uids) {
+  const stub = inboxStub(env);
+  if (!stub) return await kvInboxDelete(env, uids);
+  const res = await stub.fetch('https://do/delete', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uids: uids })
+  });
+  const d = await res.json().catch(() => ({ removed: [] }));
+  return d.removed || [];
+}
+
+async function inboxClear(env) {
+  const stub = inboxStub(env);
+  if (!stub) {
+    const all = await kvInboxList(env, 0);
+    return (await kvInboxDelete(env, all.map((m) => m.uid))).length;   // 统一返回条数
+  }
+  const res = await stub.fetch('https://do/clear', { method: 'POST' });
+  const d = await res.json().catch(() => ({ removed: 0 }));
+  return d.removed || 0;
+}
+
+async function inboxFileAllowed(env, fileId) {
+  const stub = inboxStub(env);
+  if (!stub) return await kvFileAllowed(env, fileId);
+  const res = await stub.fetch('https://do/fileok?id=' + encodeURIComponent(fileId));
+  const d = await res.json().catch(() => ({ ok: false }));
+  return !!d.ok;
 }
 
 /** 队列 key 用零填充的时间戳打头，KV 按字典序 list 出来就是按时间先后 */
@@ -512,10 +671,42 @@ export default {
       if (msg) {
         // 只收我们那个群 / 频道的，别人把 bot 拉进别的群也灌不进来
         if (!env.TG_CHAT || String(msg.chatId) === String(env.TG_CHAT)) {
-          await inboxAppend(env, msg);
+          // 在 Telegram 里把消息编辑成 /del → 从看板上撤掉它
+          if (msg.del) await inboxDelete(env, [msg.uid]);
+          else await inboxAppend(env, msg);
         }
       }
       return new Response('ok');
+    }
+
+    /* ---- 图片代理 ----
+     * Telegram 的文件下载地址里带着 Bot Token，绝不能下发到浏览器。
+     * 所以由 Worker 拿 file_id 去换真实地址再把字节流回来，token 全程留在服务端。
+     * <img> 请求不带 Origin、也不受 CORS 管，所以这里的门槛是
+     * 「这个 file_id 必须确实出现在收件箱里」—— file_id 猜不出来，也就没法当白嫖代理用。 */
+    if (url.pathname === '/tg/file') {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return new Response('GET only', { status: 405 });
+      }
+      const fileId = url.searchParams.get('id') || '';
+      if (!fileId || !env.TG_TOKEN) return new Response('not found', { status: 404 });
+      if (!(await inboxFileAllowed(env, fileId))) return new Response('not found', { status: 404 });
+
+      const meta = await fetch(`${TG_API}/bot${env.TG_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`)
+        .then((r) => r.json()).catch(() => null);
+      // getFile 只支持 20MB 以内；更大的文件拿不到 file_path
+      if (!meta || !meta.ok || !meta.result || !meta.result.file_path) {
+        return new Response('file unavailable', { status: 404 });
+      }
+      const upstream = await fetch(`${TG_API}/file/bot${env.TG_TOKEN}/${meta.result.file_path}`);
+      if (!upstream.ok) return new Response('upstream ' + upstream.status, { status: 502 });
+
+      const out = new Response(upstream.body, upstream);
+      // file_path 一小时就失效，但我们每次都重新换，所以浏览器这边可以放心长缓存
+      out.headers.set('Cache-Control', 'public, max-age=604800, immutable');
+      out.headers.set('Access-Control-Allow-Origin', '*');
+      out.headers.delete('Set-Cookie');
+      return out;
     }
 
     /* ---- channel.html 的 WebSocket ---- */
@@ -587,11 +778,27 @@ export default {
       return json({
         ok: true,
         items: data.items,
+        total: data.total,
+        gaps: data.gaps,                       // 没收到的 msgId 区间，页面据此提示怎么补
         live: data.live,                       // true = 走 DO，可以开 WebSocket
         wsPath: data.live ? WS_PATH : '',
+        filePath: '/tg/file',                  // 图片代理
         hooked: !!env.WEBHOOK_SECRET,          // false = webhook 还没配，页面会提示
         now: Date.now()
       }, 200, headers);
+    }
+
+    // ---- 从看板上删掉某几条 / 全部清空（只动收件箱，不碰 Telegram 里的原消息）----
+    if (action === 'inbox_delete') {
+      let uids = [];
+      try { uids = JSON.parse(body.uids || '[]'); } catch (e) { uids = []; }
+      if (!Array.isArray(uids) || !uids.length) {
+        return json({ ok: false, description: 'missing uids' }, 400, headers);
+      }
+      return json({ ok: true, removed: await inboxDelete(env, uids.slice(0, 200)) }, 200, headers);
+    }
+    if (action === 'inbox_clear') {
+      return json({ ok: true, removed: await inboxClear(env) }, 200, headers);
     }
 
     // ---- 当日速报：状态 / 预览 / 发送 ----

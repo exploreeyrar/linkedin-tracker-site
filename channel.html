@@ -97,6 +97,41 @@
   .msg .tx a { color: var(--accent); }
   .msg mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 3px; }
 
+  /* 群里的图片：Worker 代拿，Bot Token 不下发到浏览器 */
+  .msg .pic {
+    display: block; max-width: 100%; max-height: 380px; width: auto; border-radius: 9px;
+    margin: 2px 0 8px; border: 1px solid var(--line); cursor: zoom-in; background: var(--bg);
+  }
+  .msg .pic.broken { display: none; }
+  .msg .picerr { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+
+  .msg .del {
+    float: right; margin-left: 8px; border: 1px solid transparent; background: transparent;
+    cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 6px; border-radius: 6px; color: var(--sub);
+  }
+  .msg .del:hover { background: color-mix(in srgb, var(--err) 16%, transparent); color: var(--err); }
+
+  /* 点开看大图 */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.88);
+    display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out;
+  }
+  .lightbox[hidden] { display: none; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+  .gapnote {
+    max-width: 900px; margin: 0 auto 14px; font-size: 12.5px; line-height: 1.7;
+    color: var(--sub); background: var(--card); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent); border-radius: 10px; padding: 11px 16px;
+  }
+  .gapnote[hidden] { display: none; }
+  .gapnote b { color: var(--fg); }
+  .gapnote button {
+    font: inherit; font-size: 11.5px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--sub); margin-left: 8px;
+  }
+  .gapnote button:hover { border-color: var(--err); color: var(--err); }
+
   .note {
     max-width: 900px; margin: 0 auto 16px; background: var(--card); border: 1px solid var(--line);
     border-left: 4px solid var(--warn); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow);
@@ -147,11 +182,13 @@
       Bot API 拿不到它加入之前的历史消息，只能从接上 webhook 那一刻起往后同步。
     </div>
   </div>
+  <div class="gapnote" id="gapnote" hidden></div>
   <div class="feed" id="feed"></div>
   <div class="empty" id="empty" hidden>还没有消息。往那个群 / 频道里发一条试试。</div>
 </main>
 
 <button class="jump" id="jump" type="button" hidden>↓ 有新消息</button>
+<div class="lightbox" id="lightbox" hidden><img id="lightboxImg" alt=""></div>
 <div class="toast" id="toast"></div>
 
 <script id="cfg" type="application/json">__CONFIG__</script>
@@ -239,6 +276,11 @@
     into.appendChild(document.createTextNode(text.slice(from)));
   }
 
+  /** 图片走 Worker 代理：URL 里只有 file_id，Bot Token 留在服务端 */
+  function fileUrl(fileId) {
+    return ENDPOINT.replace(/\/+$/, '') + '/tg/file?id=' + encodeURIComponent(fileId);
+  }
+
   function msgNode(m, needle, fresh) {
     var box = el('div', 'msg' + (m.bot ? ' bot' : '') + (fresh ? ' fresh' : ''));
     box.id = 'm-' + m.uid;
@@ -249,10 +291,38 @@
     var tm = el('span', 'tm', fmtTime(m.ts));
     tm.title = fmtFull(m.ts);
     hd.appendChild(tm);
+
+    var del = el('button', 'del', '🗑');
+    del.type = 'button';
+    del.title = '从这个看板上删掉（不会动 Telegram 里的原消息）';
+    del.addEventListener('click', function () { removeMsg(m); });
+    hd.appendChild(del);
     box.appendChild(hd);
 
     if (m.replyText) box.appendChild(el('div', 're', '↩ ' + m.replyText));
     if (m.kind) box.appendChild(el('div', 'kind', m.kind));
+
+    if (m.media && m.media.fileId) {
+      var img = document.createElement('img');
+      img.className = 'pic';
+      img.loading = 'lazy';
+      img.alt = m.kind || '图片';
+      if (m.media.w && m.media.h) {
+        img.width = m.media.w; img.height = m.media.h;   // 先占好位，图到了不跳版
+      }
+      img.src = fileUrl(m.media.fileId);
+      img.addEventListener('click', function () {
+        $('lightboxImg').src = img.src;
+        $('lightbox').hidden = false;
+      });
+      // 超过 20MB 的文件 Telegram 的 getFile 拿不到，别留一个破图标
+      img.addEventListener('error', function () {
+        img.classList.add('broken');
+        box.insertBefore(el('div', 'picerr', '（这张图 Telegram 取不到，可能超过 20MB）'), img);
+      });
+      box.appendChild(img);
+    }
+
     if (m.text) {
       var tx = el('div', 'tx');
       textNodes(tx, m.text, needle);
@@ -260,6 +330,9 @@
     }
     return box;
   }
+
+  $('lightbox').addEventListener('click', function () { this.hidden = true; });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('lightbox').hidden = true; });
 
   var lastRenderedIds = '';
   function render(freshUids) {
@@ -284,6 +357,7 @@
     if (needle && !list.length) { $('empty').hidden = false; $('empty').textContent = '没有匹配「' + needle + '」的消息。'; }
     else if (!needle) { $('empty').textContent = '还没有消息。往那个群 / 频道里发一条试试。'; }
 
+    renderGaps();
     $('who').textContent = MSGS.length
       ? ((MSGS[MSGS.length - 1].chatTitle || '') + '　共 ' + MSGS.length + ' 条　最后一条 ' + fmtFull(MSGS[MSGS.length - 1].ts))
       : '';
@@ -336,6 +410,67 @@
     return added;
   }
 
+  /** 把若干条从本地视图里抹掉（服务端已经删了，或正要删） */
+  function forget(uids) {
+    var gone = 0;
+    uids.forEach(function (uid) {
+      var m = BY_UID[uid];
+      if (!m) return;
+      MSGS.splice(MSGS.indexOf(m), 1);
+      delete BY_UID[uid];
+      gone++;
+    });
+    if (gone) render();
+    return gone;
+  }
+
+  function removeMsg(m) {
+    if (!confirm('把这条从看板上删掉？\n（Telegram 里的原消息不会动）\n\n' + (m.text || m.kind || '').slice(0, 120))) return;
+    forget([m.uid]);          // 先动界面，别让人等网络
+    call({ action: 'inbox_delete', uids: JSON.stringify([m.uid]) })
+      .then(function () { toast('已删除'); })
+      .catch(function (e) { toast('删除失败：' + (e.message || e)); pull(true); });
+  }
+
+  /* ---------- 缺号提示 ----------
+   * msgId 在一个会话里是连续的，缺号就说明那几条没收到 —— 基本都是
+   * webhook 接上之前发的（Bot API 不回溯历史）。
+   * 补救办法只有一个：去 Telegram 里编辑一下那条老消息，
+   * 编辑事件会把它连同原始时间戳一起送过来。 */
+  function renderGaps() {
+    var box = $('gapnote');
+    var off = false;
+    try { off = localStorage.getItem('sgjob_channel_gapoff') === '1'; } catch (e) {}
+    // msgId 在一个会话里连续递增，缺号就是没收到的
+    var ids = MSGS.map(function (m) { return Number(m.msgId); })
+                  .filter(function (n) { return n > 0; })
+                  .sort(function (a, b) { return a - b; });
+    var gaps = [];
+    for (var i = 1; i < ids.length; i++) {
+      if (ids[i] - ids[i - 1] > 1) gaps.push([ids[i - 1] + 1, ids[i] - 1]);
+    }
+    gaps = gaps.slice(0, 40);
+    if (off || !gaps.length) { box.hidden = true; return; }
+    var total = MSGS.length;
+    var n = gaps.reduce(function (a, g) { return a + (g[1] - g[0] + 1); }, 0);
+    box.textContent = '';
+    box.appendChild(document.createTextNode('已收到 '));
+    box.appendChild(el('b', null, String(total)));
+    box.appendChild(document.createTextNode(' 条，另有 '));
+    box.appendChild(el('b', null, String(n)));
+    box.appendChild(document.createTextNode(' 条没收到（消息序号 '
+      + gaps.map(function (g) { return g[0] === g[1] ? ('#' + g[0]) : ('#' + g[0] + '–' + g[1]); }).join('、')
+      + '）。多半是 webhook 接上之前发的 —— 在 Telegram 里编辑一下那条消息（哪怕只加个空格），它就会连原始时间一起补进来。'));
+    var hide = el('button', null, '不再提示');
+    hide.type = 'button';
+    hide.addEventListener('click', function () {
+      try { localStorage.setItem('sgjob_channel_gapoff', '1'); } catch (e) {}
+      box.hidden = true;
+    });
+    box.appendChild(hide);
+    box.hidden = false;
+  }
+
   /* ---------- 拉取 ---------- */
   function call(payload) {
     if (!ENDPOINT) return Promise.reject(new Error('还没有配置 Telegram 中继（config.json 的 tgEndpoint）'));
@@ -347,13 +482,26 @@
   }
 
   var failures = 0;
-  function pull(initial) {
-    return call({ action: 'inbox', since: String(initial ? 0 : newest) }).then(function (d) {
+  /**
+   * full=true 时 since 传 0，拿到的是**完整**列表，于是可以顺便对账：
+   * 服务端已经没有的，本地也抹掉 —— 这样在 Telegram 里删掉的消息
+   * （通过 /del）以及漏收的删除广播，都能在下一次对账时归位。
+   * full=false 只拿增量，轮询时基本是空响应。
+   */
+  function pull(full) {
+    return call({ action: 'inbox', since: String(full ? 0 : newest) }).then(function (d) {
       failures = 0;
       live = !!d.live;
       hooked = !!d.hooked;
-      ingest(d.items, !initial);
-      if (initial) { render(); scrollToBottom(); }
+
+      if (full) {
+        var alive = {};
+        (d.items || []).forEach(function (m) { if (m && m.uid) alive[m.uid] = 1; });
+        var stale = MSGS.filter(function (m) { return !alive[m.uid]; }).map(function (m) { return m.uid; });
+        if (stale.length) forget(stale);
+      }
+
+      ingest(d.items, !full);
       if (live && !ws) connectWS();
       if (!live) setState('poll', '轮询中（未启用实时）');
       return d;
@@ -380,8 +528,8 @@
     ws.onopen = function () {
       wsTries = 0;
       setState('live', '实时连接中');
-      // 拉一次增量，补上握手期间可能漏掉的
-      pull(false);
+      // 完整对账一次：断线期间的新增、删除都在这一下补齐
+      pull(true);
       clearInterval(beat);
       beat = setInterval(function () { try { ws.send('ping'); } catch (e) {} }, 45000);
       stopPolling();      // 有推送就不用轮询了
@@ -392,6 +540,8 @@
       try { d = JSON.parse(ev.data); } catch (e) { return; }
       if (d && d.type === 'msg') {
         if (ingest(d.items, true)) toast('收到新消息');
+      } else if (d && d.type === 'del') {
+        if (forget(d.uids || [])) toast('有消息被删除');
       }
     };
     ws.onclose = function () {
@@ -425,9 +575,10 @@
   function stopPolling() { clearTimeout(pollTimer); pollTimer = null; }
 
   // 切回来时立刻对一次账，别等下一个 tick
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) pull(false); });
-  window.addEventListener('focus', function () { pull(false); });
-  window.addEventListener('online', function () { pull(false); if (live) connectWS(); });
+  // 回到这一页是最容易看出「和 Telegram 对不上」的时刻，所以这里做完整对账
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) pull(true); });
+  window.addEventListener('focus', function () { pull(true); });
+  window.addEventListener('online', function () { pull(true); if (live) connectWS(); });
 
   /* ---------- 还没接通时的引导 ---------- */
   function updateSetup() {
@@ -470,10 +621,13 @@
   } else {
     setState('poll', '连接中…');
     pull(true).then(function () {
+      render();
+      scrollToBottom();
       if (!live) startPolling();      // 没有 DO 就一直轮询
     });
-    // 兜底：即使 WebSocket 说自己活着，也每分钟对一次账，防止漏推
-    setInterval(function () { if (!document.hidden) pull(false); }, 60000);
+    // 兜底：即使 WebSocket 说自己活着，也每分钟完整对一次账，
+    // 漏推的新消息和漏掉的删除广播都在这里归位
+    setInterval(function () { if (!document.hidden) pull(true); }, 60000);
   }
 })();
 </script>

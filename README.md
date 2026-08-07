@@ -135,6 +135,16 @@ curl -X POST "https://api.telegram.org/bot<TG_TOKEN>/setWebhook" -d "url=https:/
 几件要知道的事：
 
 - **拿不到 bot 加入之前的历史消息。** Bot API 没有回溯接口，只能从接上那一刻起往后攒。
+  想补某几条：**去 Telegram 里编辑一下那条老消息**（哪怕只加个空格），编辑事件会把它
+  连同原始时间戳一起送过来。页面顶部会按 msgId 缺号提示还差哪几条。
+- **Telegram 不会通知「消息被删了」。** Bot API 就是没有这种 update，所以自动同步删除
+  做不到。替代办法两个：页面上每条消息右上角的 🗑（只删看板、不动 Telegram 里的原消息）；
+  或者在 Telegram 里把那条消息**编辑成 `/del`**，看板收到编辑事件就把它撤掉。
+- **编辑会自动同步**，原地更新，不会变成新的一条。
+- **图片能显示。** Worker 拿 `file_id` 去换真实地址再把字节流回来，Bot Token 全程留在
+  服务端。只放行确实出现在收件箱里的 `file_id`，所以这个接口不会变成任人使用的下载代理。
+  受 Telegram `getFile` 限制，超过 20MB 的文件取不到，页面上会注明。视频 / 非图片文件
+  显示缩略图。
 - `wrangler.toml` 里的 Durable Object 迁移（`new_sqlite_classes`）必须跟着 deploy 一起生效。
   万一没生效，Worker 会自动退回用 KV 存 —— 页面照常能看，只是新消息最多可能晚 60 秒
   （KV 是最终一致的），页面顶部的状态会显示「轮询中（未启用实时）」。
