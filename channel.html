@@ -38,7 +38,12 @@
     padding: 12px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
   header h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; white-space: nowrap; }
-  header .who { color: var(--sub); font-size: 12px; white-space: nowrap; }
+  /* 多了个优先级下拉之后头部容易挤到换行 —— 让这段说明先让位、超出就省略号 */
+  header .who {
+    color: var(--sub); font-size: 12px; white-space: nowrap;
+    flex: 0 1 auto; min-width: 0; max-width: 30ch;
+    overflow: hidden; text-overflow: ellipsis;
+  }
   header .sp { margin-left: auto; }
 
   .pill {
@@ -61,11 +66,13 @@
   }
   .navbtn:hover { border-color: var(--accent); color: var(--accent); }
 
-  #q {
-    font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 9px; min-width: 160px;
+  #q, #prio {
+    font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 9px;
     border: 1px solid var(--line); background: var(--bg); color: var(--fg);
   }
-  #q:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  #q { min-width: 190px; }
+  #q:focus, #prio:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  #prio.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
   main { flex: 1 1 auto; overflow: auto; padding: 18px; overscroll-behavior: contain; }
   .feed { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
@@ -114,10 +121,33 @@
   .msg.archived { opacity: .72; }
   .msg .archat { font-size: 11px; color: var(--sub); }
 
+  /* 从直达链接点进来时高亮的那一条（配色和 index.html 的定位高亮一致） */
+  .msg.hl { background: #fff5c2; border-color: #eab308; }
+  .msg.hl .tx, .msg.hl .au { color: #3d3200; }
+  @media (prefers-color-scheme: dark) {
+    .msg.hl { background: #4a4218; border-color: #eab308; }
+    .msg.hl .tx { color: #f5efd0; }
+    .msg.hl .au { color: #ffd970; }
+  }
+  .msg .lnk {
+    float: right; margin-left: 6px; border: 1px solid transparent; background: transparent;
+    cursor: pointer; font-size: 13px; line-height: 1.5; padding: 2px 6px; border-radius: 6px; color: var(--sub);
+  }
+  .msg .lnk:hover { background: var(--line); color: var(--fg); }
+
   /* 头部那排：Archived (N 件) */
   .navbtn[hidden] { display: none; }
   .navbtn.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
   .navbtn b { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* 定位提示条：跟着视口固定，否则滚到目标那一条之后
+     「取消高亮」就跑到屏幕外去了（和 index.html 的 .hlbar 一个做法） */
+  #hlbar {
+    position: fixed; left: 50%; transform: translateX(-50%); top: 74px; z-index: 30;
+    margin: 0; width: auto; max-width: min(720px, calc(100vw - 32px));
+    border-color: #eab308; box-shadow: var(--pop);
+  }
+  #hlbar button { border-color: #eab308; }
 
   /* 正在看 archive 列表时顶部的横幅 */
   .archbar {
@@ -192,7 +222,14 @@
   <h1>📡 Telegram 频道</h1>
   <span class="who" id="who"></span>
   <span class="pill down sp" id="state"><i></i><span id="stateText">连接中…</span></span>
-  <input id="q" type="search" placeholder="搜索消息…" autocomplete="off">
+  <input id="q" type="search" placeholder="搜索消息…（含已 archive）" autocomplete="off">
+  <select id="prio" title="按消息里写的优先级筛选（含已 archive）">
+    <option value="">全部优先级</option>
+    <option value="紧急">紧急</option>
+    <option value="高">高</option>
+    <option value="中">中</option>
+    <option value="低">低</option>
+  </select>
   <a class="navbtn" id="back" href="./index.html">📮 回到投递清单</a>
   <button class="navbtn" id="archFab" type="button" hidden>Archived (<b id="archN">0</b> 件)</button>
 </header>
@@ -206,6 +243,10 @@
     </div>
   </div>
   <div class="gapnote" id="gapnote" hidden></div>
+  <div class="archbar" id="hlbar" hidden>
+    <span id="hlText">已定位到这条消息</span>
+    <button type="button" id="hlClear">取消高亮</button>
+  </div>
   <div class="archbar" id="archbar" hidden>
     <span id="archbarText">正在看已 archive 的消息</span>
     <button type="button" id="archBack">← 回到通知流</button>
@@ -303,6 +344,39 @@
     into.appendChild(document.createTextNode(text.slice(from)));
   }
 
+  /* ---------- 每条消息的直达链接 ----------
+   * 和 index.html 的 #job-<id> / 通知板的 #msg-<id> 一个路子：
+   * 点开链接就滚到那一条并高亮。uid 形如「-1003974378230:28」，带冒号，
+   * 所以放进 hash 前先编码。 */
+  function msgLinkFor(m) {
+    return location.origin + location.pathname + '#m-' + encodeURIComponent(m.uid);
+  }
+  function targetUid() {
+    var h = location.hash || '';
+    if (h.slice(0, 3) !== '#m-') return '';
+    try { return decodeURIComponent(h.slice(3)); } catch (e) { return h.slice(3); }
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; },
+                                                      function () { return copyFallback(text); });
+    }
+    return Promise.resolve(copyFallback(text));
+  }
+  // http:// 或旧浏览器上没有 clipboard API，退回 execCommand
+  function copyFallback(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+
   /** 图片走 Worker 代理：URL 里只有 file_id，Bot Token 留在服务端 */
   function fileUrl(fileId) {
     return ENDPOINT.replace(/\/+$/, '') + '/tg/file?id=' + encodeURIComponent(fileId);
@@ -318,6 +392,15 @@
     var tm = el('span', 'tm', fmtTime(m.ts));
     tm.title = fmtFull(m.ts);
     hd.appendChild(tm);
+
+    var lnk = el('button', 'lnk', '🔗');
+    lnk.type = 'button';
+    lnk.title = '复制这条消息的直达链接';
+    lnk.addEventListener('click', function () {
+      var url = msgLinkFor(m);
+      copyText(url).then(function (ok) { toast(ok ? ('已复制链接：' + url) : '复制失败'); });
+    });
+    hd.appendChild(lnk);
 
     var arch = el('button', 'arch', m.archivedAt ? '↩ 取回' : '🗂 archive');
     arch.type = 'button';
@@ -367,6 +450,20 @@
   /* archive 的状态存在服务端（见 Worker 的 inbox_archive），不是各人的浏览器里 ——
      谁 archive 的，所有连着的页面立刻同步，别人打开看到的也一样。 */
   var showArchived = false;
+  var hlUid = '';           // 当前被直达链接高亮的那条
+
+  /* ---------- 优先级 ----------
+   * 从消息正文里读，不是我们自己打的标。看板发出去的模板写「📍优先级：低（下班后处理 OK）」，
+   * 手写的那些用的是「优先度：高」—— 两种写法都认，否则手写的那批全筛不出来。
+   * 只取第一处：一条消息里出现多次时，最前面那个才是它自己的优先级
+   * （后面的多半来自被引用 / 转发的内容）。 */
+  var PRIO_RE = /优先[级度]\s*[：:]?\s*([紧高中低])/;
+  function prioOf(m) {
+    const t = String((m && m.text) || '');
+    const hit = t.match(PRIO_RE);
+    if (!hit) return '';
+    return hit[1] === '紧' ? '紧急' : hit[1];
+  }
 
   function render(freshUids) {
     // 最后一条被取回之后，别把人晾在一个空的 archive 视图里（那时按钮已经消失了）
@@ -374,12 +471,20 @@
 
     var needle = $('q').value.trim();
     var low = needle.toLowerCase();
-    var list = MSGS.filter(function (m) { return !!m.archivedAt === showArchived; });
+    var prio = $('prio').value;
+    // 搜索 / 筛选一律跨越 archive 分区 —— 找东西的时候不该因为「收起来了」就找不到
+    var filtering = !!needle || !!prio;
+
+    var list = filtering
+      ? MSGS.slice()
+      : MSGS.filter(function (m) { return !!m.archivedAt === showArchived; });
+    if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
     if (needle) {
       list = list.filter(function (m) {
         return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
       });
     }
+    renderPrioCounts(prio);
 
     var feed = $('feed');
     feed.textContent = '';
@@ -390,20 +495,39 @@
       feed.appendChild(msgNode(m, needle, freshUids && freshUids[m.uid]));
     });
 
+    // feed 每次都是整块重建，重绘后要把定位高亮补回去
+    if (hlUid) {
+      var hlNode = document.getElementById('m-' + hlUid);
+      if (hlNode) hlNode.classList.add('hl');
+    }
+
     var live = MSGS.filter(function (m) { return !m.archivedAt; });
     var arch = MSGS.length - live.length;
 
     $('empty').hidden = list.length > 0 || (!MSGS.length && !hooked);
-    if (needle && !list.length) { $('empty').hidden = false; $('empty').textContent = '没有匹配「' + needle + '」的消息。'; }
-    else if (showArchived && !list.length) { $('empty').hidden = false; $('empty').textContent = '还没有 archive 过任何消息。'; }
-    else if (!needle) { $('empty').textContent = '还没有消息。往那个群 / 频道里发一条试试。'; }
+    if (filtering && !list.length) {
+      $('empty').hidden = false;
+      $('empty').textContent = '没有符合条件的消息'
+        + (needle ? ('（搜索「' + needle + '」）') : '')
+        + (prio ? ('（优先级 ' + prio + '）') : '') + '。';
+    } else if (showArchived && !list.length) {
+      $('empty').hidden = false; $('empty').textContent = '还没有 archive 过任何消息。';
+    } else if (!filtering) {
+      $('empty').textContent = '还没有消息。往那个群 / 频道里发一条试试。';
+    }
 
-    // 右下角那颗按钮：archive 过东西才出现
     $('archFab').hidden = !arch;
-    $('archFab').classList.toggle('on', showArchived);
+    $('archFab').classList.toggle('on', showArchived && !filtering);
     $('archN').textContent = String(arch);
-    $('archbar').hidden = !showArchived;
+    $('prio').classList.toggle('on', !!prio);
+    // 筛选时结果是跨 archive 的，这时候再说「正在看已 archive」就不对了
+    $('archbar').hidden = !showArchived || filtering;
     $('archbarText').textContent = '正在看已 archive 的消息（' + arch + ' 条）';
+    if (filtering) {
+      var nArch = list.filter(function (m) { return m.archivedAt; }).length;
+      $('archbar').hidden = !nArch;
+      $('archbarText').textContent = '搜索结果里有 ' + nArch + ' 条是已 archive 的（淡显那几条）';
+    }
 
     renderGaps();
     var newest = live.length ? live[live.length - 1] : (MSGS.length ? MSGS[MSGS.length - 1] : null);
@@ -414,6 +538,62 @@
       : '';
     updateSetup();
   }
+
+  /** 把每个优先级的条数写进下拉选项，形如「高 (3)」 */
+  function renderPrioCounts(current) {
+    var sel = $('prio');
+    var n = {};
+    MSGS.forEach(function (m) {
+      var p = prioOf(m);
+      if (p) n[p] = (n[p] || 0) + 1;
+    });
+    [].forEach.call(sel.options, function (o) {
+      if (!o.value) { o.textContent = '全部优先级 (' + MSGS.length + ')'; return; }
+      o.textContent = o.value + ' (' + (n[o.value] || 0) + ')';
+    });
+    sel.value = current || '';
+  }
+
+  $('prio').addEventListener('change', function () { render(); scrollToBottom(); });
+
+  /**
+   * 定位到某一条：先把可能挡住它的筛选条件清掉，
+   * 归档的那条自动切到 archive 视图，然后滚过去并高亮。
+   */
+  function focusMsg(uid, scroll) {
+    if (!uid) return;
+    var m = BY_UID[uid];
+    if (!m) {
+      hlUid = '';
+      // 找不到就得把上一次的高亮撤掉，否则会以为定位到的是那一条
+      [].forEach.call(document.querySelectorAll('.msg.hl'), function (n) { n.classList.remove('hl'); });
+      $('hlbar').hidden = false;
+      $('hlText').textContent = '链接指向的消息不在收件箱里（可能已被删除）';
+      return;
+    }
+    hlUid = uid;
+    $('q').value = '';
+    $('prio').value = '';
+    showArchived = !!m.archivedAt;
+    render();
+    $('hlbar').hidden = false;
+    $('hlText').textContent = '已定位到 ' + (m.author || '这条消息') + ' 于 ' + fmtFull(m.ts) + ' 的消息'
+      + (m.archivedAt ? '（已 archive）' : '');
+    if (scroll) {
+      var node = document.getElementById('m-' + uid);
+      if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  function clearHighlight() {
+    hlUid = '';
+    [].forEach.call(document.querySelectorAll('.msg.hl'), function (n) { n.classList.remove('hl'); });
+    $('hlbar').hidden = true;
+    // 清掉 hash，免得刷新之后又亮起来
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  $('hlClear').addEventListener('click', clearHighlight);
+  window.addEventListener('hashchange', function () { focusMsg(targetUid(), true); });
 
   $('archFab').addEventListener('click', function () {
     showArchived = !showArchived;
@@ -701,7 +881,9 @@
     setState('poll', '连接中…');
     pull(true).then(function () {
       render();
-      scrollToBottom();
+      // 带着 #m-<uid> 进来就是冲某一条来的，别把它滚走
+      if (targetUid()) focusMsg(targetUid(), true);
+      else scrollToBottom();
       if (!live) startPolling();      // 没有 DO 就一直轮询
     });
     // 兜底：即使 WebSocket 说自己活着，也每分钟完整对一次账，
