@@ -163,6 +163,21 @@
   .age { font-size: 11px; color: var(--sub); }
   .age.stale { color: var(--c-rejitv); font-weight: 600; }
 
+  /* ---------- ⏳ 截止处理时间 ---------- */
+  td.dl { white-space: nowrap; }
+  .dlnone { color: var(--sub); }
+  .dlchip {
+    font: inherit; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+    padding: 4px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--c-pass1); background: color-mix(in srgb, var(--c-pass1) 12%, transparent);
+    color: var(--c-pass1);
+  }
+  .dlchip.soon { border-color: var(--c-interview); background: color-mix(in srgb, var(--c-interview) 14%, transparent); color: var(--c-interview); }
+  .dlchip.over { border-color: var(--c-rejitv); background: color-mix(in srgb, var(--c-rejitv) 16%, transparent); color: var(--c-rejitv); }
+  .dlchip:hover { filter: brightness(1.12); text-decoration: line-through; }
+  /* 划线的行也别让倒计时跟着变灰划掉 */
+  tr.closed .dlchip { text-decoration: none; }
+
   /* 书类落了 / 面试落了：整行划掉并置灰 */
   .memolog { max-height: 46vh; overflow: auto; }
   .memoitem { border: 1px solid var(--line); border-left: 3px solid var(--line);
@@ -924,6 +939,7 @@
 
   // 列的定义与默认顺序；顺序和显隐都可以在设置里改，存本机
   var COLUMNS = [
+    { key: 'deadline',   label: '截止处理时间', sort: 'deadline' },
     { key: 'status',     label: '状态',        sort: 'status' },
     { key: 'act',        label: '留言',        sort: null,    align: 'center' },
     { key: 'memo',       label: 'MEMO',        sort: null },
@@ -949,7 +965,12 @@
   function colOrder() {
     var saved = (prefs.cols && prefs.cols.order) || [];
     var out = saved.filter(function (k) { return COL_BY_KEY[k]; });
-    COLUMNS.forEach(function (c) { if (out.indexOf(c.key) === -1) out.push(c.key); });
+    COLUMNS.forEach(function (c) {
+      if (out.indexOf(c.key) !== -1) return;
+      // 「截止处理时间」要在第一列。老用户的 prefs 里没有这一列，
+      // 按常规补到末尾就跑到最右边去了，所以它单独插到最前面。
+      if (c.key === 'deadline') out.unshift(c.key); else out.push(c.key);
+    });
     return out;
   }
   function colHidden(key) {
@@ -1009,6 +1030,45 @@
     if (!m) return 0;
     var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
     return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  /* ---------- ⏳ 处理期限 ----------
+   * 油猴脚本那边只让人选一个日期（精确到天），但真正的截止点是
+   * **前一天的 21:00（JST）**—— 提前一晚收工，别拖到当天。
+   * deadlineAt 存的是「那一天 0 点（JST）」的毫秒，减 3 小时正好是前一日 21:00 JST。
+   */
+  var DEADLINE_LEAD_MS = 3 * 3600000;
+
+  /** 生效的期限 = 本机改过的优先，没改过就用构建进来的 */
+  function deadlineOf(r) {
+    var local = LOCAL && LOCAL.deadlines && LOCAL.deadlines[recKey(r)];
+    if (local) return { at: local.at || 0, done: !!local.done };
+    return { at: r.deadlineAt || 0, done: !!r.deadlineDone };
+  }
+  /** 倒计时的真正终点 */
+  function deadlineDue(r) {
+    var d = deadlineOf(r);
+    return d.at ? (d.at - DEADLINE_LEAD_MS) : 0;
+  }
+  /** 还该显示倒计时（设了、且没被打勾为已处理） */
+  function deadlineActive(r) {
+    var d = deadlineOf(r);
+    return !!(d.at && !d.done);
+  }
+
+  /** 剩余毫秒 → 「X天X小时X分X秒」，前导的零单位省掉 */
+  function fmtLeft(ms) {
+    var t = Math.max(0, Math.floor(ms / 1000));
+    var d = Math.floor(t / 86400), h = Math.floor(t % 86400 / 3600),
+        m = Math.floor(t % 3600 / 60), s = t % 60;
+    if (d) return d + '天 ' + h + '小时' + m + '分' + s + '秒';
+    if (h) return h + '小时' + m + '分' + s + '秒';
+    if (m) return m + '分' + s + '秒';
+    return s + '秒';
+  }
+  function fmtJst(ms) {
+    if (!ms) return '';
+    return new Date(ms + 9 * 3600000).toISOString().slice(0, 16).replace('T', ' ') + ' JST';
   }
 
   /* ---------- 跟进提醒 ---------- */
@@ -1097,13 +1157,14 @@
    * archive 则纯粹是本机行为，永远不回传。
    */
   var LK = 'sgjob_local_v1';
-  var LOCAL = { memos: {}, msgs: [], archived: {} };
+  var LOCAL = { memos: {}, msgs: [], archived: {}, deadlines: {} };
   try {
     var lsaved = JSON.parse(localStorage.getItem(LK) || 'null');
     if (lsaved && typeof lsaved === 'object') {
       if (lsaved.memos && typeof lsaved.memos === 'object') LOCAL.memos = lsaved.memos;
       if (Array.isArray(lsaved.msgs)) LOCAL.msgs = lsaved.msgs;
       if (lsaved.archived && typeof lsaved.archived === 'object') LOCAL.archived = lsaved.archived;
+      if (lsaved.deadlines && typeof lsaved.deadlines === 'object') LOCAL.deadlines = lsaved.deadlines;
     }
   } catch (e) { /* 用默认值 */ }
   function saveLocal() { try { localStorage.setItem(LK, JSON.stringify(LOCAL)); } catch (e) {} }
@@ -1154,6 +1215,19 @@
       if (list.length !== (LOCAL.memos[k] || []).length) changed = true;
       if (list.length) LOCAL.memos[k] = list; else delete LOCAL.memos[k];
     });
+
+    // deadline 的本地覆盖：构建进来的那份已经和本机一致了就撤掉覆盖
+    var recByKey = {};
+    RECORDS.forEach(function (r) { recByKey[recKey(r)] = r; });
+    Object.keys(LOCAL.deadlines).forEach(function (k) {
+      var r = recByKey[k];
+      if (!r) return;
+      var l = LOCAL.deadlines[k];
+      if ((r.deadlineAt || 0) === (l.at || 0) && !!r.deadlineDone === !!l.done) {
+        delete LOCAL.deadlines[k];
+        changed = true;
+      }
+    });
     if (changed) saveLocal();
   }
 
@@ -1182,6 +1256,16 @@
       outboxPush({ op: 'memo', jobId: String(r.jobId), site: r.site || 'linkedin', text: t, ts: at });
     }
     return true;
+  }
+
+  /** 在看板上删掉 / 打勾某条的 deadline（本机立刻生效 + 排队回传） */
+  function setDeadlineLocal(r, patch) {
+    LOCAL.deadlines[recKey(r)] = { at: patch.at || 0, done: !!patch.done, ts: Date.now() };
+    saveLocal();
+    if (r.jobId) {
+      outboxPush({ op: 'deadline', jobId: String(r.jobId), site: r.site || 'linkedin',
+                   at: patch.at || 0, done: !!patch.done, ts: Date.now() });
+    }
   }
 
   /** 页面发出去的每一条 Telegram 消息都进通知板 */
@@ -1411,6 +1495,35 @@
 
   /* ---------- 单元格工厂：一个 key 对应一种渲染 ---------- */
   var CELL = {
+    /* 「截止处理时间」。有期限的显示 X天X小时X分X秒（秒级跳动），
+       过了终点还没改状态就是「已超时」，点一下可以把这个 deadline 撤掉。 */
+    deadline: function (r) {
+      var td = el('td', 'dl');
+      var d = deadlineOf(r);
+      if (!d.at || d.done) {
+        td.appendChild(el('span', 'dlnone', '—'));
+        if (d.done) td.title = '已标记为「已处理」';
+        return td;
+      }
+      var due = d.at - DEADLINE_LEAD_MS;
+      var btn = el('button', 'dlchip');
+      btn.type = 'button';
+      btn.dataset.due = String(due);          // 每秒扫一遍 [data-due] 就够了
+      btn.title = 'deadline ' + fmtJst(d.at).slice(0, 10)
+                + '　实际截止 ' + fmtJst(due)
+                + '\n点击可删除这个 deadline（会回传给油猴脚本）';
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!confirm('删除这个 deadline？\n\n' + (r.company || '—') + ' / ' + (r.title || '—')
+                     + '\n截止：' + fmtJst(due))) return;
+        setDeadlineLocal(r, { at: 0, done: false });
+        apply();
+        toast(r.jobId ? '已删除 deadline，等油猴脚本回传' : '已删除（这条没有 Job ID，回传不了）');
+      });
+      paintDeadline(btn);
+      td.appendChild(btn);
+      return td;
+    },
     status: function (r) {
       var td = document.createElement('td');
       var b = el('span', 'badge', r.status || '—');
@@ -1529,6 +1642,28 @@
     epAnnual: function (r) { return el('td', 'num', r.epAnnual ? ('S$' + money(r.epAnnual)) : '—'); }
   };
 
+  /** 把一个倒计时按钮刷成当前时刻该有的样子 */
+  function paintDeadline(btn) {
+    var due = Number(btn.dataset.due) || 0;
+    var left = due - Date.now();
+    if (left <= 0) {
+      btn.textContent = '已超时';
+      btn.className = 'dlchip over';
+    } else {
+      btn.textContent = fmtLeft(left);
+      // 不到一天就转成告警色
+      btn.className = 'dlchip' + (left < 86400000 ? ' soon' : '');
+    }
+  }
+  /* 秒级跳动。整表重绘代价太大，只挑这几个按钮刷文字。
+     后台标签页浏览器本来就会把定时器压到每分钟一次，所以不用自己再判 hidden；
+     切回来时立刻补一次，免得盯着一个停住的秒数看。 */
+  function tickDeadlines() {
+    [].forEach.call(document.querySelectorAll('#tb .dlchip[data-due]'), paintDeadline);
+  }
+  setInterval(tickDeadlines, 1000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) tickDeadlines(); });
+
   function buildHead() {
     var tr = $('thead-row');
     tr.textContent = '';
@@ -1634,6 +1769,15 @@
         if (dp !== 0) return dp;
       }
       var x = a[sortKey], y = b[sortKey];
+      // 按截止时间排：有期限的永远排在没期限的前面，越紧急越靠上
+      if (sortKey === 'deadline') {
+        var da = deadlineActive(a) ? deadlineDue(a) : Infinity;
+        var db = deadlineActive(b) ? deadlineDue(b) : Infinity;
+        if (da === db) return b.ts - a.ts;
+        if (da === Infinity) return 1;
+        if (db === Infinity) return -1;
+        return (da - db) * sortDir;
+      }
       if (sortKey === 'tenure') {
         var nx = num(x), ny = num(y);
         if (isNaN(nx) && isNaN(ny)) return 0;

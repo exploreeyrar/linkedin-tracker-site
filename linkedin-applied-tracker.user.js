@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LinkedIn / Jobstreet 已递交投递追踪器 (Applied Tracker)
 // @namespace    local.linkedin.applied.tracker
-// @version      1.6.0
+// @version      1.7.0
 // @updateURL    https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js
 // @downloadURL  https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js
 // @supportURL   https://github.com/exploreeyrar/linkedin-tracker-site/issues
@@ -1119,8 +1119,48 @@
       priority: 0,               // 重要度，看板排序时压过状态与时间
       followUpAt: 0,             // 跟进提醒日期（当天 0 点的毫秒）
       followUpNote: '',
+      deadlineAt: 0,             // 处理期限：那一天 0 点的毫秒（JST 口径，见 DEADLINE_LEAD_MS）
+      deadlineDone: false,       // 打过勾就不再倒计时
       updatedAt: 0,              // 最后一次改 MEMO / 状态的时间
     };
+  }
+
+  /* =========================================================================
+   * 2.5 ⏳ 处理期限（deadline）
+   *
+   * 改成下面这几种状态时自动弹窗要一个日期。日期只精确到天，但看板上
+   * 倒计时的终点是**前一天 21:00（JST）**—— 留出提前量，别真拖到当天才发现。
+   *   选 8/10 → 倒计时到 8/09 21:00 JST
+   * 存的是「那一天 0 点（JST）」的毫秒，减 3 小时正好是前一日 21:00 JST。
+   * ========================================================================= */
+
+  const DEADLINE_LEAD_MS = 3 * 3600000;
+  // 状态名在设置里能改（「等己方处理」就被加过一个空格），所以按去空白标点后的形状认
+  const DEADLINE_STATUS_KEYS = ['等己方处理(XR ball)', '已安排面试、面试准备中', '対方来联络了']
+    .map((s) => s.replace(/[，,、･·・\s]/g, '').replace(/対/g, '对'));
+
+  function wantsDeadline(status) {
+    const k = String(status || '').replace(/[，,、･·・\s]/g, '').replace(/対/g, '对');
+    return DEADLINE_STATUS_KEYS.indexOf(k) !== -1;
+  }
+
+  /** 倒计时的真正终点：设定日的前一天 21:00 JST */
+  function deadlineDue(r) {
+    return (r && r.deadlineAt) ? (r.deadlineAt - DEADLINE_LEAD_MS) : 0;
+  }
+  /** 还在倒计时（设了、没打勾） */
+  function deadlineActive(r) { return !!(r && r.deadlineAt && !r.deadlineDone); }
+
+  /** YYYY-MM-DD → 那天 0 点（JST）的毫秒 */
+  function jstDayStart(v) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '').trim());
+    if (!m) return 0;
+    const t = Date.parse(m[1] + '-' + m[2] + '-' + m[3] + 'T00:00:00+09:00');
+    return isNaN(t) ? 0 : t;
+  }
+  /** 毫秒 → JST 的 YYYY-MM-DD */
+  function jstDateStr(ms) {
+    return ms ? new Date(ms + 9 * 3600000).toISOString().slice(0, 10) : '';
   }
 
   /* =========================================================================
@@ -2422,6 +2462,35 @@
     ]),
   ]);
 
+  /* ---------- ⏳ 处理期限 ---------- */
+  const $dlInfo   = el('div', { class: 'rminfo' });
+  const $dlDate   = el('input', { type: 'date' });
+  const $dlQuick  = el('div', { class: 'tplbar' });
+  const $dlPreview= el('div', { class: 'desc' });
+  const $dlState  = el('div', { class: 'status' });
+  const $dlSave   = el('button', { class: 'primary', type: 'button', text: '保存 deadline' });
+  const $dlDone   = el('button', { type: 'button', text: '✅ 标为已处理' });
+  const $dlClear  = el('button', { type: 'button', text: '删除 deadline' });
+  const $dlCancel = el('button', { class: 'sp', type: 'button', text: '暂不设置' });
+
+  const $dlMask = el('div', { class: 'mask', hidden: true }, [
+    el('div', { class: 'dlg' }, [
+      el('h3', { text: '⏳ 设置处理期限' }),
+      el('div', {
+        class: 'desc',
+        text: '这个状态需要一个处理期限。日期精确到天，但看板上的倒计时会算到'
+            + '**前一天的 21:00（JST）**为止 —— 提前一晚收工，别拖到当天。',
+      }),
+      $dlInfo,
+      el('label', { text: 'deadline 日期' }),
+      $dlQuick,
+      $dlDate,
+      $dlPreview,
+      $dlState,
+      el('div', { class: 'row' }, [$dlSave, $dlDone, $dlClear, $dlCancel]),
+    ]),
+  ]);
+
   /* ---------- 🕐 到期后的全屏提示（只有「取消」能关掉） ---------- */
   const $fuAlertList = el('div', { class: 'fulist' });
   const $fuAlertOk   = el('button', { class: 'fubtn', type: 'button', text: '取消' });
@@ -2438,7 +2507,7 @@
   // 所以必须排在全部弹窗之后，否则会被叫它的那个弹窗盖住。
   root.appendChild(el('div', null,
     [$bar, $nav, $stats, $syncBanner, $panel, $toast, $mask, $ask, $msgMask, $rmMask, $meMask,
-     $tplMask, $ordMask, $pshMask, $coMask, $hidMask, $fuMask, $cfMask, $fuAlert]));
+     $tplMask, $ordMask, $pshMask, $coMask, $hidMask, $fuMask, $dlMask, $cfMask, $fuAlert]));
 
   /* =========================================================================
    * 4. 位置 / 尺寸 / 显隐
@@ -2843,6 +2912,20 @@
         text: '🕐 ' + fmtDate(r.followUpAt).slice(5),
       }));
     }
+    // ⏳ 处理期限。倒计时的终点是设定日前一天的 21:00 JST
+    if (r.deadlineAt) {
+      const due = deadlineDue(r);
+      const over = !r.deadlineDone && due <= Date.now();
+      marks.appendChild(el('button', {
+        class: 'fu' + (over ? ' due' : ''), type: 'button', data: { act: 'deadline' },
+        title: 'deadline：' + jstDateStr(r.deadlineAt)
+             + '\n倒计时到 ' + jstDateStr(due) + ' 21:00（JST）'
+             + (r.deadlineDone ? '\n已标记为「已处理」' : (over ? '\n已超时' : ''))
+             + '\n点击可修改 / 打勾 / 删除',
+        text: r.deadlineDone ? ('✅ ' + jstDateStr(r.deadlineAt).slice(5))
+                             : (over ? '⏳ 已超时' : ('⏳ ' + jstDateStr(r.deadlineAt).slice(5))),
+      }));
+    }
     if (r.priority) {
       marks.appendChild(el('span', {
         class: 'stars', title: '重要度 ' + r.priority + ' 级', text: '✨'.repeat(r.priority),
@@ -3094,6 +3177,7 @@
       flashRow(rec.id);
       markPageCards();
       toast('状态已保存：' + rec.status);
+      maybeAskDeadline(rec);     // 需要动手的状态 → 顺手要一个处理期限
 
     } else if (f === 'priority') {
       rec.priority = Number(e.target.value) || 0;
@@ -3147,6 +3231,8 @@
       openRemind(rec);
     } else if (btn.dataset.act === 'followup') {
       openFollowUp(rec);
+    } else if (btn.dataset.act === 'deadline') {
+      openDeadline(rec, false);
     } else if (btn.dataset.act === 'del') {
       confirmDialog({
         title: '删除这条记录？',
@@ -4747,8 +4833,10 @@
       // 发送成功后才写回记录，避免发失败却改了数据
       const done = [];
       const next = $rmNewStatus.value;
+      let statusChanged = false;
       if (next && next !== rec.status) {
         rec.status = next;
+        statusChanged = true;
         done.push('状态已改为「' + next + '」');
       }
       if ($rmReplace.checked) {
@@ -4770,7 +4858,10 @@
       $rmState.className = 'status ok';
       $rmState.textContent = '已发送到 Telegram 群' + (changed ? ('，' + changed) : '');
       toast('提醒已发送' + (changed ? ('（' + changed + '）') : ''));
-      remindCloseTimer = setTimeout(() => { $rmMask.hidden = true; }, 900);
+      remindCloseTimer = setTimeout(() => {
+        $rmMask.hidden = true;
+        if (statusChanged) maybeAskDeadline(rec);   // 这里也可能改成需要动手的状态
+      }, 900);
     } catch (e) {
       $rmState.className = 'status err';
       $rmState.textContent = '发送失败：' + (e.message || e);
@@ -4988,6 +5079,107 @@
 
   $fuCancel.addEventListener('click', () => { $fuMask.hidden = true; });
   $fuMask.addEventListener('click', (e) => { if (e.target === $fuMask) $fuMask.hidden = true; });
+
+  /* =========================================================================
+   * 6.79 ⏳ 处理期限
+   *      改成「等己方处理(XR ball)」这类需要动手的状态时自动弹出来。
+   *      看板上按「设定日的前一天 21:00 JST」倒计时，秒级跳动。
+   * ========================================================================= */
+
+  let dlRec = null;
+
+  function renderDlQuick() {
+    $dlQuick.textContent = '';
+    [['今天', 0], ['明天', 1], ['后天', 2], ['3 天后', 3], ['1 周后', 7]].forEach(([label, days]) => {
+      const chip = el('button', { class: 'tplchip', type: 'button', text: label });
+      chip.addEventListener('click', () => {
+        $dlDate.value = jstDateStr(jstDayStart(jstDateStr(Date.now())) + days * 86400000);
+        updateDlPreview();
+      });
+      $dlQuick.appendChild(chip);
+    });
+  }
+
+  function updateDlPreview() {
+    const at = jstDayStart($dlDate.value);
+    if (!at) { $dlPreview.textContent = ''; return; }
+    const due = at - DEADLINE_LEAD_MS;
+    $dlPreview.textContent = '看板上会倒计时到 ' + jstDateStr(due) + ' 21:00（JST）为止，'
+      + '也就是 ' + fmtTs(due) + '（本机时间）。';
+  }
+
+  function openDeadline(rec, auto) {
+    dlRec = rec;
+    $dlInfo.textContent = (rec.company || '—') + ' / ' + (rec.title || '—')
+      + '\n当前状态：' + rec.status
+      + (rec.deadlineDone ? '\n（已标记为「已处理」）' : '');
+    $dlDate.value = jstDateStr(rec.deadlineAt);
+    // 自动弹出来又没设过的，默认给个明天，直接回车就能存
+    if (auto && !rec.deadlineAt) {
+      $dlDate.value = jstDateStr(jstDayStart(jstDateStr(Date.now())) + 86400000);
+    }
+    $dlState.className = 'status';
+    $dlState.textContent = '';
+    $dlClear.hidden = !rec.deadlineAt;
+    $dlDone.hidden = !deadlineActive(rec);
+    $dlCancel.textContent = auto ? '暂不设置' : '取消';
+    renderDlQuick();
+    updateDlPreview();
+    $dlMask.hidden = false;
+    $dlDate.focus();
+  }
+
+  /** 状态改成需要动手的那几种时，自动要一个 deadline */
+  function maybeAskDeadline(rec) {
+    if (!rec || !wantsDeadline(rec.status)) return;
+    if (deadlineActive(rec)) return;         // 已经有在跑的期限就别再烦
+    setTimeout(() => openDeadline(rec, true), 60);   // 让当前这一轮 render 先跑完
+  }
+
+  $dlDate.addEventListener('input', updateDlPreview);
+  $dlDate.addEventListener('change', updateDlPreview);
+
+  $dlSave.addEventListener('click', () => {
+    if (!dlRec) return;
+    const at = jstDayStart($dlDate.value);
+    if (!at) {
+      $dlState.className = 'status err';
+      $dlState.textContent = '请先选一个日期';
+      return;
+    }
+    dlRec.deadlineAt = at;
+    dlRec.deadlineDone = false;
+    touch(dlRec);
+    saveRecords();
+    render();
+    flashRow(dlRec.id);
+    $dlMask.hidden = true;
+    toast('deadline 设为 ' + jstDateStr(at) + '（倒计时到前一日 21:00 JST）');
+  });
+
+  $dlDone.addEventListener('click', () => {
+    if (!dlRec) return;
+    dlRec.deadlineDone = true;
+    touch(dlRec);
+    saveRecords();
+    render();
+    $dlMask.hidden = true;
+    toast('已标为「已处理」，看板上的倒计时会消失');
+  });
+
+  $dlClear.addEventListener('click', () => {
+    if (!dlRec) return;
+    dlRec.deadlineAt = 0;
+    dlRec.deadlineDone = false;
+    touch(dlRec);
+    saveRecords();
+    render();
+    $dlMask.hidden = true;
+    toast('已删除 deadline');
+  });
+
+  $dlCancel.addEventListener('click', () => { $dlMask.hidden = true; });
+  $dlMask.addEventListener('click', (e) => { if (e.target === $dlMask) $dlMask.hidden = true; });
 
   /** 今天（或更早）该跟进、且这一轮还没被关掉的记录 */
   function dueFollowUps() {
@@ -5490,6 +5682,17 @@
           rec.updatedAt = Math.max(rec.updatedAt || 0, at);
           changed++;
         }
+        done.push(op.opId);
+        return;
+      }
+
+      /* 看板上删掉 / 打勾 deadline。这条也不受下面那道「旧的不覆盖」的限制 ——
+         用户在看板上按下去的那一刻就是最新意图，本地记录哪怕更新过也该听它的。 */
+      if (op.op === 'deadline') {
+        if (op.done) rec.deadlineDone = true;
+        else { rec.deadlineAt = Number(op.at) || 0; rec.deadlineDone = false; }
+        rec.updatedAt = Math.max(rec.updatedAt || 0, op.ts || Date.now());
+        changed++;
         done.push(op.opId);
         return;
       }

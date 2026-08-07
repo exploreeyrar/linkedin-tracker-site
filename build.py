@@ -203,6 +203,10 @@ def normalize(raw):
         # 跟进提醒（当天 0 点的毫秒）与备注
         "followUpAt": to_ms(raw.get("followUpAt")),
         "followUpNote": s(raw.get("followUpNote"), 300),
+        # 处理期限：那一天 0 点（JST）的毫秒。看板倒计时到「前一日 21:00 JST」为止，
+        # 也就是这个值减 3 小时。打过勾（deadlineDone）就不再倒计时。
+        "deadlineAt": to_ms(raw.get("deadlineAt")),
+        "deadlineDone": bool(raw.get("deadlineDone")),
         "memo": s(raw.get("memo"), 1000),
         "memos": memo_blocks(raw),                # 时间轴形式的 MEMO（新 → 旧）
         "scout": bool(raw.get("scout")),          # 人事主动 scout 的
