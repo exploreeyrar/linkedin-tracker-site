@@ -28,6 +28,10 @@ BOARD_URL = "https://exploreeyrar.github.io/linkedin-tracker-site/"
 # Telegram の setWebhook に secret_token として渡した値と同じものを入れる。
 # これが未設定だと /tg/webhook は常に 403 を返す（＝チャンネル同期は動かない）。
 
+# INGEST_KEY も Secret（wrangler secret put INGEST_KEY）。
+# Mac 上の iMessage ブリッジが action=inbox_push を叩くときの鍵。
+# 未設定なら inbox_push は 501 を返す（＝入口は既定で閉じている）。
+
 # ---- Telegram 频道 → channel.html 的收件箱 ----
 # 单实例、强一致、带 WebSocket 推送。KV 是最终一致的（最长 60 秒），
 # 「更新频率拉到最高」这件事只有 Durable Object 做得到。

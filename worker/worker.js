@@ -40,7 +40,7 @@ function corsHeaders(origin, allowed) {
   return {
     'Access-Control-Allow-Origin': permitted ? (origin || 'null') : 'https://example.invalid',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-App-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, X-App-Key, X-Ingest-Key',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
@@ -101,7 +101,7 @@ function reportSkipSet(data) {
 // 内置的状态顺位，和油猴脚本 / build.py 里的 STATUSES 一致。
 // 数据源里带了 statusOrder 就以它为准（用户可能拖动调整过）。
 const DEFAULT_STATUS_ORDER = [
-  '等己方处理(XR ball)',
+  '等己方处理(胖 ball)',
   '等己方处理(己 ball)',
   '已安排面试、面试准备中',
   '対方来联络了',
@@ -858,6 +858,51 @@ export default {
     }
     if (action === 'inbox_clear') {
       return json({ ok: true, removed: await inboxClear(env) }, 200, headers);
+    }
+
+    /* ---- 外部来源直接推一条进收件箱（Mac 上的 iMessage 桥用）----
+     * 为什么不走「发给 Telegram，再靠 webhook 回流」这条现成的路：
+     * **bot 收不到自己发的消息**。实测收件箱里以 #SGJOB 开头的一条都没有，
+     * 而那些正是 bot 自己发出去的；连 24 小时窗口内的也没进来。
+     * 所以要让频道页看到，必须直接写收件箱。
+     *
+     * 这个入口没有 Origin 可依赖（脚本不是浏览器），所以用独立的 INGEST_KEY，
+     * 没配就整个关掉 —— 失败时关闭，不给 Worker 开新的口子。 */
+    if (action === 'inbox_push') {
+      if (!env.INGEST_KEY) {
+        return json({ ok: false, description: 'INGEST_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Ingest-Key') !== env.INGEST_KEY) {
+        return json({ ok: false, description: 'bad ingest key' }, 403, headers);
+      }
+      const text = String(body.text || '').slice(0, 4000);
+      if (!text) return json({ ok: false, description: 'missing text' }, 400, headers);
+
+      const src = String(body.source || '外部').slice(0, 40);
+      const msg = {
+        // 外部来源的 uid 单独打前缀，不会和 Telegram 的 <chatId>:<msgId> 撞
+        uid: 'ext:' + (String(body.id || '') || Date.now().toString(36)),
+        chatId: String(env.TG_CHAT || ''),
+        chatTitle: src,
+        msgId: 0,                       // 不参与 msgId 缺号统计
+        ts: Number(body.ts) || Date.now(),
+        editedTs: 0,
+        author: String(body.author || '').slice(0, 60),
+        bot: false,
+        kind: String(body.kind || '').slice(0, 60),
+        text: text,
+        replyText: String(body.replyText || '').slice(0, 120),
+        media: null,
+      };
+      await inboxAppend(env, msg);
+
+      // 顺手也发一条到 Telegram，这样手机上有推送
+      let tg = null;
+      if (String(body.tg || '') === '1' && env.TG_TOKEN) {
+        const head = HEADER_PREFIX + ' ' + src + (msg.author ? ('　' + msg.author) : '');
+        tg = await tgSend(env, (head + '\n\n' + text).slice(0, MAX_LEN));
+      }
+      return json({ ok: true, uid: msg.uid, telegram: tg ? !!tg.ok : null }, 200, headers);
     }
 
     // ---- 当日速报：状态 / 预览 / 发送 ----

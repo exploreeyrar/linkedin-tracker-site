@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  开机 / 登录后常驻跑 iMessage 桥。
+
+  装：
+    cp tools/com.sgjob.imessage-bridge.plist ~/Library/LaunchAgents/
+    launchctl load  ~/Library/LaunchAgents/com.sgjob.imessage-bridge.plist
+  停：
+    launchctl unload ~/Library/LaunchAgents/com.sgjob.imessage-bridge.plist
+  看日志：
+    tail -f /tmp/sgjob-imessage-bridge.log
+
+  ⚠️ 「完全磁盘访问权限」要给的是这里 ProgramArguments 里那个 python3
+  （默认 /usr/bin/python3），不是终端。给终端授权只对你手动跑的那次有效，
+  launchd 拉起来的进程仍然读不到 chat.db。
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.sgjob.imessage-bridge</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <!-- 换成你实际的绝对路径 -->
+    <string>/Users/m4pro/Downloads/SG JOB/linkedin-tracker-site/tools/imessage-bridge.py</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- 脚本自己在循环里 sleep，异常退出时由 launchd 拉回来 -->
+  <key>KeepAlive</key>
+  <true/>
+  <!-- 崩溃后别疯狂重启 -->
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/sgjob-imessage-bridge.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/sgjob-imessage-bridge.log</string>
+</dict>
+</plist>

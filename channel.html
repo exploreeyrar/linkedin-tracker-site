@@ -140,13 +140,17 @@
   .navbtn.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
   .navbtn b { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-  /* 定位提示条：跟着视口固定，否则滚到目标那一条之后
-     「取消高亮」就跑到屏幕外去了（和 index.html 的 .hlbar 一个做法） */
-  #hlbar {
+  /* 两条横幅一起悬浮在顶部。放进一个固定容器里纵向排，
+     免得「定位到某条」和「正在看 archive」同时出现时叠在一起。 */
+  .topbars {
     position: fixed; left: 50%; transform: translateX(-50%); top: 74px; z-index: 30;
-    margin: 0; width: auto; max-width: min(720px, calc(100vw - 32px));
-    border-color: #eab308; box-shadow: var(--pop);
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+    max-width: min(720px, calc(100vw - 32px)); pointer-events: none;
   }
+  .topbars .archbar {
+    margin: 0; width: auto; box-shadow: var(--pop); pointer-events: auto;
+  }
+  #hlbar { border-color: #eab308; }
   #hlbar button { border-color: #eab308; }
 
   /* 正在看 archive 列表时顶部的横幅 */
@@ -243,6 +247,13 @@
     </div>
   </div>
   <div class="gapnote" id="gapnote" hidden></div>
+
+  <div class="feed" id="feed"></div>
+  <div class="empty" id="empty" hidden>还没有消息。往那个群 / 频道里发一条试试。</div>
+</main>
+
+<!-- 两条横幅都悬浮在顶部；同时出现时纵向排开，不会互相盖住 -->
+<div class="topbars">
   <div class="archbar" id="hlbar" hidden>
     <span id="hlText">已定位到这条消息</span>
     <button type="button" id="hlClear">取消高亮</button>
@@ -251,9 +262,7 @@
     <span id="archbarText">正在看已 archive 的消息</span>
     <button type="button" id="archBack">← 回到通知流</button>
   </div>
-  <div class="feed" id="feed"></div>
-  <div class="empty" id="empty" hidden>还没有消息。往那个群 / 频道里发一条试试。</div>
-</main>
+</div>
 
 <button class="jump" id="jump" type="button" hidden>↓ 有新消息</button>
 <div class="lightbox" id="lightbox" hidden><img id="lightboxImg" alt=""></div>
@@ -392,6 +401,19 @@
     var tm = el('span', 'tm', fmtTime(m.ts));
     tm.title = fmtFull(m.ts);
     hd.appendChild(tm);
+
+    var cp = el('button', 'lnk', '⧉');
+    cp.type = 'button';
+    cp.title = '复制这条消息的正文';
+    cp.addEventListener('click', function () {
+      // 纯媒体消息没有正文，那就把类型标记（🖼 图片…）复制出去，别复制个空
+      var body = m.text || m.kind || '';
+      if (!body) { toast('这条没有可复制的文字'); return; }
+      copyText(body).then(function (ok) {
+        toast(ok ? ('已复制 ' + body.replace(/\s+/g, ' ').trim().slice(0, 20) + '…') : '复制失败');
+      });
+    });
+    hd.appendChild(cp);
 
     var lnk = el('button', 'lnk', '🔗');
     lnk.type = 'button';

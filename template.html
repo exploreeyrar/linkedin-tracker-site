@@ -589,7 +589,7 @@
     <div class="empty" id="empty" hidden>暂无记录。在 LinkedIn 职位页点击「已递交投递」并同步后，这里就会出现。</div>
   </div>
 
-  <footer>
+  <footer id="footnote" hidden>
     由 <code>build.py</code> 从 <code>data/records.json</code> 生成 · GitHub Actions 自动部署<br>
     「距今天数」在你打开页面时实时计算，因此始终准确
   </footer>
@@ -635,7 +635,7 @@
 
     <label for="rmWho">谁需要处理这个提醒？</label>
     <select id="rmWho">
-      <option value="XR ball" selected>XR ball</option>
+      <option value="胖 ball" selected>胖 ball</option>
       <option value="己 ball">己 ball</option>
       <option value="通知">通知</option>
     </select>
@@ -728,6 +728,7 @@
 
     <label style="margin-top:18px">清单</label>
     <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
+    <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
 
     <label style="margin-top:18px">通知</label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
@@ -847,6 +848,7 @@
   // 顺序即默认排序顺位，与油猴脚本 / build.py 保持一致
   var STATUS_ORDER = PAYLOAD.statuses || [];
   var STATUS_VAR = {
+    '等己方处理(胖 ball)': '--c-self',
     '等己方处理(XR ball)': '--c-self',
     '等己方处理(己 ball)': '--c-selfme',
     '已安排面试、面试准备中': '--c-interview',
@@ -908,7 +910,7 @@
   };
   // 还没有下一步安排、在等着的：用于「等待中」与「超 N 天无进展」两个指标
   var LEGACY_WAITING = {
-    '已投递等联络': 1, '等己方处理(XR ball)': 1, '等己方处理(己 ball)': 1,
+    '已投递等联络': 1, '等己方处理(胖 ball)': 1, '等己方处理(XR ball)': 1, '等己方处理(己 ball)': 1,
     '一次人事面谈结束、等对方联络': 1
   };
   function statusFlag(name, key, legacy) {
@@ -1114,6 +1116,7 @@
     followUp: {},
     fuDone: {},                    // 已经弹过并被手动关掉的：'<key>@<日期>' → 关掉时间
     pickMode: false,               // 多选：默认关，在设置里开
+    showFoot: false,               // 底部那段构建说明：默认不显示
     memoAsc: true,                 // 详情页 MEMO 排列：true = 旧 → 新
     memoPushed: {},                // recKey → 最后一次推到 Telegram 的 MEMO 时间
     showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
@@ -1356,6 +1359,7 @@
     return function (s) { return !!m[normStatus(s)]; };
   }
   var isTodo = statusSet([
+    '等己方处理(胖 ball)',
     '等己方处理(XR ball)',
     '等己方处理(己 ball)',
     '已安排面试、面试准备中',
@@ -1396,7 +1400,7 @@
       var c = el(isBtn ? 'button' : 'div', 'kpi' + (isBtn ? ' act' : ''));
       if (isBtn) {
         c.type = 'button';
-        c.title = '只看待处理的：等己方处理(XR ball) / 等己方处理(己 ball) / 已安排面试、面试准备中 / 対方来联络了';
+        c.title = '只看待处理的：等己方处理(胖 ball) / 等己方处理(己 ball) / 已安排面试、面试准备中 / 対方来联络了';
         c.classList.toggle('on', groupFilter === 'todo');
         c.addEventListener('click', function () {
           groupFilter = (groupFilter === 'todo') ? '' : 'todo';
@@ -1904,6 +1908,7 @@
   /* ---------- 设置 ---------- */
   function syncPrefsUI() {
     $('pfPick').checked = !!prefs.pickMode;
+    $('pfFoot').checked = !!prefs.showFoot;
     $('pfDot').checked = !!prefs.showDot;
     $('pfNotify').checked = !!prefs.notify;
     var hint = '';
@@ -1921,6 +1926,11 @@
     savePrefs();
     $('pickHint').hidden = !prefs.pickMode;
     apply();
+  });
+  $('pfFoot').addEventListener('change', function () {
+    prefs.showFoot = this.checked;
+    savePrefs();
+    $('footnote').hidden = !prefs.showFoot;
   });
   $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
   $('pfNotify').addEventListener('change', function () {
@@ -2493,7 +2503,7 @@
   function openRemind(r) {
     clearTimeout(remindCloseTimer);   // 上一次发送成功后的延时关闭，别把新开的窗关掉
     remindTarget = r;
-    $('rmWho').value = 'XR ball';
+    $('rmWho').value = '胖 ball';
     $('rmPriority').value = '无';
     $('rmMemo').value = '';
     $('rmWith').checked = false;
@@ -3148,6 +3158,7 @@
   prefs.lastVisit = Date.now();
   savePrefs();
 
+  $('footnote').hidden = !prefs.showFoot;
   renderKPIs();
   renderColList();
   buildStatusPanel();

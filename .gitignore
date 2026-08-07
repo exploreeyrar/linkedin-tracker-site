@@ -2,4 +2,18 @@ dist/
 __pycache__/
 .DS_Store
 
+# wrangler 的本地缓存与临时产物。cache/wrangler-account.json 里有 Cloudflare
+# 账号 ID 和账号名，不该进公开仓库。
 worker/.wrangler/
+
+# 只留本地，不上传（见 README 的「隐私」一节）：
+#   · 油猴脚本本体 —— 注意这会让 Tampermonkey 的自动更新失效，
+#     想保留自动更新就把它托管到别处（例如 secret gist），
+#     并把 @updateURL / @downloadURL 指过去。
+#   · README —— 里面写了仓库结构与部署细节
+linkedin-applied-tracker.user.js
+README.md
+
+# iMessage 桥的本机配置与游标（配置里有 INGEST_KEY）
+tools/imessage-bridge.config.json
+tools/.imessage-bridge.state.json
