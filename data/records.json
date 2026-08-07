@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-07T02:01:01.764Z",
+ "updatedAt": "2026-08-07T02:01:25.263Z",
  "count": 96,
  "records": [
   {
@@ -779,8 +779,10 @@
    "status": "已安排面试、面试准备中",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786068056762,
+   "updatedAt": 1786068080260,
    "priority": 3,
+   "deadlineAt": 1786546800000,
+   "deadlineDone": false,
    "epMonthly": 0,
    "epAnnual": 0
   },
