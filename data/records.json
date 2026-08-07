@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-07T12:41:39.510Z",
+ "updatedAt": "2026-08-07T12:41:47.516Z",
  "count": 97,
  "records": [
   {
@@ -803,20 +803,15 @@
    ],
    "ts": 1785817749585,
    "tenure": "2.3 years",
-   "memo": "[2026-08-07 11:01] what",
+   "memo": "",
    "status": "已安排面试、面试准备中",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786106498481,
+   "updatedAt": 1786106505799,
    "priority": 3,
    "deadlineAt": 1786546800000,
    "deadlineDone": false,
-   "memos": [
-    {
-     "ts": 1786068080260,
-     "text": "what"
-    }
-   ],
+   "memos": [],
    "epMonthly": 0,
    "epAnnual": 0
   },
