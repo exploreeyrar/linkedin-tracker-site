@@ -65,13 +65,51 @@ async function readBody(request) {
   return out;
 }
 
+/**
+ * 发一条到 Telegram，顺手把它也记进收件箱。
+ *
+ * 为什么要顺手记：**bot 收不到自己发的消息**，所以经 sendMessage 发出去的东西
+ * 永远不会从 webhook 回来，channel.html 上就看不到「请求更新状态」「当日速报」
+ * 这些自己发的内容（msgId 缺号 #30-31 / #35 / #37 / #39-40… 全是它们）。
+ *
+ * 这里是所有发送路径的唯一出口 —— 立即发、定时队列、Cron 的当日速报、
+ * sendnow、iMessage 桥的那份副本，全都走这条函数，所以补在这一处就够。
+ *
+ * uid 用 Telegram 回给我们的真实 message_id 拼，和 webhook 那边算出来的一模一样：
+ * 万一以后 Telegram 真的开始投递 bot 自己的消息，同一个 key 覆盖掉即可，不会重复。
+ */
 async function tgSend(env, text) {
   const res = await fetch(`${TG_API}/bot${env.TG_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: env.TG_CHAT, text: text, disable_web_page_preview: true })
   });
-  return await res.json().catch(() => ({ ok: false, description: 'invalid response from Telegram' }));
+  const data = await res.json().catch(() => ({ ok: false, description: 'invalid response from Telegram' }));
+  if (data && data.ok) {
+    try { await recordOwnMessage(env, data.result, text); }
+    catch (e) { /* 记不进收件箱不该让「已发送」变成失败 */ }
+  }
+  return data;
+}
+
+/** 把 bot 自己发出去的那条写进收件箱，让 channel.html 也看得到 */
+async function recordOwnMessage(env, result, text) {
+  if (!result || !result.chat) return;
+  const from = result.from || {};
+  await inboxAppend(env, {
+    uid: String(result.chat.id) + ':' + result.message_id,
+    chatId: String(result.chat.id),
+    chatTitle: String(result.chat.title || result.chat.username || ''),
+    msgId: result.message_id,          // 真实 msgId，缺号统计也就跟着准了
+    ts: (Number(result.date) || Math.floor(Date.now() / 1000)) * 1000,
+    editedTs: 0,
+    author: String(from.first_name || from.username || 'Bot').slice(0, 60),
+    bot: true,
+    kind: '',
+    text: String(text || '').slice(0, 4000),
+    replyText: '',
+    media: null,
+  });
 }
 
 /* ==========================================================================

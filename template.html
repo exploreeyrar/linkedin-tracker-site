@@ -318,10 +318,68 @@
   .sticky .stx {
     font-size: 14.5px; line-height: 1.72; white-space: pre-wrap; word-break: break-word;
     max-height: 46vh; overflow: auto; overscroll-behavior: contain;
+    padding-bottom: 18px;          /* 给右下角的 ✎ / 🗑 留位置 */
   }
   /* 便签高矮不一，箭头贴着上沿才对得齐，居中会飘到半空 */
   .stickyar { align-self: flex-start; margin-top: 32px; color: var(--sub); font-size: 15px; flex: 0 0 auto; user-select: none; }
   .stickyempty { color: var(--sub); font-size: 13px; padding: 18px 0; }
+
+  /* MEMO 区顶部那行「回传到哪一步了」 */
+  .dtpipe {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+    margin: 0 0 10px; border: 1px solid var(--line); background: var(--bg); color: var(--sub);
+  }
+  .dtpipe.ok   { color: var(--c-offer);    border-color: currentColor; }
+  .dtpipe.wait { color: var(--c-interview); border-color: currentColor; }
+  .dtpipe.bad  { color: var(--c-rejitv);   border-color: currentColor; font-weight: 700; }
+
+  /* 每张便签右上角那个状态角标 */
+  .sticky .mst { font-style: normal; font-weight: 700; margin-left: auto; white-space: nowrap; }
+  .sticky .mst.ok   { color: #4a7c2f; }
+  .sticky .mst.sent { color: #6b6320; }
+  .sticky .mst.wait { color: #8a5a00; }
+  .sticky .mst.bad  { color: #a3232b; }
+  @media (prefers-color-scheme: dark) {
+    .sticky .mst.ok   { color: #86d16a; }
+    .sticky .mst.sent { color: #d8c98a; }
+    .sticky .mst.wait { color: #f0b445; }
+    .sticky .mst.bad  { color: #ff8b8b; }
+  }
+
+  /* 便签上的 ✎ / 🗑：平时淡，鼠标移上去才明显 */
+  .sticky { position: relative; }
+  .sticky .stops {
+    position: absolute; right: 6px; bottom: 5px; display: flex; gap: 2px;
+    opacity: 0; transition: opacity .15s ease;
+  }
+  .sticky:hover .stops, .sticky .stops:focus-within { opacity: 1; }
+  .sticky .stops[hidden] { display: none; }
+  .sticky .stops button {
+    font: inherit; font-size: 12px; line-height: 1; padding: 3px 6px; border-radius: 6px;
+    border: 1px solid var(--noteline); background: rgba(255,255,255,.6); color: var(--notefg); cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) {
+    .sticky .stops button { background: rgba(0,0,0,.28); }
+  }
+  .sticky .stops button:hover { border-color: var(--accent); color: var(--accent); }
+
+  .sticky .stedit {
+    width: 100%; font: inherit; font-size: 14px; line-height: 1.65; min-height: 96px;
+    border: 1px solid var(--accent); border-radius: 6px; padding: 7px 9px;
+    background: rgba(255,255,255,.72); color: var(--notefg); resize: vertical;
+  }
+  @media (prefers-color-scheme: dark) {
+    .sticky .stedit { background: rgba(0,0,0,.3); color: var(--notefg); }
+  }
+  .sticky .streditrow { display: flex; gap: 6px; margin-top: 6px; }
+  .sticky .streditrow button {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--noteline); background: rgba(255,255,255,.6); color: var(--notefg); cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) {
+    .sticky .streditrow button { background: rgba(0,0,0,.28); }
+  }
+  .sticky .streditrow button:hover { border-color: var(--accent); color: var(--accent); }
 
   /* 详情页里现写 MEMO */
   .memoadd { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; }
@@ -542,6 +600,13 @@
     max-width: calc(100vw - 32px); text-align: center;
   }
   .toast.show { opacity: 1; }
+  /* 带「撤销」的 toast 要能点，所以这一种不能 pointer-events:none */
+  .toast.act { pointer-events: auto; display: inline-flex; align-items: center; gap: 12px; }
+  .toast button {
+    font: inherit; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid #eab308; background: transparent; color: #eab308; cursor: pointer;
+  }
+  .toast button:hover { background: #eab308; color: #1a1a1a; }
 </style>
 </head>
 <body>
@@ -756,6 +821,7 @@
         <button class="linkbtn" id="dtMemoOrder" type="button" title="切换 MEMO 的排列方向">旧 → 新</button>
         <button class="linkbtn sp" id="dtMore" type="button">显示其余项目信息</button>
       </div>
+      <div class="dtpipe" id="dtPipe"></div>
       <div class="stickywrap" id="dtMemos"></div>
     </div>
     <div class="memoadd">
@@ -889,6 +955,16 @@
     take(MIRROR && MIRROR.memos && MIRROR.memos[recKey(r)], false);
     // 本页面刚写的，还排在回传队列里
     take(LOCAL && LOCAL.memos && LOCAL.memos[recKey(r)], true);
+
+    // 本页面改过 / 删过的，覆盖在最后一层
+    var k = recKey(r);
+    var edits = (LOCAL && LOCAL.memoEdits && LOCAL.memoEdits[k]) || {};
+    var dels  = (LOCAL && LOCAL.memoDels  && LOCAL.memoDels[k])  || {};
+    out = out.filter(function (b) { return !dels[b.ts]; });
+    out = out.map(function (b) {
+      if (!(b.ts in edits)) return b;
+      return { ts: b.ts, text: edits[b.ts], local: true, edited: true };
+    });
     return out.sort(function (a, b) { return b.ts - a.ts; });
   }
 
@@ -1097,12 +1173,25 @@
   }
 
   var toastTimer = null;
-  function toast(msg) {
+  /** msg 之外还能挂一个可点的动作（用于「已删除 · 撤销」这种，不必弹确认框） */
+  function toast(msg, actionLabel, onAction) {
     var t = $('toast');
     t.textContent = msg;
+    t.classList.remove('act');
+    if (actionLabel && onAction) {
+      var b = el('button', null, actionLabel);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        t.classList.remove('show');
+        onAction();
+      });
+      t.appendChild(b);
+      t.classList.add('act');
+    }
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); },
+                            actionLabel ? 7000 : 2600);
   }
 
   /* ---------- 本地偏好 ---------- */
@@ -1199,7 +1288,10 @@
    * archive 则纯粹是本机行为，永远不回传。
    */
   var LK = 'sgjob_local_v1';
-  var LOCAL = { memos: {}, msgs: [], archived: {}, deadlines: {} };
+  /* memoEdits / memoDels：对**已经在 records.json 或镜像里**那些 MEMO 的改动。
+     LOCAL.memos 只装新增的，改和删动不了它们，所以另开两层覆盖。
+     都按「recKey → 那条 MEMO 的 ts」定位。 */
+  var LOCAL = { memos: {}, msgs: [], archived: {}, deadlines: {}, memoEdits: {}, memoDels: {} };
   try {
     var lsaved = JSON.parse(localStorage.getItem(LK) || 'null');
     if (lsaved && typeof lsaved === 'object') {
@@ -1207,6 +1299,8 @@
       if (Array.isArray(lsaved.msgs)) LOCAL.msgs = lsaved.msgs;
       if (lsaved.archived && typeof lsaved.archived === 'object') LOCAL.archived = lsaved.archived;
       if (lsaved.deadlines && typeof lsaved.deadlines === 'object') LOCAL.deadlines = lsaved.deadlines;
+      if (lsaved.memoEdits && typeof lsaved.memoEdits === 'object') LOCAL.memoEdits = lsaved.memoEdits;
+      if (lsaved.memoDels && typeof lsaved.memoDels === 'object') LOCAL.memoDels = lsaved.memoDels;
     }
   } catch (e) { /* 用默认值 */ }
   function saveLocal() { try { localStorage.setItem(LK, JSON.stringify(LOCAL)); } catch (e) {} }
@@ -1256,6 +1350,29 @@
       var list = (LOCAL.memos[k] || []).filter(function (b) { return !have[b.ts + '|' + b.text]; });
       if (list.length !== (LOCAL.memos[k] || []).length) changed = true;
       if (list.length) LOCAL.memos[k] = list; else delete LOCAL.memos[k];
+    });
+
+    // MEMO 的改 / 删覆盖：records.json 已经是这个样子了就撤掉覆盖
+    Object.keys(LOCAL.memoEdits).forEach(function (k) {
+      var have = byKey[k];
+      if (!have) return;
+      var m = LOCAL.memoEdits[k];
+      Object.keys(m).forEach(function (ts) {
+        if (have[ts + '|' + m[ts]]) { delete m[ts]; changed = true; }   // 新文本已就位
+      });
+      if (!Object.keys(m).length) delete LOCAL.memoEdits[k];
+    });
+    Object.keys(LOCAL.memoDels).forEach(function (k) {
+      var r = null;
+      RECORDS.forEach(function (x) { if (recKey(x) === k) r = x; });
+      if (!r) return;
+      var live = {};
+      baseMemoBlocks(r).forEach(function (b) { live[b.ts] = 1; });
+      var m = LOCAL.memoDels[k];
+      Object.keys(m).forEach(function (ts) {
+        if (!live[ts]) { delete m[ts]; changed = true; }                // 那条真的没了
+      });
+      if (!Object.keys(m).length) delete LOCAL.memoDels[k];
     });
 
     // deadline 的本地覆盖：构建进来的那份已经和本机一致了就撤掉覆盖
@@ -1308,6 +1425,71 @@
       outboxPush({ op: 'deadline', jobId: String(r.jobId), site: r.site || 'linkedin',
                    at: patch.at || 0, done: !!patch.done, ts: Date.now() });
     }
+  }
+
+  /** 改掉某一条 MEMO（本机立刻可见 + 排队回传） */
+  function editMemo(r, blockTs, oldText, newText) {
+    var k = recKey(r);
+    var t = String(newText || '').trim();
+    // 是本页面刚加、还没回传的那种：直接改 LOCAL.memos，不用生成 memoEdit
+    var pending = (LOCAL.memos[k] || []).filter(function (b) { return b.ts === blockTs; });
+    if (pending.length) {
+      if (t) pending.forEach(function (b) { b.text = t; });
+      else LOCAL.memos[k] = LOCAL.memos[k].filter(function (b) { return b.ts !== blockTs; });
+      saveLocal();
+      // 队列里那条 memo op 也要跟着改，否则回传的还是旧文本
+      var list = outboxRead().map(function (o) {
+        if (o && o.op === 'memo' && String(o.jobId) === String(r.jobId) && o.ts === blockTs) {
+          return t ? Object.assign({}, o, { text: t }) : null;
+        }
+        return o;
+      }).filter(Boolean);
+      try { localStorage.setItem(OUTBOX, JSON.stringify(list)); } catch (e) {}
+      refreshPending();
+      return;
+    }
+    (LOCAL.memoEdits[k] = LOCAL.memoEdits[k] || {});
+    if (t) LOCAL.memoEdits[k][blockTs] = t;
+    else { delete LOCAL.memoEdits[k][blockTs]; (LOCAL.memoDels[k] = LOCAL.memoDels[k] || {})[blockTs] = Date.now(); }
+    saveLocal();
+    if (r.jobId) {
+      outboxPush({ op: t ? 'memoEdit' : 'memoDelete', jobId: String(r.jobId),
+                   site: r.site || 'linkedin', blockTs: blockTs, oldText: oldText,
+                   text: t, ts: Date.now() });
+    }
+  }
+
+  /** 删掉某一条 MEMO。返回一个「撤销」函数 —— 不弹确认框，但要留退路 */
+  function deleteMemo(r, blockTs, oldText) {
+    var k = recKey(r);
+    var pending = (LOCAL.memos[k] || []).filter(function (b) { return b.ts === blockTs; });
+    if (pending.length) {
+      LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
+      saveLocal();
+      var kept = outboxRead().filter(function (o) {
+        return !(o && o.op === 'memo' && String(o.jobId) === String(r.jobId) && o.ts === blockTs);
+      });
+      try { localStorage.setItem(OUTBOX, JSON.stringify(kept)); } catch (e) {}
+      refreshPending();
+      return function undo() { appendMemo(r, oldText, blockTs); };
+    }
+    (LOCAL.memoDels[k] = LOCAL.memoDels[k] || {})[blockTs] = Date.now();
+    if (LOCAL.memoEdits[k]) delete LOCAL.memoEdits[k][blockTs];
+    saveLocal();
+    if (r.jobId) {
+      outboxPush({ op: 'memoDelete', jobId: String(r.jobId), site: r.site || 'linkedin',
+                   blockTs: blockTs, oldText: oldText, ts: Date.now() });
+    }
+    return function undo() {
+      delete LOCAL.memoDels[k][blockTs];
+      saveLocal();
+      // 把刚排进去的那条 memoDelete 撤掉
+      var kept = outboxRead().filter(function (o) {
+        return !(o && o.op === 'memoDelete' && String(o.jobId) === String(r.jobId) && o.blockTs === blockTs);
+      });
+      try { localStorage.setItem(OUTBOX, JSON.stringify(kept)); } catch (e) {}
+      refreshPending();
+    };
   }
 
   /** 页面发出去的每一条 Telegram 消息都进通知板 */
@@ -1796,8 +1978,10 @@
     var rows = RECORDS.filter(function (r) {
       if (fs && r.status !== fs) return false;
       if (groupFilter === 'todo' && !isTodo(r.status)) return false;
-      // 默认藏起来的那几种状态。明确点了这个状态、或按了底部那个灰按钮时照常显示
-      if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status) return false;
+      /* 默认藏起来的那几种状态。三种情况照常显示：
+         明确点了这个状态、按了底部那个灰按钮、**正在搜索** ——
+         搜东西的时候不该因为「默认收起来了」就搜不到。 */
+      if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status && !q) return false;
       if (scoutOnly && !r.scout) return false;
       if (!q) return true;
       var hay = [r.company, r.title, r.memo, r.status]
@@ -1859,9 +2043,15 @@
     refreshPickBar();
 
     $('empty').hidden = rows.length > 0;
-    $('shown').textContent = rows.length === RECORDS.length
+    var shownTxt = rows.length === RECORDS.length
       ? RECORDS.length + ' 条'
       : '显示 ' + rows.length + ' / ' + RECORDS.length + ' 条';
+    if (q) {
+      // 搜索是全量的，把命中里有多少条属于默认隐藏的状态标出来
+      var nh = rows.filter(function (r) { return isHiddenStatus(r.status); }).length;
+      if (nh && !prefs.showHidden) shownTxt += '（含 ' + nh + ' 条隐藏状态）';
+    }
+    $('shown').textContent = shownTxt;
 
     // 底部那个灰按钮：数一下现在藏了多少条
     var nHidden = RECORDS.filter(function (r) { return isHiddenStatus(r.status); }).length;
@@ -2045,30 +2235,186 @@
       return;
     }
     var pushed = prefs.memoPushed[recKey(r)] || 0;
+    var inBase = {};
+    baseMemoBlocks(r).forEach(function (x) { inBase[x.ts + '|' + x.text] = 1; });
+
     bs.forEach(function (b, i) {
       if (i) wrap.appendChild(el('div', 'stickyar', '→'));
       var newest = prefs.memoAsc ? (i === bs.length - 1) : (i === 0);
       var note = el('div', 'sticky' + (newest ? ' newest' : ''));
+
       var hd = el('div', 'sts');
       hd.appendChild(el('span', null, fmtDT(b.ts)));
-      if (b.local) {
-        var wait = el('em', null, '待回传');
-        // 别叫 bs —— var 会提升到整个回调顶部，把外面那个 bs 数组遮掉
-        var bst = bridgeState();
-        wait.title = bst.alive
-          ? (bst.ready ? '油猴脚本已连接，几秒内写回仓库' : '油猴脚本在跑，但还没配 GitHub 仓库 / Token')
-          : '这一页没有检测到油猴脚本，改动暂时传不上去';
-        hd.appendChild(wait);
-      } else if (b.ts > pushed) {
-        var np = el('em', null, '未推送');
-        np.title = '还没用「一键推送所有新MEMO」发到 Telegram';
-        hd.appendChild(np);
-      }
+
+      // 回传到哪一步了 —— 这一格每秒重算，见 tickMemoStatus
+      var st = el('em', 'mst');
+      st.dataset.ts = String(b.ts);
+      st.dataset.landed = inBase[b.ts + '|' + b.text] ? '1' : '';
+      paintMemoStatus(st, b, pushed);
+      hd.appendChild(st);
       note.appendChild(hd);
-      note.appendChild(el('div', 'stx', b.text));
+
+      var body = el('div', 'stx', b.text);
+      note.appendChild(body);
+
+      // 逐条编辑 / 删除，都不弹确认框
+      var ops = el('div', 'stops');
+      var edit = el('button', null, '✎');
+      edit.type = 'button'; edit.title = '编辑这一条';
+      var del = el('button', null, '🗑');
+      del.type = 'button'; del.title = '删除这一条（可撤销）';
+      ops.appendChild(edit); ops.appendChild(del);
+      note.appendChild(ops);
+
+      edit.addEventListener('click', function () {
+        if (note.querySelector('textarea')) return;      // 已经在编辑
+        var ta = document.createElement('textarea');
+        ta.className = 'stedit';
+        ta.value = b.text;
+        var save = el('button', null, '✔ 保存');
+        var cancel = el('button', null, '✕ 取消');
+        save.type = cancel.type = 'button';
+        var row = el('div', 'streditrow');
+        row.appendChild(save); row.appendChild(cancel);
+        body.hidden = true;
+        ops.hidden = true;
+        note.appendChild(ta);
+        note.appendChild(row);
+        ta.focus();
+        ta.setSelectionRange(ta.value.length, ta.value.length);
+
+        var close = function () { renderDetailMemos(r); };
+        cancel.addEventListener('click', close);
+        save.addEventListener('click', function () {
+          var t = ta.value.trim();
+          if (t === b.text) { close(); return; }
+          editMemo(r, b.ts, b.text, t);
+          renderDetailMemos(r);
+          apply();
+          toast(t ? '已修改，等回传' : '内容清空 = 删除，等回传');
+        });
+        // ⌘/Ctrl+Enter 保存，Esc 取消
+        ta.addEventListener('keydown', function (e) {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save.click(); }
+          if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+        });
+      });
+
+      del.addEventListener('click', function () {
+        var undo = deleteMemo(r, b.ts, b.text);
+        renderDetailMemos(r);
+        apply();
+        toast('已删除这条 MEMO', '撤销', function () {
+          undo();
+          renderDetailMemos(r);
+          apply();
+          toast('已撤销');
+        });
+      });
+
       wrap.appendChild(note);
     });
+    paintMemoPipeline();
   }
+
+  /**
+   * 一条 MEMO 走到哪一步了。链路是：
+   *   本页面 → 回传队列 → 油猴脚本 → GitHub → Actions 构建 → 这个页面
+   * 每一步都有可查的信号，所以能说得比「待回传」具体。
+   */
+  function paintMemoStatus(node, b, pushed) {
+    var bst = bridgeState();
+    var landed = node.dataset.landed === '1';
+    var cls = 'mst', txt, tip;
+
+    if (landed) {
+      cls += ' ok';
+      txt = '✅ 已入库';
+      tip = '已经在仓库的 records.json 里，并且已经构建进这个页面';
+    } else if (b.local) {
+      if (!bst.alive) {
+        cls += ' bad';
+        txt = '⚠️ 传不上去';
+        tip = '这一页没有检测到油猴脚本 —— 改动只会停在本机队列里';
+      } else if (!bst.ready) {
+        cls += ' bad';
+        txt = '⚠️ 未配 Token';
+        tip = '油猴脚本在跑，但还没填 GitHub 仓库 / Token';
+      } else if (bst.err) {
+        cls += ' bad';
+        txt = '⚠️ 回传失败';
+        tip = '上次同步报错：' + bst.err;
+      } else {
+        cls += ' wait';
+        txt = bst.syncing ? '⏳ 正在推送' : '⏳ 待回传';
+        tip = '油猴脚本已连接，几秒内写回仓库';
+      }
+    } else {
+      // 不在 records.json 里、也不是本页面新加的 → 来自脚本镜像，已经交给脚本了
+      if (bst.alive && bst.dirty) {
+        cls += ' wait';
+        txt = '🔄 等推送';
+        tip = '脚本已经收下了，但还没推到 GitHub';
+      } else if (bst.alive && bst.lastSync && bst.lastSync > b.ts) {
+        cls += ' sent';
+        txt = '☁️ 已推 GitHub';
+        tip = '已于 ' + fmtDT(bst.lastSync) + ' 推送，等 Actions 构建完这个页面才会显示「已入库」';
+      } else {
+        cls += ' sent';
+        txt = '☁️ 已交给脚本';
+        tip = '脚本手里已经有这一条了';
+      }
+    }
+    if (b.edited) { txt += '（已改）'; }
+    node.className = cls;
+    node.textContent = txt;
+    node.title = tip;
+  }
+
+  /** MEMO 区顶部那行总状态 */
+  function paintMemoPipeline() {
+    var box = $('dtPipe');
+    if (!box) return;
+    var bst = bridgeState();
+    var n = outboxRead().length;
+    var cls = 'dtpipe', txt;
+    if (!bst.alive) {
+      cls += ' bad';
+      txt = '⚠️ 没有检测到油猴脚本' + (n ? ('，' + n + ' 项改动传不上去') : '');
+    } else if (!bst.ready) {
+      cls += ' bad';
+      txt = '⚠️ 脚本在跑，但没配 GitHub 仓库 / Token';
+    } else if (bst.err) {
+      cls += ' bad';
+      txt = '⚠️ 上次回传失败：' + bst.err;
+    } else if (bst.syncing) {
+      cls += ' wait';
+      txt = '⏳ 正在推送到 GitHub…';
+    } else if (n || bst.dirty) {
+      cls += ' wait';
+      txt = '⏳ ' + (n ? (n + ' 项待回传') : '脚本有未推送的改动') + '，几秒内写回仓库';
+    } else {
+      cls += ' ok';
+      txt = '✅ 已全部回传' + (bst.lastSync ? ('（最近 ' + fmtDT(bst.lastSync) + '）') : '');
+    }
+    box.className = cls;
+    box.textContent = txt;
+  }
+
+  /* 状态是「实时」的：队列被脚本取走、推送成功、报错，都要当场反映出来。
+     详情页开着时每秒刷一次这几个格子（只改文字，不重建 DOM）。 */
+  setInterval(function () {
+    if (!detailTarget || $('detailMask').hidden) return;
+    var pushed = prefs.memoPushed[recKey(detailTarget)] || 0;
+    var bs = memoBlocks(detailTarget);
+    var byTs = {};
+    bs.forEach(function (b) { byTs[b.ts] = b; });
+    [].forEach.call($('dtMemos').querySelectorAll('.mst[data-ts]'), function (node) {
+      var b = byTs[node.dataset.ts];
+      if (b) paintMemoStatus(node, b, pushed);
+    });
+    paintMemoPipeline();
+  }, 1000);
 
   function openDetail(r) {
     detailTarget = r;
