@@ -52,6 +52,12 @@
   .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
   .kpi .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
   .kpi .l { color: var(--sub); font-size: 12px; margin-top: 3px; }
+  /* 可点击筛选的 KPI（「待处理」） */
+  .kpi.act { cursor: pointer; text-align: left; font: inherit; }
+  .kpi.act:hover { border-color: var(--c-offer); }
+  .kpi.act.on { border-color: var(--c-offer); background: color-mix(in srgb, var(--c-offer) 12%, var(--card)); }
+  .kpi.act .n, .kpi.act .l { color: var(--c-offer); }
+  .kpi.act .l { font-weight: 600; }
 
   /* align-items:start —— 状态多了以后左卡片会很高，右边图表卡片不该跟着拉伸留白 */
   .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 18px; align-items: start; }
@@ -243,26 +249,80 @@
     background: var(--card); color: var(--fg); border: 1px solid var(--line); box-shadow: var(--shadow);
   }
   .navbtn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
-
-  /* 右下角「联系己」 */
-  .contactfab {
-    position: fixed; right: 20px; bottom: 78px; z-index: 40;
-    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
-    padding: 11px 16px; border-radius: 999px;
-    background: var(--card); color: var(--fg);
-    border: 1px solid var(--line); box-shadow: var(--pop);
-    max-width: 68vw; overflow: hidden; white-space: nowrap;
+  /* 频道页入口：有没看过的消息时挂一个红点计数 */
+  .navbtn.hot { display: inline-flex; align-items: center; gap: 7px; }
+  .ndot {
+    min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px;
+    background: #e5484d; color: #fff; font-size: 11px; font-weight: 700; line-height: 17px;
+    text-align: center; font-variant-numeric: tabular-nums;
   }
-  .contactfab:hover { border-color: var(--accent); color: var(--accent); }
-  .contactfab .full { display: none; }
-  .contactfab:hover .short { display: none; }
-  .contactfab:hover .full { display: inline; }
+  .ndot[hidden] { display: none; }
+
+  /* 页面最底部：放出被默认隐藏的那几种状态 */
+  .hiddenmore {
+    display: block; margin: 26px auto 0; font: inherit; font-size: 11.5px;
+    padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid transparent; background: transparent; color: var(--sub); opacity: .45;
+  }
+  .hiddenmore:hover { opacity: 1; border-color: var(--line); }
+  .hiddenmore.on { opacity: .85; border-color: var(--line); }
 
   /* 详情弹窗 */
   .dtgrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; font-size: 13px; margin-top: 12px; }
   .dtgrid dt { color: var(--sub); white-space: nowrap; }
   .dtgrid dd { margin: 0; word-break: break-word; white-space: pre-wrap; }
   .dtlink { font-size: 13px; align-self: center; }
+  .dtgrid[hidden] { display: none; }
+
+  /* ---------- 便签纸样式的 MEMO 时间轴（详情页主角） ----------
+     从左上到右下，旧 → 新；每两条之间一个「→」做视觉指引。
+     可读性优先：字号偏大、行距松、不做任何截断。 */
+  :root { --note: #fff8c4; --noteline: #e8d98a; --notefg: #3b3410; --notesub: #7a6c1e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --note: #3a3617; --noteline: #5c5426; --notefg: #f0ead1; --notesub: #c3b782; }
+  }
+  .stickywrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 6px; }
+  .sticky {
+    flex: 1 1 260px; min-width: 220px; max-width: 420px;
+    background: var(--note); color: var(--notefg);
+    border: 1px solid var(--noteline); border-radius: 3px 3px 8px 3px;
+    padding: 11px 13px 13px; box-shadow: 0 2px 7px rgba(16,24,40,.16);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .sticky.newest { box-shadow: 0 2px 7px rgba(16,24,40,.16), 0 0 0 2px var(--accent); }
+  .sticky .sts {
+    font-size: 11px; color: var(--notesub); font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sticky .sts em { font-style: normal; font-weight: 700; margin-left: auto; }
+  /* 整段邮件那种超长 MEMO 会把一整行撑到几千像素高，便签墙就没法扫了 ——
+     单张便签超过半屏就在自己内部滚动，内容一个字不少 */
+  .sticky .stx {
+    font-size: 14.5px; line-height: 1.72; white-space: pre-wrap; word-break: break-word;
+    max-height: 46vh; overflow: auto; overscroll-behavior: contain;
+  }
+  /* 便签高矮不一，箭头贴着上沿才对得齐，居中会飘到半空 */
+  .stickyar { align-self: flex-start; margin-top: 32px; color: var(--sub); font-size: 15px; flex: 0 0 auto; user-select: none; }
+  .stickyempty { color: var(--sub); font-size: 13px; padding: 18px 0; }
+
+  /* 详情页里现写 MEMO */
+  .memoadd { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; }
+  .memoadd textarea {
+    flex: 1 1 auto; min-height: 62px; font: inherit; font-size: 13px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--fg);
+    resize: vertical; line-height: 1.5;
+  }
+  .memoadd button {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: 9px;
+    border: 0; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;
+  }
+  .memoadd button:disabled { opacity: .5; cursor: default; }
+
+  /* 铺满视口的弹窗（详情页默认这样） */
+  .dlg.max { width: 100%; max-width: none; height: 100%; max-height: none; display: flex; flex-direction: column; }
+  .dlg.max .dtscroll { flex: 1 1 auto; overflow: auto; min-height: 0; }
+  .dlg .row.dtrow { flex-wrap: wrap; }
+  .dlg .row.dtrow [hidden] { display: none; }
 
   .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
   footer { margin-top: 26px; color: var(--sub); font-size: 12px; text-align: center; line-height: 1.8; }
@@ -290,7 +350,8 @@
   .dlg textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
   .dlg select:focus, .dlg textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .previewhdr { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; margin: 16px 0 5px; }
-  .previewhdr .cnum { margin-left: auto; font-weight: 500; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .previewhdr .cnum, .previewhdr .sp { margin-left: auto; }
+  .previewhdr .cnum { font-weight: 500; color: var(--sub); font-variant-numeric: tabular-nums; }
   .previewhdr .cnum.over { color: var(--c-rejitv); font-weight: 700; }
   .rmhint { font-size: 11.5px; color: var(--sub); line-height: 1.6; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
   .rmhint.warn { color: var(--c-rejitv); }
@@ -340,7 +401,9 @@
     background: var(--bg); border-bottom: 1px solid var(--line); cursor: grab; user-select: none; flex: 0 0 auto;
   }
   .board .bhdr.dragging { cursor: grabbing; }
-  .board .bhdr .t { font-size: 13px; font-weight: 700; margin-right: auto; }
+  /* 双击这个标签在「小窗 ↔ 满屏」之间来回切 */
+  .board .bhdr .t { font-size: 13px; font-weight: 700; margin-right: auto; cursor: pointer; }
+  .board .bhdr .t:hover { color: var(--accent); }
   .board .bhdr .t em { font-style: normal; font-weight: 500; color: var(--sub); }
   .board .bhdr button {
     font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
@@ -370,6 +433,15 @@
     font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 6px; color: var(--sub);
   }
   .msg .mops button:hover { background: var(--line); color: var(--fg); }
+  /* 每条消息右下角的 archive；archived 的那份里换成「取回」 */
+  .msg .arch {
+    display: block; margin-left: auto; margin-top: 6px;
+    font: inherit; font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer;
+  }
+  .msg .arch:hover { border-color: var(--accent); color: var(--accent); }
+  .msg .local { font-size: 10px; padding: 0 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c-interview) 20%, transparent); color: var(--c-interview); }
   .msg.hl { background: #fff5c2; border-radius: 8px; padding-left: 10px; padding-right: 10px; }
   @media (prefers-color-scheme: dark) { .msg.hl { background: #4a4218; } }
 
@@ -497,6 +569,8 @@
     由 <code>build.py</code> 从 <code>data/records.json</code> 生成 · GitHub Actions 自动部署<br>
     「距今天数」在你打开页面时实时计算，因此始终准确
   </footer>
+
+  <button class="hiddenmore" id="showHidden" type="button">已隐藏状态的其他项目</button>
 </div>
 
 <!-- 通知板 -->
@@ -507,12 +581,26 @@
 
 <div class="board" id="board" hidden>
   <div class="bhdr" id="boardHdr">
-    <span class="t">💬 通知板 <em id="boardCount">(0)</em></span>
-    <button type="button" id="boardMarkRead">全部标为已读</button>
+    <span class="t" id="boardTitle" title="双击可在小窗 / 满屏之间切换">💬 通知板 <em id="boardCount">(0)</em></span>
+    <button type="button" id="boardArchiveAll">🗂 一键 archive 全部消息</button>
+    <button type="button" id="boardArchived">已 archive 的消息</button>
     <button type="button" id="boardClose">收起 ✕</button>
   </div>
   <div class="blist" id="boardList"></div>
   <div class="brz" id="boardRz" title="拖拽调整大小"></div>
+</div>
+
+<!-- 已 archive 的消息 -->
+<div class="mask" id="archMask" hidden>
+  <div class="dlg">
+    <h3>🗂 已 archive 的消息</h3>
+    <div class="desc">archive 只发生在这台设备上，不会影响别处看到的通知板。</div>
+    <div class="blist" id="archList" style="max-height:min(60vh,460px);overflow:auto;padding:0"></div>
+    <div class="row">
+      <button id="archRestoreAll" type="button">全部取回</button>
+      <button class="primary sp" id="archClose" type="button">关闭</button>
+    </div>
+  </div>
 </div>
 
 <!-- 提醒弹窗 -->
@@ -624,24 +712,33 @@
 
 <div class="navbar">
   <button class="navbtn" id="reportBtn" type="button" title="把今天有变化的项目整理成速报发到 Telegram">📣 当日速报</button>
-  <a class="navbtn" href="https://www.linkedin.com/jobs/" target="_blank" rel="noopener">🔎 Linkedin 筛工作</a>
-  <a class="navbtn" href="https://www.linkedin.com/jobs-tracker/" target="_blank" rel="noopener">🔖 Job Saved list</a>
+  <a class="navbtn hot" id="channelBtn" href="./channel.html" title="Telegram 群 / 频道消息的实时镜像">
+    📡 Telegram 频道 <span class="ndot" id="channelDot" hidden></span>
+  </a>
 </div>
 
-<button class="contactfab" id="contactFab" type="button">
-  <span class="short">联系己</span>
-  <span class="full">请己处理新一批的 Linkedin jobs saved list</span>
-</button>
-
 <div class="mask" id="detailMask" hidden>
-  <div class="dlg">
+  <div class="dlg max">
     <h3 id="dtTitle">项目详情</h3>
     <div class="desc" id="dtSub"></div>
-    <div class="dtgrid" id="dtBody"></div>
-    <div class="row">
-      <button class="primary" id="dtRemind" type="button">📢 请求更新状态</button>
-      <button id="dtFollow" type="button">🕐 跟进提醒</button>
-      <a class="dtlink" id="dtOpen" target="_blank" rel="noopener">在 LinkedIn 打开</a>
+    <div class="dtscroll">
+      <div class="dtgrid" id="dtBody" hidden></div>
+      <div id="dtMemoHd" class="previewhdr">
+        <span id="dtMemoCount">MEMO</span>
+        <button class="linkbtn sp" id="dtMore" type="button">显示其余项目信息</button>
+      </div>
+      <div class="stickywrap" id="dtMemos"></div>
+    </div>
+    <div class="memoadd">
+      <textarea id="dtMemoInput" placeholder="写一条 MEMO，回车换行、Ctrl/⌘+Enter 提交…"></textarea>
+      <button id="dtMemoAdd" type="button">＋ 追加</button>
+    </div>
+    <div class="row dtrow">
+      <button id="dtCopy" type="button">⧉ 复制全部</button>
+      <button id="dtPushNew" type="button">📤 一键推送所有新MEMO</button>
+      <button class="primary" id="dtRemind" type="button" hidden>📢 请求更新状态</button>
+      <button id="dtFollow" type="button" hidden>🕐 跟进提醒</button>
+      <a class="dtlink" id="dtOpen" target="_blank" rel="noopener" hidden>在 LinkedIn 打开</a>
       <button class="sp" id="dtClose" type="button">关闭</button>
     </div>
   </div>
@@ -739,12 +836,30 @@
     '对方招到人了': '--c-taken',
     '无消息疑似书类落了': '--c-dead'
   };
-  // MEMO 的时间轴：新脚本推 memos 数组；老数据只有一整段 memo，当成一条
-  function memoBlocks(r) {
-    if (r.memos && r.memos.length) {
-      return r.memos.slice().sort(function (a, b) { return b.ts - a.ts; });
-    }
+  /* MEMO 的时间轴：新脚本推 memos 数组；老数据只有一整段 memo，当成一条。
+     再叠上本机刚写、还没回到 records.json 里的那几条（见 LOCAL）。 */
+  function baseMemoBlocks(r) {
+    if (r.memos && r.memos.length) return r.memos.slice();
     return r.memo ? [{ ts: r.updatedAt || r.ts, text: r.memo }] : [];
+  }
+  function memoBlocks(r) {
+    var out = baseMemoBlocks(r);
+    var have = {};
+    out.forEach(function (b) { have[b.ts + '|' + b.text] = 1; });
+    var take = function (list, local) {
+      (list || []).forEach(function (b) {
+        if (!b || !b.text) return;
+        var k = b.ts + '|' + b.text;
+        if (have[k]) return;
+        have[k] = 1;
+        out.push({ ts: b.ts, text: b.text, local: local });
+      });
+    };
+    // 脚本镜像（在 LinkedIn 上刚写的，构建还没跑完）
+    take(MIRROR && MIRROR.memos && MIRROR.memos[recKey(r)], false);
+    // 本页面刚写的，还排在回传队列里
+    take(LOCAL && LOCAL.memos && LOCAL.memos[recKey(r)], true);
+    return out.sort(function (a, b) { return b.ts - a.ts; });
   }
 
   /* 状态在油猴脚本里可以改名 / 新增，所以「算不算落选」这类语义不能按名字硬编码 ——
@@ -810,7 +925,7 @@
   // 列的定义与默认顺序；顺序和显隐都可以在设置里改，存本机
   var COLUMNS = [
     { key: 'status',     label: '状态',        sort: 'status' },
-    { key: 'act',        label: '提醒',        sort: null,    align: 'center' },
+    { key: 'act',        label: '留言',        sort: null,    align: 'center' },
     { key: 'memo',       label: 'MEMO',        sort: null },
     { key: 'company',    label: '公司',        sort: 'company' },
     { key: 'title',      label: '岗位',        sort: 'title' },
@@ -925,15 +1040,18 @@
     // 所以先存本机顶掉构建进来的值，同时排进 OUTBOX 等油猴脚本回写。
     followUp: {},
     fuDone: {},                    // 已经弹过并被手动关掉的：'<key>@<日期>' → 关掉时间
-    board: { x: 0, y: 0, w: 380, h: 440, placed: false }
+    memoPushed: {},                // recKey → 最后一次推到 Telegram 的 MEMO 时间
+    showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
+    board: { x: 0, y: 0, w: 380, h: 440, placed: false, max: true }
   };
   try {
     var saved = JSON.parse(localStorage.getItem(PK) || 'null');
     if (saved && typeof saved === 'object') {
       Object.keys(prefs).forEach(function (k) { if (k in saved) prefs[k] = saved[k]; });
-      prefs.board = Object.assign({ x: 0, y: 0, w: 380, h: 440, placed: false }, prefs.board || {});
+      prefs.board = Object.assign({ x: 0, y: 0, w: 380, h: 440, placed: false, max: true }, prefs.board || {});
       if (!prefs.followUp || typeof prefs.followUp !== 'object') prefs.followUp = {};
       if (!prefs.fuDone || typeof prefs.fuDone !== 'object') prefs.fuDone = {};
+      if (!prefs.memoPushed || typeof prefs.memoPushed !== 'object') prefs.memoPushed = {};
     }
   } catch (e) { /* 用默认值 */ }
   function savePrefs() { try { localStorage.setItem(PK, JSON.stringify(prefs)); } catch (e) {} }
@@ -948,11 +1066,15 @@
       return Array.isArray(v) ? v : [];
     } catch (e) { return []; }
   }
+  // 「最后一次说了算」的操作才去重；MEMO 与通知板留言是追加的，去重会把前面的吃掉
+  var DEDUPE_OPS = { followUp: 1 };
   function outboxPush(op) {
     var list = outboxRead();
     op.opId = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     // 同一条记录的同类操作只留最后一次，别让队列越堆越长
-    list = list.filter(function (x) { return !(x && x.op === op.op && x.jobId === op.jobId); });
+    if (DEDUPE_OPS[op.op]) {
+      list = list.filter(function (x) { return !(x && x.op === op.op && x.jobId === op.jobId); });
+    }
     list.push(op);
     try { localStorage.setItem(OUTBOX, JSON.stringify(list.slice(-200))); } catch (e) {}
     refreshPending();
@@ -967,6 +1089,125 @@
       : '';
   }
 
+  /* ---------- 本机新增的内容 ----------
+   * 这个页面是构建出来的静态页，改不了 records.json。所以在这里写的 MEMO、
+   * 自动记进通知板的 Telegram 消息，先落在这个本地层，渲染时和构建进来的数据
+   * 合并显示；同时排进 OUTBOX，由油猴脚本回写仓库。等它真的进了 records.json
+   * （下一次构建），同 id / 同内容的本地副本就被清掉，不会重复显示。
+   * archive 则纯粹是本机行为，永远不回传。
+   */
+  var LK = 'sgjob_local_v1';
+  var LOCAL = { memos: {}, msgs: [], archived: {} };
+  try {
+    var lsaved = JSON.parse(localStorage.getItem(LK) || 'null');
+    if (lsaved && typeof lsaved === 'object') {
+      if (lsaved.memos && typeof lsaved.memos === 'object') LOCAL.memos = lsaved.memos;
+      if (Array.isArray(lsaved.msgs)) LOCAL.msgs = lsaved.msgs;
+      if (lsaved.archived && typeof lsaved.archived === 'object') LOCAL.archived = lsaved.archived;
+    }
+  } catch (e) { /* 用默认值 */ }
+  function saveLocal() { try { localStorage.setItem(LK, JSON.stringify(LOCAL)); } catch (e) {} }
+
+  /* ---------- 油猴脚本写来的实时镜像 ----------
+   * 同步按钮按下去之后，页面并不会马上变 —— 要先 push 到仓库、跑完 Actions 构建、
+   * 再等 Pages 部署，正常也要几十秒到一两分钟（连着同步几次还会排队）。
+   * 脚本在本页面也跑着，手里就有最新的留言和 MEMO，直接从 localStorage 读过来，
+   * 部署没跑完之前也能立刻看到。等构建结果到了，两边内容一样，去重后无感切换。
+   */
+  var MK = 'sgjob_mirror_v1';
+  var MIRROR = { messages: [], memos: {} };
+  var mirrorRaw = '';
+  function readMirror() {
+    var raw = '';
+    try { raw = localStorage.getItem(MK) || ''; } catch (e) { return false; }
+    if (raw === mirrorRaw) return false;
+    mirrorRaw = raw;
+    try {
+      var v = JSON.parse(raw || 'null');
+      MIRROR = {
+        messages: (v && Array.isArray(v.messages)) ? v.messages : [],
+        memos: (v && v.memos && typeof v.memos === 'object') ? v.memos : {}
+      };
+    } catch (e) { MIRROR = { messages: [], memos: {} }; }
+    return true;
+  }
+  readMirror();
+
+  /** 已经出现在 records.json 里的本地副本可以扔了 */
+  function pruneLocal() {
+    var changed = false;
+    var seen = {};
+    (PAYLOAD.messages || []).forEach(function (m) { if (m && m.id) seen[m.id] = 1; });
+    var kept = LOCAL.msgs.filter(function (m) { return m && m.id && !seen[m.id]; });
+    if (kept.length !== LOCAL.msgs.length) { LOCAL.msgs = kept; changed = true; }
+
+    var byKey = {};
+    RECORDS.forEach(function (r) {
+      var have = {};
+      baseMemoBlocks(r).forEach(function (b) { have[b.ts + '|' + b.text] = 1; });
+      byKey[recKey(r)] = have;
+    });
+    Object.keys(LOCAL.memos).forEach(function (k) {
+      var have = byKey[k];
+      if (!have) return;                       // 这条记录还没出现在看板上，先留着
+      var list = (LOCAL.memos[k] || []).filter(function (b) { return !have[b.ts + '|' + b.text]; });
+      if (list.length !== (LOCAL.memos[k] || []).length) changed = true;
+      if (list.length) LOCAL.memos[k] = list; else delete LOCAL.memos[k];
+    });
+    if (changed) saveLocal();
+  }
+
+  /** 构建进来的留言 + 脚本镜像里的 + 本机还没落地的，按 id 去重，时间从新到旧 */
+  function mergeMessages() {
+    var seen = {}, out = [];
+    [PAYLOAD.messages || [], MIRROR.messages || [], LOCAL.msgs || []].forEach(function (src) {
+      src.forEach(function (m) {
+        if (!m || !m.id || seen[m.id]) return;
+        seen[m.id] = 1;
+        out.push(m);
+      });
+    });
+    MESSAGES = out.sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  }
+
+  /** 给某条项目追加一条 MEMO（本机立刻可见 + 排队回传） */
+  function appendMemo(r, text, ts) {
+    var t = String(text || '').trim();
+    if (!t) return false;
+    var at = ts || Date.now();
+    var k = recKey(r);
+    (LOCAL.memos[k] = LOCAL.memos[k] || []).push({ ts: at, text: t });
+    saveLocal();
+    if (r.jobId) {
+      outboxPush({ op: 'memo', jobId: String(r.jobId), site: r.site || 'linkedin', text: t, ts: at });
+    }
+    return true;
+  }
+
+  /** 页面发出去的每一条 Telegram 消息都进通知板 */
+  function logSent(text, tag) {
+    var t = String(text == null ? '' : text).trim();
+    if (!t) return;
+    var m = {
+      id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      text: '📤 已发送到 Telegram' + (tag ? ('（' + tag + '）') : '') + '\n\n' + t.slice(0, 3800),
+      createdAt: Date.now(), editedAt: 0, author: '看板'
+    };
+    LOCAL.msgs.push(m);
+    // 自己刚发的，不该算成「未读」再把通知板顶开
+    prefs.lastRead = Math.max(prefs.lastRead || 0, m.createdAt);
+    saveLocal();
+    savePrefs();
+    outboxPush({ op: 'message', id: m.id, text: m.text, ts: m.createdAt, author: m.author });
+    mergeMessages();
+    renderBoard();
+    refreshUnread();
+  }
+
+  // 先合并好再往下走：未读判定、Chrome 通知都要看合并后的结果
+  pruneLocal();
+  mergeMessages();
+
   // 之前版本默认不勾，做一次性迁移并立刻落盘；之后仍然尊重用户自己的选择
   if (!prefs.notifyDefaulted) { prefs.notify = true; prefs.notifyDefaulted = true; savePrefs(); }
 
@@ -978,35 +1219,74 @@
   $('m-data').textContent  = DATA_AT ? fmtDT(Date.parse(DATA_AT)) : '—';
   $('m-built').textContent = BUILT_AT ? fmtDT(Date.parse(BUILT_AT)) : '—';
 
+  /* ---------- 状态分组 ----------
+     「待处理」＝球在某一方手里、现在就该动的那几种；
+     「隐藏」＝默认不出现在清单里、也不算进「活跃状态的案件」的那几种。 */
+  /* 状态名在油猴脚本里能被改名（比如「等己方处理」被加过一个空格），
+     所以这里按「去掉空白与标点、対→对」之后的形状去认，别逐字比。 */
+  function normStatus(s) {
+    return String(s || '').replace(/[，,、･·・\s]/g, '').replace(/対/g, '对');
+  }
+  function statusSet(names) {
+    var m = {};
+    names.forEach(function (n) { m[normStatus(n)] = 1; });
+    return function (s) { return !!m[normStatus(s)]; };
+  }
+  var isTodo = statusSet([
+    '等己方处理(XR ball)',
+    '等己方处理(己 ball)',
+    '已安排面试、面试准备中',
+    '対方来联络了'
+  ]);
+  var isHiddenStatus = statusSet([
+    '已投递等联络',
+    '书类落了',
+    '无消息疑似书类落了'
+  ]);
+  // 「待处理」KPI 被点亮时生效；和下拉框的单状态筛选是两回事
+  var groupFilter = '';
+
   /* ---------- KPI ---------- */
-  (function () {
+  function renderKPIs() {
     var weekStart = startOfWeek(Date.now());   // 本周一起算，和周趋势图同口径
-    var closed = 0, advanced = 0, waiting = 0, recent = 0, scouted = 0;
+    var todayStart = startOfDay(Date.now());
+    var todo = 0, active = 0, today = 0, recent = 0, scouted = 0;
     RECORDS.forEach(function (r) {
-      if (CLOSED[r.status]) closed++;
-      if (ADVANCED[r.status]) advanced++;
-      if (WAITING[r.status]) waiting++;
+      if (isTodo(r.status)) todo++;
+      if (!isHiddenStatus(r.status)) active++;
+      if (r.ts >= todayStart) today++;
       if (r.ts >= weekStart) recent++;
       if (r.scout) scouted++;
     });
     var kpis = [
+      ['待处理', todo, 'todo'],
       ['总投递', RECORDS.length, null],
-      ['进行中', RECORDS.length - closed, null],
-      ['已进面试及以后', advanced, null],
+      ['活跃状态的案件', active, null],
+      ['今日新投', today, null],
       ['本周新投', recent, null],
-      ['等待中', waiting, null],
       ['人事主动 scout', scouted, null]
     ];
     var box = $('kpis');
+    box.textContent = '';
     kpis.forEach(function (k) {
-      var c = el('div', 'kpi');
-      var n = el('div', 'n', k[1]);
-      if (k[2]) n.style.color = k[2];
-      c.appendChild(n);
+      var isBtn = k[2] === 'todo';
+      var c = el(isBtn ? 'button' : 'div', 'kpi' + (isBtn ? ' act' : ''));
+      if (isBtn) {
+        c.type = 'button';
+        c.title = '只看待处理的：等己方处理(XR ball) / 等己方处理(己 ball) / 已安排面试、面试准备中 / 対方来联络了';
+        c.classList.toggle('on', groupFilter === 'todo');
+        c.addEventListener('click', function () {
+          groupFilter = (groupFilter === 'todo') ? '' : 'todo';
+          if (groupFilter) $('fstatus').value = '';   // 两种筛选互斥，免得筛出个空清单
+          renderKPIs();
+          apply();
+        });
+      }
+      c.appendChild(el('div', 'n', k[1]));
       c.appendChild(el('div', 'l', k[0]));
       box.appendChild(c);
     });
-  })();
+  }
 
   /* ---------- 状态分布（点击即筛选） ---------- */
   function buildStatusPanel() {
@@ -1038,6 +1318,7 @@
       row.appendChild(el('span', 'vv', n + ' · ' + Math.round(n / total * 100) + '%'));
       row.addEventListener('click', function () {
         $('fstatus').value = ($('fstatus').value === s) ? '' : s;   // 再点一次取消
+        if (groupFilter) { groupFilter = ''; renderKPIs(); }
         apply();
       });
       list.appendChild(row);
@@ -1160,9 +1441,9 @@
     },
     act: function (r) {
       var td = el('td', 'act');
-      var pen = el('button', 'iconbtn', '📢');
+      var pen = el('button', 'iconbtn', '✍️');
       pen.type = 'button';
-      pen.title = '请求更新这条的状态（发 Telegram）';
+      pen.title = '给这条留言 / 请求更新状态（发 Telegram，并记进 MEMO）';
       pen.addEventListener('click', function (e) { e.stopPropagation(); openRemind(r); });
       td.appendChild(pen);
       return td;
@@ -1334,6 +1615,9 @@
 
     var rows = RECORDS.filter(function (r) {
       if (fs && r.status !== fs) return false;
+      if (groupFilter === 'todo' && !isTodo(r.status)) return false;
+      // 默认藏起来的那几种状态。明确点了这个状态、或按了底部那个灰按钮时照常显示
+      if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status) return false;
       if (scoutOnly && !r.scout) return false;
       if (!q) return true;
       var hay = [r.company, r.title, r.memo, r.status]
@@ -1390,6 +1674,15 @@
       ? RECORDS.length + ' 条'
       : '显示 ' + rows.length + ' / ' + RECORDS.length + ' 条';
 
+    // 底部那个灰按钮：数一下现在藏了多少条
+    var nHidden = RECORDS.filter(function (r) { return isHiddenStatus(r.status); }).length;
+    var hb = $('showHidden');
+    hb.textContent = prefs.showHidden
+      ? '收起「已投递等联络 / 书类落了 / 无消息疑似书类落了」（' + nHidden + '）'
+      : '已隐藏状态的其他项目（' + nHidden + '）';
+    hb.classList.toggle('on', !!prefs.showHidden);
+    hb.hidden = !nHidden;
+
 
     // 状态筛选中：高亮对应的分布行，并露出「显示全部状态」
     [].forEach.call(document.querySelectorAll('.srow'), function (n) {
@@ -1406,8 +1699,16 @@
   }
 
   $('q').addEventListener('input', apply);
-  $('fstatus').addEventListener('change', apply);
+  $('fstatus').addEventListener('change', function () {
+    if (this.value) { groupFilter = ''; renderKPIs(); }
+    apply();
+  });
   $('clearStatus').addEventListener('click', function () { $('fstatus').value = ''; apply(); });
+  $('showHidden').addEventListener('click', function () {
+    prefs.showHidden = !prefs.showHidden;
+    savePrefs();
+    apply();
+  });
   $('fscout').addEventListener('click', function () {
     var on = !this.classList.contains('on');
     this.classList.toggle('on', on);
@@ -1455,6 +1756,8 @@
       .then(function (res) { return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; }); })
       .then(function (data) {
         if (!data.ok) throw new Error(data.description || 'unknown error');
+        // 页面发出去的每一条都进通知板，事后能查「到底发了什么」
+        logSent(text);
         return data;
       });
   }
@@ -1519,13 +1822,45 @@
     });
   }
 
-  /* ---------- 项目详情弹窗 ---------- */
+  /* ---------- 项目详情弹窗 ----------
+   * 主角是 MEMO：整窗铺满视口，MEMO 以便签纸从左上到右下、旧 → 新排列，
+   * 其余字段默认折起来（点「显示其余项目信息」才展开）。 */
   var detailTarget = null;
+
+  /** MEMO 便签墙：一条一张便签，中间用「→」指向下一条 */
+  function renderDetailMemos(r) {
+    var wrap = $('dtMemos');
+    wrap.textContent = '';
+    var bs = memoBlocks(r).slice().reverse();      // 旧 → 新
+    $('dtMemoCount').textContent = bs.length ? ('MEMO（' + bs.length + ' 条，旧 → 新）') : 'MEMO';
+    if (!bs.length) {
+      wrap.appendChild(el('div', 'stickyempty', '还没有 MEMO。在下面写一条，会立刻贴上来。'));
+      return;
+    }
+    var pushed = prefs.memoPushed[recKey(r)] || 0;
+    bs.forEach(function (b, i) {
+      if (i) wrap.appendChild(el('div', 'stickyar', '→'));
+      var note = el('div', 'sticky' + (i === bs.length - 1 ? ' newest' : ''));
+      var hd = el('div', 'sts');
+      hd.appendChild(el('span', null, fmtDT(b.ts)));
+      if (b.local) hd.appendChild(el('em', null, '待回传'));
+      else if (b.ts > pushed) hd.appendChild(el('em', null, '未推送'));
+      note.appendChild(hd);
+      note.appendChild(el('div', 'stx', b.text));
+      wrap.appendChild(note);
+    });
+  }
+
   function openDetail(r) {
     detailTarget = r;
     $('dtTitle').textContent = r.company || '(无公司名)';
-    $('dtSub').textContent = r.title || '(无标题)';
+    $('dtSub').textContent = (r.title || '(无标题)') + '　·　' + (r.status || '—');
     var g = $('dtBody');
+    g.hidden = true;
+    $('dtMore').textContent = '显示其余项目信息';
+    $('dtRemind').hidden = true;
+    $('dtFollow').hidden = true;
+    $('dtOpen').hidden = true;
     g.textContent = '';
     var add = function (k, v, node) {
       g.appendChild(el('dt', null, k));
@@ -1566,37 +1901,75 @@
     var fu = followUpOf(r);
     add('跟进提醒', fu.at ? (fmtDate(fu.at) + (fu.note ? '　' + fu.note : '')) : '');
 
-    var blocks = memoBlocks(r);
-    if (blocks.length) {
-      var mbox = document.createElement('div');
-      mbox.className = 'memolog';
-      blocks.forEach(function (b, i) {
-        var item = el('div', 'memoitem' + (i === 0 ? ' latest' : ''));
-        var hd = el('div', 'memohd');
-        hd.appendChild(el('span', 'memots', fmtDT(b.ts)));
-        if (i === 0) hd.appendChild(el('span', 'memotag', '最新'));
-        item.appendChild(hd);
-        item.appendChild(el('div', 'memobody', b.text));
-        mbox.appendChild(item);
-      });
-      // 项目名（这一格的标题）下面放「一键复制全部 MEMO」
-      var dt = document.createElement('dt');
-      dt.appendChild(el('div', null, 'MEMO（' + blocks.length + ' 条）'));
-      var copyAll = el('button', 'morebtn', '⧉ 复制全部');
-      copyAll.type = 'button';
-      copyAll.title = '把这条项目的全部 MEMO（含时间戳）复制到剪贴板';
-      copyAll.addEventListener('click', function () { copyAllMemos(r); });
-      dt.appendChild(copyAll);
-      g.appendChild(dt);
-      var dd = document.createElement('dd');
-      dd.appendChild(mbox);
-      g.appendChild(dd);
-    } else add('MEMO', '');
+    renderDetailMemos(r);
+    $('dtMemoInput').value = '';
 
     var open = $('dtOpen');
-    if (r.jobUrl) { open.href = r.jobUrl; open.hidden = false; } else { open.hidden = true; }
+    if (r.jobUrl) open.href = r.jobUrl;
     $('detailMask').hidden = false;
+    $('dtMemoInput').focus();
   }
+
+  /* 其余字段与那三个按钮默认都折起来 —— 详情页的主角是 MEMO。
+     点这里一起放出来，需要时还能用。 */
+  $('dtMore').addEventListener('click', function () {
+    var g = $('dtBody');
+    var show = g.hidden;
+    g.hidden = !show;
+    $('dtRemind').hidden = !show;
+    $('dtFollow').hidden = !show;
+    $('dtOpen').hidden = !show || !(detailTarget && detailTarget.jobUrl);
+    this.textContent = show ? '收起其余项目信息' : '显示其余项目信息';
+  });
+
+  function addDetailMemo() {
+    var r = detailTarget;
+    if (!r) return;
+    var t = $('dtMemoInput').value.trim();
+    if (!t) { toast('先写点什么'); return; }
+    appendMemo(r, t);
+    $('dtMemoInput').value = '';
+    renderDetailMemos(r);
+    apply();                 // 清单里那一格的 MEMO 也跟着更新
+    toast(r.jobId ? '已追加，等油猴脚本回传仓库' : '已追加（这条没有 Job ID，回传不了）');
+  }
+  $('dtMemoAdd').addEventListener('click', addDetailMemo);
+  $('dtMemoInput').addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); addDetailMemo(); }
+  });
+
+  $('dtCopy').addEventListener('click', function () { if (detailTarget) copyAllMemos(detailTarget); });
+
+  /** 把这条项目里「上次推送之后新增」的 MEMO 一次性发到 Telegram */
+  $('dtPushNew').addEventListener('click', function () {
+    var r = detailTarget;
+    if (!r) return;
+    var since = prefs.memoPushed[recKey(r)] || 0;
+    var fresh = memoBlocks(r).filter(function (b) { return b.ts > since; })
+                             .sort(function (a, b) { return a.ts - b.ts; });
+    if (!fresh.length) { toast('没有新的 MEMO 需要推送'); return; }
+    var lines = [
+      TG_PREFIX + ' 新 MEMO',
+      (r.company || '—') + ' / ' + (r.title || '—'),
+      '当前状态：' + r.status
+    ];
+    if (r.jobUrl) lines.push(r.jobUrl);
+    fresh.forEach(function (b) { lines.push('', '[' + fmtDT(b.ts) + ']', b.text); });
+    var text = lines.join('\n');
+    if (text.length > TG_LIMIT) text = text.slice(0, TG_LIMIT - 12) + '\n…（已截断）';
+
+    var btn = this;
+    btn.disabled = true;
+    tgSend(text).then(function () {
+      prefs.memoPushed[recKey(r)] = fresh[fresh.length - 1].ts;
+      savePrefs();
+      renderDetailMemos(r);
+      toast('已推送 ' + fresh.length + ' 条新 MEMO');
+    }).catch(function (e) {
+      toast('推送失败：' + (e.message || e));
+    }).then(function () { btn.disabled = false; });
+  });
+
   $('dtClose').addEventListener('click', function () { $('detailMask').hidden = true; });
   $('detailMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   $('dtRemind').addEventListener('click', function () {
@@ -1840,7 +2213,7 @@
         e.stopPropagation();
         now.disabled = true;
         tgAction({ action: 'sendnow', id: it.id, at: String(it.at) })
-          .then(function () { toast('已发送'); return loadScheduled(); })
+          .then(function () { toast('已发送'); logSent(it.text, '定时改为立刻'); return loadScheduled(); })
           .catch(function (err) { toast('发送失败：' + err.message); now.disabled = false; });
       });
       cancel.addEventListener('click', function (e) {
@@ -1941,7 +2314,8 @@
   $('rmSend').addEventListener('click', function () {
     if (!remindTarget) return;
     var r = remindTarget;
-    var text = buildRemindText(r, $('rmMemo').value.trim());
+    var note = $('rmMemo').value.trim();
+    var text = buildRemindText(r, note);
 
     var btn = this;
     var sched = $('rmSched').checked;
@@ -1970,6 +2344,17 @@
       $('rmStatus').className = 'status ok';
       $('rmStatus').textContent = sched ? ('已设定：' + fmtDT(at) + ' 发送') : '已发送到 Telegram 群';
       toast(sched ? '已设定定时发送' : '提醒已发送');
+
+      /* MEMO 只记「备注」里实际写的那段 —— 处理人、优先级、链接这些
+         标准模板信息属于 Telegram 那边的格式，进了 MEMO 只会把它撑爆。 */
+      if (note) {
+        appendMemo(r, note);
+        if (detailTarget && recKey(detailTarget) === recKey(r)) renderDetailMemos(r);
+        apply();
+      }
+      // 定时发送在 Worker 那边真正发出，这里记的是「已设定」；立即发送才算已发出
+      if (sched) logSent(text, '定时 ' + fmtDT(at));
+
       if (sched) {
         // KV 的 list 要等最多 60 秒才看得到，先本地补一条让行立刻变深蓝，
         // 之后 loadScheduled() 拉到真数据会覆盖掉。
@@ -1994,44 +2379,94 @@
   /* ---------- 通知板 ---------- */
   function msgStamp(m) { return Math.max(m.createdAt || 0, m.editedAt || 0); }
   function unreadList() {
-    return MESSAGES.filter(function (m) { return msgStamp(m) > (prefs.lastRead || 0); });
+    return MESSAGES.filter(function (m) {
+      return !LOCAL.archived[m.id] && msgStamp(m) > (prefs.lastRead || 0);
+    });
+  }
+
+  /** archive 掉的不在通知板里出现（纯本机行为，不回传） */
+  function liveMessages() {
+    return MESSAGES.filter(function (m) { return !LOCAL.archived[m.id]; });
+  }
+  function archiveMsg(id) {
+    LOCAL.archived[id] = Date.now();
+    saveLocal();
+  }
+
+  /** 画一条消息。archivedView=true 时右下角的按钮变成「取回」 */
+  function msgNode(m, archivedView) {
+    var lastRead = prefs.lastRead || 0;
+    var target = targetMsgId();
+    var box = el('div', 'msg' + (!archivedView && msgStamp(m) > lastRead ? ' unread' : ''));
+    box.id = (archivedView ? 'amsg-' : 'msg-') + m.id;
+    if (!archivedView && target && target === m.id) box.classList.add('hl');
+    box.appendChild(el('div', 'mt', m.text));
+
+    var meta = fmtDT(m.createdAt);
+    if (m.editedAt) meta += ' · 编辑于 ' + fmtDT(m.editedAt);
+    if (m.author) meta += ' · ' + m.author;
+    if (archivedView && LOCAL.archived[m.id]) meta += ' · 🗂 archive 于 ' + fmtDT(LOCAL.archived[m.id]);
+
+    // 🔗 每条留言都有自己的直达链接，点开会展开通知板并高亮这一条
+    var link = el('button', null, '🔗');
+    link.type = 'button';
+    link.title = '复制这条留言的直达链接';
+    link.addEventListener('click', function (e) {
+      e.stopPropagation();
+      copyText(msgLinkFor(m), '已复制这条留言的链接');
+    });
+    var mm = el('div', 'mm');
+    mm.appendChild(el('span', null, meta));
+    var ops = el('span', 'mops');
+    if (m.id && String(m.id).charAt(0) === 'p') ops.appendChild(el('span', 'local', '本机'));
+    ops.appendChild(link);
+    mm.appendChild(ops);
+    box.appendChild(mm);
+
+    var act = el('button', 'arch', archivedView ? '↩ 取回' : '🗂 archive');
+    act.type = 'button';
+    act.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (archivedView) { delete LOCAL.archived[m.id]; saveLocal(); renderArchived(); }
+      else { archiveMsg(m.id); }
+      renderBoard();          // 取回的那条要回到板子里，archive 的要从板子里消失
+      refreshUnread();
+    });
+    box.appendChild(act);
+    return box;
   }
 
   function renderBoard() {
     var list = $('boardList');
+    if (!list) return;
     list.textContent = '';
-    $('boardCount').textContent = '(' + MESSAGES.length + ')';
-    if (!MESSAGES.length) {
-      list.appendChild(el('div', 'empty', '还没有留言。在 LinkedIn 页面的通知板里写一条并同步后，这里就会出现。'));
+    var live = liveMessages();
+    var nArch = Object.keys(LOCAL.archived).length;
+    $('boardCount').textContent = '(' + live.length + ')';
+    $('boardArchived').textContent = '已 archive 的消息' + (nArch ? '（' + nArch + '）' : '');
+    if (!live.length) {
+      list.appendChild(el('div', 'empty', nArch
+        ? '这里空了 —— 全部消息都已 archive。'
+        : '还没有留言。在 LinkedIn 页面的通知板里写一条并同步后，这里就会出现。'));
       return;
     }
-    var lastRead = prefs.lastRead || 0;
-    var target = targetMsgId();
-    MESSAGES.forEach(function (m) {
-      var box = el('div', 'msg' + (msgStamp(m) > lastRead ? ' unread' : ''));
-      box.id = 'msg-' + m.id;
-      if (target && target === m.id) box.classList.add('hl');
-      box.appendChild(el('div', 'mt', m.text));
-      var meta = fmtDT(m.createdAt);
-      if (m.editedAt) meta += ' · 编辑于 ' + fmtDT(m.editedAt);
-      if (m.author) meta += ' · ' + m.author;
+    live.forEach(function (m) { list.appendChild(msgNode(m, false)); });
+  }
 
-      // 🔗 每条留言都有自己的直达链接，点开会展开通知板并高亮这一条
-      var link = el('button', null, '🔗');
-      link.type = 'button';
-      link.title = '复制这条留言的直达链接';
-      link.addEventListener('click', function (e) {
-        e.stopPropagation();
-        copyText(msgLinkFor(m), '已复制这条留言的链接');
-      });
-      var mm = el('div', 'mm');
-      mm.appendChild(el('span', null, meta));
-      var ops = el('span', 'mops');
-      ops.appendChild(link);
-      mm.appendChild(ops);
-      box.appendChild(mm);
-      list.appendChild(box);
-    });
+  function renderArchived() {
+    var box = $('archList');
+    box.textContent = '';
+    var arch = MESSAGES.filter(function (m) { return LOCAL.archived[m.id]; })
+      .sort(function (a, b) { return (LOCAL.archived[b.id] || 0) - (LOCAL.archived[a.id] || 0); });
+    if (!arch.length) {
+      box.appendChild(el('div', 'empty', '还没有 archive 过任何消息。'));
+    } else {
+      arch.forEach(function (m) { box.appendChild(msgNode(m, true)); });
+    }
+    $('archRestoreAll').hidden = !arch.length;
+    // 板子里那个计数也跟着变
+    var nArch = Object.keys(LOCAL.archived).length;
+    $('boardArchived').textContent = '已 archive 的消息' + (nArch ? '（' + nArch + '）' : '');
   }
 
   function msgLinkFor(m) {
@@ -2069,7 +2504,7 @@
     refreshUnread();
   }
 
-  /** 把通知板铺到接近满屏 —— 从留言链接点进来时看全文用 */
+  /** 把通知板铺到接近满屏 —— 打开时的默认形态，也是留言链接点进来时看全文用的 */
   function maximizeBoard() {
     var b = prefs.board;
     b.w = Math.max(300, window.innerWidth - 40);
@@ -2077,6 +2512,20 @@
     b.x = 20;
     b.y = 20;
     b.placed = true;
+    b.max = true;
+    savePrefs();
+    placeBoard();
+  }
+
+  /** 缩回右下角的小窗 */
+  function minimizeBoard() {
+    var b = prefs.board;
+    b.w = Math.min(380, Math.max(300, window.innerWidth - 40));
+    b.h = Math.min(440, Math.max(200, window.innerHeight - 140));
+    b.x = Math.max(10, window.innerWidth - b.w - 20);
+    b.y = Math.max(10, window.innerHeight - b.h - 80);
+    b.placed = true;
+    b.max = false;
     savePrefs();
     placeBoard();
   }
@@ -2105,7 +2554,8 @@
    * 「哪几条是新的」就看不出来了 —— 只有手动点「全部标为已读」或「收起」才算看过。
    */
   function openBoard(opts) {
-    placeBoard();
+    // 打开时默认铺成大窗；双击标题切成小窗之后，下次会记着这个选择
+    if (prefs.board.max === false) placeBoard(); else maximizeBoard();
     $('board').hidden = false;
     renderBoard();
     if (!(opts && opts.keepUnread)) setTimeout(markAllRead, 1200);
@@ -2116,10 +2566,40 @@
     else $('board').hidden = true;
   });
   $('boardClose').addEventListener('click', function () { $('board').hidden = true; });
-  // 标为已读之后板子就没什么可看的了，顺手收起来
-  $('boardMarkRead').addEventListener('click', function () {
+
+  // 双击标签 → 大窗 / 小窗来回切
+  $('boardTitle').addEventListener('dblclick', function (e) {
+    e.preventDefault();
+    if (prefs.board.max === false) maximizeBoard(); else minimizeBoard();
+  });
+
+  // 一键 archive 全部：板子清空了也就没什么可看的，顺手收起来
+  $('boardArchiveAll').addEventListener('click', function () {
+    var live = liveMessages();
+    if (!live.length) { toast('已经没有消息了'); return; }
+    var now = Date.now();
+    live.forEach(function (m) { LOCAL.archived[m.id] = now; });
+    saveLocal();
     markAllRead();
+    renderBoard();
+    refreshUnread();
+    toast('已 archive ' + live.length + ' 条消息');
     $('board').hidden = true;
+  });
+
+  $('boardArchived').addEventListener('click', function () {
+    renderArchived();
+    $('archMask').hidden = false;
+  });
+  $('archClose').addEventListener('click', function () { $('archMask').hidden = true; });
+  $('archMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('archRestoreAll').addEventListener('click', function () {
+    LOCAL.archived = {};
+    saveLocal();
+    renderArchived();
+    renderBoard();
+    refreshUnread();
+    toast('已全部取回');
   });
 
   // 拖拽 + 缩放
@@ -2153,11 +2633,16 @@
       }
     });
     window.addEventListener('mouseup', function () {
-      if (dragging || rzOn) savePrefs();
+      // 自己拖过 / 缩过之后就不再算「满屏形态」，下次打开保持手调的大小
+      if (dragging || rzOn) { prefs.board.max = false; savePrefs(); }
       dragging = false; rzOn = false;
       hdr.classList.remove('dragging');
     });
-    window.addEventListener('resize', function () { if (!$('board').hidden) placeBoard(); });
+    // 满屏形态要跟着窗口一起长大；手调过大小的就只做边界收敛
+    window.addEventListener('resize', function () {
+      if ($('board').hidden) return;
+      if (prefs.board.max === false) placeBoard(); else maximizeBoard();
+    });
   })();
 
   // 没有权限就在加载后自动申请一次（Chrome 允许无手势调用；被"安静通知"策略拦下时静默失败）
@@ -2191,6 +2676,34 @@
     } catch (e) { /* 通知失败不影响页面 */ }
   }
   notifyPending();
+
+  /* ---------- 📡 Telegram 频道页的未读角标 ----------
+   * channel.html 每次收到消息都会把最新时间戳写进 sgjob_channel_seen，
+   * 这里只要问 Worker「比它更新的还有几条」就够了 —— 增量响应通常是空的。 */
+  (function () {
+    var SEEN = 'sgjob_channel_seen';
+    var dot = $('channelDot');
+    if (!dot || !CONFIG.tgEndpoint) return;
+
+    function seenAt() { return Number(localStorage.getItem(SEEN) || 0); }
+    /** skipHidden：定时那一轮在后台时跳过；首次加载不跳，否则后台打开的标签页
+        一直到用户切过去之前都不显示角标。 */
+    function check(skipHidden) {
+      if (skipHidden && document.hidden) return;
+      tgAction({ action: 'inbox', since: String(seenAt()) }).then(function (d) {
+        var n = (d.items || []).length;
+        dot.hidden = !n;
+        dot.textContent = n > 99 ? '99+' : String(n);
+        $('channelBtn').title = n
+          ? (n + ' 条还没看过的频道消息')
+          : 'Telegram 群 / 频道消息的实时镜像';
+      }).catch(function () { /* 拉不到就别打扰 */ });
+    }
+    check();
+    setInterval(function () { check(true); }, 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+    window.addEventListener('storage', function (e) { if (e.key === SEEN) check(); });
+  })();
 
   /* ---------- 📣 当日新情况的速报 ---------- */
   (function () {
@@ -2244,6 +2757,7 @@
       tgAction({ action: 'report_send' }).then(function () {
         state.className = 'status ok';
         state.textContent = '已发送。今天不会再发第二条（定时也会跳过）。';
+        logSent(currentText, '当日速报');
         lock('今天已经发过速报了');
         setTimeout(function () { mask.hidden = true; }, 1200);
       }).catch(function (e) {
@@ -2410,24 +2924,12 @@
     }).then(function () { btn.disabled = false; });
   });
 
-  /* ---------- 联系己 ---------- */
-  $('contactFab').addEventListener('click', function () {
-    if (!confirm('是否 telegram 提醒己处理新一批的 Linkedin jobs saved list？')) return;
-    var btn = this;
-    btn.disabled = true;
-    tgSend(TG_PREFIX + ' 请己处理新一批的 Linkedin jobs saved list\n' + fmtDT(Date.now())
-           + '\n\nhttps://www.linkedin.com/jobs-tracker/').then(function () {
-      toast('已提醒');
-    }).catch(function (e) {
-      toast('发送失败：' + (e.message || e));
-    }).then(function () { btn.disabled = false; });
-  });
-
   /* ---------- 启动 ---------- */
   // 记下这次访问的时间，供下次对比
   prefs.lastVisit = Date.now();
   savePrefs();
 
+  renderKPIs();
   renderColList();
   buildStatusPanel();
   loadScheduled();
@@ -2451,7 +2953,20 @@
   setInterval(refreshPending, 5000);
   window.addEventListener('storage', function (e) {
     if (e.key === OUTBOX || e.key === OUTBOX_ACK) refreshPending();
+    if (e.key === MK) syncFromMirror();
   });
+
+  /* 油猴脚本每几秒往镜像里写一次。构建还没跑完时，新留言 / 新 MEMO 靠它先显示出来。
+     storage 事件只在别的标签页写入时触发，本页面的脚本落地要靠这个轮询兜底。 */
+  function syncFromMirror() {
+    if (!readMirror()) return;
+    mergeMessages();
+    if (!$('board').hidden) renderBoard();
+    refreshUnread();
+    if (detailTarget) renderDetailMemos(detailTarget);
+    apply();
+  }
+  setInterval(syncFromMirror, 4000);
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
@@ -2461,6 +2976,7 @@
     $('fuMask').hidden = true;
     $('pickMask').hidden = true;
     $('detailMask').hidden = true;
+    $('archMask').hidden = true;
   });
 })();
 </script>

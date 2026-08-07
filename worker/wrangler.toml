@@ -23,6 +23,22 @@ BOARD_URL = "https://exploreeyrar.github.io/linkedin-tracker-site/"
 
 # TG_TOKEN は Secret として登録する（wrangler secret put TG_TOKEN）。ここには書かない。
 # APP_KEY を Secret に登録すると X-App-Key ヘッダーの一致も必須になる（任意）。
+#
+# WEBHOOK_SECRET も Secret（wrangler secret put WEBHOOK_SECRET）。
+# Telegram の setWebhook に secret_token として渡した値と同じものを入れる。
+# これが未設定だと /tg/webhook は常に 403 を返す（＝チャンネル同期は動かない）。
+
+# ---- Telegram 频道 → channel.html 的收件箱 ----
+# 单实例、强一致、带 WebSocket 推送。KV 是最终一致的（最长 60 秒），
+# 「更新频率拉到最高」这件事只有 Durable Object 做得到。
+# 免费方案可用，但必须是 SQLite backend，所以下面用 new_sqlite_classes。
+[[durable_objects.bindings]]
+name = "INBOX"
+class_name = "ChannelInbox"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChannelInbox"]
 
 # 予約送信のキュー。先に KV namespace を作って id を貼ること：
 #   npx wrangler kv namespace create SCHEDULE

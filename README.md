@@ -40,8 +40,9 @@ LinkedIn 职位页
 | `linkedin-applied-tracker.user.js` | 油猴脚本本体。装到 Tampermonkey 里跑，见下面「安装与自动更新」 |
 | `data/records.json` | 数据源（投递记录 + 通知板）。**由油猴脚本整文件覆盖写入**，不要手工编辑 |
 | `config.json` | 站点配置。目前只有 Telegram 中继地址 |
-| `template.html` | 页面模板，`__DATA__` 是数据注入点。想改配色/布局改这里 |
-| `build.py` | 读数据 → 清洗校验 → 注入模板 → 输出 `dist/index.html`。只用标准库 |
+| `template.html` | 投递清单页模板，`__DATA__` 是数据注入点。想改配色/布局改这里 |
+| `channel.html` | Telegram 群 / 频道消息的镜像页模板，`__CONFIG__` 是配置注入点 |
+| `build.py` | 读数据 → 清洗校验 → 注入模板 → 输出 `dist/index.html` 与 `dist/channel.html`。只用标准库 |
 | `worker/` | Cloudflare Worker：Telegram 中继，Bot Token 只存在这里 |
 | `.github/workflows/pages.yml` | 构建与部署 |
 
@@ -104,6 +105,41 @@ cd linkedin-tracker-site/worker && npx wrangler secret put TG_TOKEN
 
 Bot 必须已经在那个群里，且群里允许它发言。`wrangler.toml` 的 `ALLOWED_ORIGINS`
 已经放行了 GitHub Pages 与 linkedin.com；换域名要同步改。
+
+### 6. 把 Telegram 群 / 频道的消息同步到看板（可选）
+
+装完之后，`channel.html`（看板右上角「📡 Telegram 频道」进去）会实时镜像那个群 /
+频道里的消息。链路是 Telegram webhook → Worker → Durable Object → WebSocket 推给页面，
+新消息毫秒级到达，不靠轮询。
+
+先让 bot 真的能看见消息：
+
+- **频道**：把 bot 设成频道管理员。
+- **群**：在 BotFather 里 `/setprivacy` → **Disable**（否则 bot 只收得到 @它 的消息），
+  改完把 bot 移出群再拉回来才生效。
+
+然后部署并接上 webhook：
+
+```bash
+cd linkedin-tracker-site/worker && npx wrangler deploy
+```
+
+```bash
+cd linkedin-tracker-site/worker && npx wrangler secret put WEBHOOK_SECRET
+```
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TG_TOKEN>/setWebhook" -d "url=https://<你的-worker>.workers.dev/tg/webhook" -d "secret_token=<上一步那个密钥>" -d 'allowed_updates=["message","channel_post","edited_message","edited_channel_post"]'
+```
+
+几件要知道的事：
+
+- **拿不到 bot 加入之前的历史消息。** Bot API 没有回溯接口，只能从接上那一刻起往后攒。
+- `wrangler.toml` 里的 Durable Object 迁移（`new_sqlite_classes`）必须跟着 deploy 一起生效。
+  万一没生效，Worker 会自动退回用 KV 存 —— 页面照常能看，只是新消息最多可能晚 60 秒
+  （KV 是最终一致的），页面顶部的状态会显示「轮询中（未启用实时）」。
+- 只有 `TG_CHAT` 那个群 / 频道的消息会被收下，别人把 bot 拉进别的群也灌不进来。
+- webhook 和 `getUpdates` 二选一，设了 webhook 就不能再用 `getUpdates` 拉消息了。
 
 ## 日常使用
 

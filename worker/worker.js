@@ -10,12 +10,18 @@
  *   浏览器 ──action=schedule──▶ KV 队列 ──Cron 每 5 分钟扫描──▶ 到点发出
  * 静态页面自己做不到定时（关掉标签页就没人执行了），所以定时必须落在 Worker 上。
  *
+ * 反方向还有一条：Telegram 群 / 频道里的消息回流到看板（channel.html）。
+ *   Telegram ──webhook──▶ Worker ──▶ Durable Object（存档 + WebSocket 广播）
+ *                                        ▲
+ *                    channel.html ───────┘  WS 实时推送，断线时退回轮询
+ *
  * 受理条件（收紧后，即使 Worker URL 泄漏也发不出任意内容）：
- *   - 只接受 POST
+ *   - 只接受 POST（WebSocket 升级除外）
  *   - Origin 必须在 ALLOWED_ORIGINS 里
  *   - 正文必须以 "#SGJOB" 开头
  *   - 正文不超过 4096 字
  *   - 设置了 APP_KEY 时，X-App-Key 头必须一致（可选，建议开）
+ *   - webhook 走单独的路径 + Telegram 的 secret_token 头，不看 Origin
  */
 
 const TG_API = 'https://api.telegram.org';
@@ -23,6 +29,11 @@ const HEADER_PREFIX = '#SGJOB';
 const MAX_LEN = 4096;
 const MAX_QUEUE = 200;                 // 队列上限，防止被灌爆
 const MAX_AHEAD_MS = 180 * 86400000;   // 最多排到 180 天后
+
+const WEBHOOK_PATH = '/tg/webhook';    // Telegram 往这里 POST
+const WS_PATH = '/channel/ws';         // channel.html 从这里连 WebSocket
+const INBOX_MAX = 500;                 // 收件箱最多留这么多条
+const INBOX_ROOM = 'main';             // 只有一个房间，DO 用固定名字
 
 function corsHeaders(origin, allowed) {
   const permitted = allowed.includes('*') || allowed.includes(origin);
@@ -266,6 +277,190 @@ function latestMemoOfDay(r, start, end) {
   return today.length ? String(today[0].text).replace(/\s+/g, ' ').trim() : '';
 }
 
+/* ==========================================================================
+ * Telegram 群 / 频道的消息 → 看板（channel.html）
+ *
+ * Bot API 的两个硬限制，先写在这里免得日后困惑：
+ *   1. 拿不到 bot 加入之前的历史消息，只能从接上 webhook 那一刻起往后攒。
+ *   2. 群里要收到普通消息，必须在 BotFather 里 /setprivacy → Disable
+ *      （或者把 bot 设成管理员）；频道则必须把 bot 设成管理员。
+ * ========================================================================== */
+
+/** 把一条 update 压成看板要显示的样子；不关心的类型返回 null */
+function parseUpdate(u) {
+  if (!u || typeof u !== 'object') return null;
+  const edited = u.edited_channel_post || u.edited_message;
+  const m = u.channel_post || u.message || edited;
+  if (!m || !m.chat) return null;
+
+  const text = String(m.text || m.caption || '');
+  // 纯媒体没有文字时，至少标出来是什么，别让消息凭空消失
+  let kind = '';
+  if (m.photo) kind = '🖼 图片';
+  else if (m.video) kind = '🎬 视频';
+  else if (m.animation) kind = '🎞 动图';
+  else if (m.voice) kind = '🎤 语音';
+  else if (m.audio) kind = '🎵 音频';
+  else if (m.sticker) kind = '🩹 贴纸 ' + (m.sticker.emoji || '');
+  else if (m.document) kind = '📎 文件 ' + (m.document.file_name || '');
+  else if (m.poll) kind = '📊 投票 ' + (m.poll.question || '');
+  else if (m.location) kind = '📍 位置';
+  else if (m.new_chat_members) kind = '👋 有人加入';
+  else if (m.left_chat_member) kind = '🚪 有人离开';
+  else if (m.pinned_message) kind = '📌 置顶了一条消息';
+  if (!text && !kind) return null;
+
+  const from = m.from || {};
+  const author = m.author_signature
+    || [from.first_name, from.last_name].filter(Boolean).join(' ')
+    || (from.username ? '@' + from.username : '')
+    || (m.sender_chat && m.sender_chat.title) || '';
+
+  const reply = m.reply_to_message;
+  return {
+    // 同一条消息被编辑时 uid 不变，前端按 uid 覆盖即可
+    uid: String(m.chat.id) + ':' + m.message_id,
+    chatId: String(m.chat.id),
+    chatTitle: String(m.chat.title || m.chat.username || m.chat.first_name || ''),
+    msgId: m.message_id,
+    ts: (Number(m.date) || Math.floor(Date.now() / 1000)) * 1000,
+    editedTs: edited ? Date.now() : 0,
+    author: String(author).slice(0, 60),
+    bot: !!from.is_bot,
+    kind: kind.trim().slice(0, 60),
+    text: text.slice(0, 4000),
+    replyText: reply ? String(reply.text || reply.caption || '').slice(0, 120) : '',
+  };
+}
+
+/** 收件箱的存储 key：零填充时间戳打头，list 出来就是时间序 */
+function inboxKey(msg) {
+  return 'in:' + String(msg.ts).padStart(13, '0') + ':' + msg.uid;
+}
+
+/** 拿到那个唯一的收件箱 DO；没绑定 DO 时返回 null（退回 KV） */
+function inboxStub(env) {
+  if (!env.INBOX) return null;
+  return env.INBOX.get(env.INBOX.idFromName(INBOX_ROOM));
+}
+
+/* ---- KV 兜底实现 ----------------------------------------------------------
+ * 没配 Durable Object（或迁移还没跑）时也要能用，只是新消息最多可能晚 60 秒
+ * 才看得到 —— KV 是最终一致的，这是它的固有延迟，不是 bug。
+ * -------------------------------------------------------------------------- */
+async function kvInboxAppend(env, msg) {
+  if (!env.SCHEDULE) return;
+  await env.SCHEDULE.put(inboxKey(msg), JSON.stringify(msg),
+    { expirationTtl: 180 * 86400 });
+}
+
+async function kvInboxList(env, since) {
+  if (!env.SCHEDULE) return [];
+  const out = [];
+  let cursor;
+  do {
+    const page = await env.SCHEDULE.list({ prefix: 'in:', limit: 1000, cursor: cursor });
+    for (const k of page.keys) {
+      const raw = await env.SCHEDULE.get(k.name);
+      if (!raw) continue;
+      try {
+        const m = JSON.parse(raw);
+        if (!since || (m.editedTs || m.ts) > since) out.push(m);
+      } catch (e) { /* 坏数据跳过 */ }
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  out.sort((a, b) => a.ts - b.ts);
+  return out.slice(-INBOX_MAX);
+}
+
+/**
+ * 收件箱 Durable Object。
+ * 单实例、强一致，写进来立刻就能读到；同时把新消息推给所有连着的页面，
+ * 所以 channel.html 不用轮询也能秒级（实际是毫秒级）更新。
+ */
+export class ChannelInbox {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async append(msg) {
+    await this.state.storage.put(inboxKey(msg), msg);
+    // 超出上限就把最老的删掉，别让存储无限长
+    const all = await this.state.storage.list({ prefix: 'in:' });
+    if (all.size > INBOX_MAX) {
+      const keys = [...all.keys()].slice(0, all.size - INBOX_MAX);
+      await this.state.storage.delete(keys);
+    }
+    const payload = JSON.stringify({ type: 'msg', items: [msg] });
+    for (const ws of this.state.getWebSockets()) {
+      try { ws.send(payload); } catch (e) { /* 断了就断了，close 事件会清掉 */ }
+    }
+  }
+
+  async list(since) {
+    const all = await this.state.storage.list({ prefix: 'in:' });
+    const out = [];
+    for (const m of all.values()) {
+      if (!since || (m.editedTs || m.ts) > since) out.push(m);
+    }
+    out.sort((a, b) => a.ts - b.ts);
+    return out.slice(-INBOX_MAX);
+  }
+
+  async fetch(request) {
+    // WebSocket 升级：外层是把**原样的** Request 转发进来的（Cloudflare 的标准做法），
+    // 所以这里认 Upgrade 头，不认路径 —— 路径是浏览器那边的 /channel/ws。
+    if (request.headers.get('Upgrade') === 'websocket') {
+      const pair = new WebSocketPair();
+      // 用 hibernation API：没消息时 DO 可以被回收，不按连接时长计费
+      this.state.acceptWebSocket(pair[1]);
+      return new Response(null, { status: 101, webSocket: pair[0] });
+    }
+
+    const url = new URL(request.url);
+    if (url.pathname === '/push') {
+      const msg = await request.json().catch(() => null);
+      if (!msg) return new Response('bad', { status: 400 });
+      await this.append(msg);
+      return new Response('ok');
+    }
+
+    // /list?since=<ms>
+    const since = Number(url.searchParams.get('since') || 0);
+    const items = await this.list(since);
+    return new Response(JSON.stringify({ items: items }),
+      { headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // hibernation 下的三个回调。前端只会发心跳，收到就原样回一个 pong。
+  async webSocketMessage(ws, data) {
+    if (String(data) === 'ping') { try { ws.send('pong'); } catch (e) {} }
+  }
+  async webSocketClose(ws, code, reason, wasClean) { try { ws.close(code, reason); } catch (e) {} }
+  async webSocketError(ws) { /* 交给 close 处理 */ }
+}
+
+/** 一条 update 落库（DO 优先，没有就用 KV） */
+async function inboxAppend(env, msg) {
+  const stub = inboxStub(env);
+  if (!stub) return await kvInboxAppend(env, msg);
+  await stub.fetch('https://do/push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(msg)
+  });
+}
+
+async function inboxList(env, since) {
+  const stub = inboxStub(env);
+  if (!stub) return { items: await kvInboxList(env, since), live: false };
+  const res = await stub.fetch('https://do/list?since=' + encodeURIComponent(since || 0));
+  const data = await res.json().catch(() => ({ items: [] }));
+  return { items: data.items || [], live: true };
+}
+
 /** 队列 key 用零填充的时间戳打头，KV 按字典序 list 出来就是按时间先后 */
 function queueKey(at, id) {
   return 'sch:' + String(at).padStart(13, '0') + ':' + id;
@@ -298,6 +493,43 @@ export default {
       .split(',').map(s => s.trim()).filter(Boolean);
     const origin = request.headers.get('Origin') || 'null';
     const headers = corsHeaders(origin, allowed);
+    const url = new URL(request.url);
+
+    /* ---- Telegram webhook ------------------------------------------------
+     * Telegram 不会带 Origin，也不会带 X-App-Key，所以这条路必须在下面那几道
+     * 浏览器用的检查之前。身份靠两样东西：独立路径 + setWebhook 时设的
+     * secret_token（Telegram 会放在 X-Telegram-Bot-Api-Secret-Token 头里）。
+     * -------------------------------------------------------------------- */
+    if (url.pathname === WEBHOOK_PATH) {
+      if (request.method !== 'POST') return new Response('POST only', { status: 405 });
+      if (!env.WEBHOOK_SECRET
+          || request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.WEBHOOK_SECRET) {
+        return new Response('forbidden', { status: 403 });
+      }
+      const update = await request.json().catch(() => null);
+      const msg = parseUpdate(update);
+      // 认不出来的 update 也回 200：回错误码 Telegram 会一直重投
+      if (msg) {
+        // 只收我们那个群 / 频道的，别人把 bot 拉进别的群也灌不进来
+        if (!env.TG_CHAT || String(msg.chatId) === String(env.TG_CHAT)) {
+          await inboxAppend(env, msg);
+        }
+      }
+      return new Response('ok');
+    }
+
+    /* ---- channel.html 的 WebSocket ---- */
+    if (url.pathname === WS_PATH) {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return json({ ok: false, description: 'expected websocket upgrade' }, 426, headers);
+      }
+      if (!(allowed.includes('*') || allowed.includes(origin))) {
+        return json({ ok: false, description: 'origin not allowed: ' + origin }, 403, headers);
+      }
+      const stub = inboxStub(env);
+      if (!stub) return json({ ok: false, description: 'Durable Object 未绑定，请用轮询' }, 501, headers);
+      return await stub.fetch(request);      // 原样转发，Upgrade 头必须留着
+    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: headers });
@@ -344,6 +576,22 @@ export default {
         return json({ ok: false, description: msg }, res.status, headers);
       }
       return json({ ok: true, result: data }, 200, headers);
+    }
+
+    /* ---- 收件箱：channel.html 拉消息 ----
+     * 这条不需要 TG_TOKEN（只读已经收下来的），所以放在下面那道检查之前。
+     * since 传上一次拿到的最新时间戳，只回增量，轮询时几乎是空响应。 */
+    if (action === 'inbox') {
+      const since = Number(body.since || 0);
+      const data = await inboxList(env, since);
+      return json({
+        ok: true,
+        items: data.items,
+        live: data.live,                       // true = 走 DO，可以开 WebSocket
+        wsPath: data.live ? WS_PATH : '',
+        hooked: !!env.WEBHOOK_SECRET,          // false = webhook 还没配，页面会提示
+        now: Date.now()
+      }, 200, headers);
     }
 
     // ---- 当日速报：状态 / 预览 / 发送 ----

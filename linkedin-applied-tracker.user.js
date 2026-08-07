@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LinkedIn / Jobstreet 已递交投递追踪器 (Applied Tracker)
 // @namespace    local.linkedin.applied.tracker
-// @version      1.5.1
+// @version      1.6.0
 // @updateURL    https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js
 // @downloadURL  https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js
 // @supportURL   https://github.com/exploreeyrar/linkedin-tracker-site/issues
@@ -75,6 +75,10 @@
    * ------------------------------------------------------------------------ */
   const BOARD_OUTBOX = 'sgjob_outbox_v1';   // 看板写、脚本读
   const BOARD_ACK    = 'sgjob_outbox_ack_v1';
+  /* 反向的那条：脚本写、看板读。
+     推一次 GitHub 到页面真正更新要走 Actions 构建 + Pages 部署，几十秒到几分钟。
+     这份镜像让看板在这台机器上立刻看到最新的留言与 MEMO，不必干等部署。 */
+  const BOARD_MIRROR = 'sgjob_mirror_v1';
   const IS_BOARD = /(^|\.)github\.io$/i.test(location.hostname || '');
 
   /* ---- 当前站点 ----------------------------------------------------------
@@ -5453,12 +5457,43 @@
 
     const done = [];
     let changed = 0;
+    let msgChanged = 0;
     ops.forEach((op) => {
-      if (!op || !op.jobId) { done.push(op && op.opId); return; }
+      if (!op) { done.push(undefined); return; }
+
+      // 通知板留言：不挂在某条投递上，单独处理
+      if (op.op === 'message') {
+        const id = String(op.id || '');
+        const text = String(op.text || '').trim();
+        if (id && text && !deleted[id] && !messages.some((m) => m && m.id === id)) {
+          messages.push({ id, text, createdAt: Number(op.ts) || Date.now(), editedAt: 0,
+                          author: String(op.author || '') });
+          msgChanged++;
+        }
+        done.push(op.opId);
+        return;
+      }
+
+      if (!op.jobId) { done.push(op.opId); return; }
       // 看板上的一条对应本地哪条：职位 ID 只在本站内唯一，所以要连站点一起比
       const rec = records.find((r) => String(r.jobId) === String(op.jobId)
                                    && recSite(r) === (op.site || recSite(r)));
       if (!rec) { done.push(op.opId); return; }        // 本地没有这条，丢掉这个操作
+
+      /* MEMO 是追加的，不存在「被更新的本地版本顶掉」这回事 ——
+         下面那条「旧的不覆盖」的判断只对 followUp 这种整字段覆盖的操作成立。 */
+      if (op.op === 'memo') {
+        const text = String(op.text || '').trim();
+        const at = Number(op.ts) || Date.now();
+        const dup = memoBlocks(rec).some((b) => b.ts === at && b.text === text);
+        if (text && !dup && addMemoBlock(rec, text, at)) {
+          rec.updatedAt = Math.max(rec.updatedAt || 0, at);
+          changed++;
+        }
+        done.push(op.opId);
+        return;
+      }
+
       // 队列里的操作可能比本地还旧（比如已经在 LinkedIn 上改过了），旧的就不覆盖
       if (op.ts && rec.updatedAt && op.ts < rec.updatedAt) { done.push(op.opId); return; }
 
@@ -5472,6 +5507,7 @@
     });
 
     if (changed) { store.set(K_REC, records); }
+    if (msgChanged) { saveMessages(); changed += msgChanged; }
     // 处理过的从队列里摘掉，并留一份回执让看板知道已经落地
     try {
       const rest = ops.filter((op) => done.indexOf(op && op.opId) === -1);
@@ -5490,6 +5526,30 @@
 
     // 看板上不建任何界面，宿主整个藏起来，只留桥接
     host.style.display = 'none';
+
+    /* 把本机手里最新的留言与 MEMO 镜像给看板。
+       页面是构建产物，等 Actions 跑完才会带上新内容；这份镜像让它当场就能显示。 */
+    let mirrorLast = '';
+    const pushMirror = () => {
+      try {
+        const memos = Object.create(null);
+        records.forEach((r) => {
+          if (!r || !r.jobId) return;
+          const bs = memoBlocks(r);
+          if (!bs.length) return;
+          memos[recSite(r) + ':' + r.jobId] = bs.map((b) => ({ ts: b.ts, text: b.text }));
+        });
+        const body = JSON.stringify({
+          messages: messages.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 300),
+          memos: memos,
+        });
+        // 内容没变就别写：看板那边是靠「这个键的字符串变了没」来决定要不要重画的
+        if (body === mirrorLast) return;
+        mirrorLast = body;
+        localStorage.setItem(BOARD_MIRROR, body);
+      } catch (e) { /* 存不下就算了，看板照常显示构建进来的那份 */ }
+    };
+
     const runBridge = () => {
       const n = drainBoardOutbox();
       if (n) {
@@ -5497,10 +5557,28 @@
         if (ghReady()) ghSync(false);
         else console.warn('[applied-tracker] 看板改了 ' + n + ' 条，但没配 GitHub Token，推不上去');
       }
+      pushMirror();
     };
     runBridge();
     setInterval(runBridge, 4000);       // 看板上现改的，几秒内就回写
-    window.addEventListener('storage', (e) => { if (e.key === BOARD_OUTBOX) runBridge(); });
+    window.addEventListener('storage', (e) => {
+      if (e.key === BOARD_OUTBOX) runBridge();
+      // 别的标签页（LinkedIn）改了记录 / 留言 → 这边收进来再镜像一次
+      if (e.key === K_REC && mergeStored()) pushMirror();
+      if (e.key === K_MSG) {
+        let stored = [];
+        try { stored = JSON.parse(e.newValue || '[]'); } catch (err) { stored = []; }
+        if (!Array.isArray(stored)) return;
+        const seen = Object.create(null);
+        messages.forEach((m) => { if (m && m.id) seen[m.id] = 1; });
+        let add = 0;
+        stored.forEach((s) => {
+          if (!s || !s.id || seen[s.id] || deleted[s.id]) return;
+          messages.push(s); seen[s.id] = 1; add++;
+        });
+        if (add) pushMirror();
+      }
+    });
     return;                             // 后面那套 LinkedIn / Jobstreet 的启动流程全部跳过
   }
 

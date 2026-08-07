@@ -20,10 +20,18 @@ permissions:
   pages: write
   id-token: write
 
-# 同一时间只跑一个部署；排队中的旧任务直接取消
+# 同一时间只跑一个部署。
+#
+# 这里刻意不开 cancel-in-progress：油猴脚本每同步一次就是一个 push，
+# 而 Pages 的 deploy 步骤动辄要几分钟。一旦开了「取消进行中的」，
+# 只要同步得比部署快，每次新推送都会把正在跑的部署掐掉重来 ——
+# 结果就是你一直在同步，页面却一直不更新（实测连续 13 次被取消）。
+#
+# 设成 false 之后：进行中的部署跑完，期间来的新推送排队，
+# 且只保留最新的那个（GitHub 会把更早的排队项丢掉），不会堆积。
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

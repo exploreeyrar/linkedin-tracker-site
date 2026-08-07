@@ -20,6 +20,9 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(ROOT, "data", "records.json")
 CONFIG = os.path.join(ROOT, "config.json")
 TEMPLATE = os.path.join(ROOT, "template.html")
+# Telegram 群 / 频道消息的镜像页。数据是运行时从 Worker 拉的，
+# 构建时只需要把中继地址塞进去。
+CHANNEL_TEMPLATE = os.path.join(ROOT, "channel.html")
 OUTDIR = os.path.join(ROOT, "dist")
 
 # 内置状态清单，顺序即看板的默认排序顺位。
@@ -358,6 +361,23 @@ def load():
     return records, updated, messages, defs
 
 
+def build_channel(cfg):
+    """dist/channel.html —— Telegram 群 / 频道消息的实时镜像页。"""
+    if not os.path.exists(CHANNEL_TEMPLATE):
+        print("! 找不到 channel.html，跳过频道页", file=sys.stderr)
+        return
+    with open(CHANNEL_TEMPLATE, encoding="utf-8") as f:
+        html = f.read()
+    if "__CONFIG__" not in html:
+        sys.exit("channel.html 里找不到 __CONFIG__ 占位符")
+    blob = (json.dumps(cfg, ensure_ascii=False, separators=(",", ":"))
+            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+    with open(os.path.join(OUTDIR, "channel.html"), "w", encoding="utf-8") as f:
+        f.write(html.replace("__CONFIG__", blob))
+    print(f"✓ dist/channel.html — Telegram 频道镜像"
+          f"（{'已接中继' if cfg['tgEndpoint'] else '中继未配置'}）")
+
+
 def main():
     records, updated, messages, defs = load()
     statuses = [d["name"] for d in defs]
@@ -389,6 +409,8 @@ def main():
         f.write(html)
     # 关掉 Jekyll，避免下划线开头的文件被吞掉
     open(os.path.join(OUTDIR, ".nojekyll"), "w").close()
+
+    build_channel(cfg)
 
     by_status = {}
     for r in records:

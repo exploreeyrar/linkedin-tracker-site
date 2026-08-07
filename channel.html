@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telegram 频道 · Job Application Tracker</title>
+<meta name="description" content="Telegram 群 / 频道消息实时镜像">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📡</text></svg>">
+<style>
+  :root {
+    --bg: #f6f7f9;      --card: #ffffff;   --fg: #14181d;   --sub: #5d6874;
+    --line: #e2e6ea;    --accent: #0a66c2; --shadow: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
+    --pop: 0 10px 34px rgba(16,24,40,.18);
+    --ok: #047857;      --warn: #b45309;   --err: #b91c1c;
+    --bubble: #ffffff;  --mine: #dbeafe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181d;    --card: #1c2229;   --fg: #e8eaed;   --sub: #98a2ae;
+      --line: #2b333c;  --accent: #6cb6ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
+      --pop: 0 10px 34px rgba(0,0,0,.6);
+      --ok: #34d399;    --warn: #fbbf24;   --err: #f87171;
+      --bubble: #1c2229; --mine: #1e3a5f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    flex: 0 0 auto; background: var(--card); border-bottom: 1px solid var(--line);
+    padding: 12px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; white-space: nowrap; }
+  header .who { color: var(--sub); font-size: 12px; white-space: nowrap; }
+  header .sp { margin-left: auto; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg); white-space: nowrap;
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--sub); flex: 0 0 8px; }
+  .pill.live  { color: var(--ok);   border-color: currentColor; }
+  .pill.live i  { background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+  .pill.poll  { color: var(--warn); border-color: currentColor; }
+  .pill.poll i  { background: currentColor; }
+  .pill.down  { color: var(--err);  border-color: currentColor; }
+  .pill.down i  { background: currentColor; }
+
+  .navbtn {
+    font: inherit; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap;
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    background: var(--card); color: var(--fg); border: 1px solid var(--line);
+  }
+  .navbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #q {
+    font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 9px; min-width: 160px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  #q:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  main { flex: 1 1 auto; overflow: auto; padding: 18px; overscroll-behavior: contain; }
+  .feed { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+
+  .daysep { display: flex; align-items: center; gap: 10px; color: var(--sub); font-size: 11.5px; margin: 10px 0 2px; }
+  .daysep::before, .daysep::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--line); }
+
+  .msg {
+    background: var(--bubble); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 14px 11px; box-shadow: var(--shadow); max-width: 100%;
+  }
+  .msg.bot { background: color-mix(in srgb, var(--accent) 7%, var(--bubble)); }
+  .msg.fresh { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .msg .hd { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 12px; }
+  .msg .au { font-weight: 700; color: var(--accent); }
+  .msg .tm { color: var(--sub); font-variant-numeric: tabular-nums; margin-left: auto; }
+  .msg .ed { color: var(--sub); font-size: 11px; }
+  .msg .kind {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); margin-bottom: 4px;
+  }
+  .msg .re {
+    border-left: 3px solid var(--accent); padding: 2px 0 2px 9px; margin-bottom: 6px;
+    color: var(--sub); font-size: 12px; line-height: 1.5;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .msg .tx { font-size: 14.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+  .msg .tx a { color: var(--accent); }
+  .msg mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 3px; }
+
+  .note {
+    max-width: 900px; margin: 0 auto 16px; background: var(--card); border: 1px solid var(--line);
+    border-left: 4px solid var(--warn); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow);
+  }
+  .note[hidden] { display: none; }
+  .note h2 { font-size: 14px; margin: 0 0 8px; }
+  .note ol { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.85; }
+  .note code {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+    padding: 1px 6px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all;
+  }
+  .note .sm { color: var(--sub); font-size: 12px; margin-top: 8px; line-height: 1.6; }
+
+  .empty { text-align: center; color: var(--sub); padding: 48px 16px; font-size: 14px; }
+
+  .jump {
+    position: fixed; right: 22px; bottom: 22px; z-index: 20;
+    font: inherit; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 999px;
+    border: 0; background: var(--accent); color: #fff; cursor: pointer; box-shadow: var(--pop);
+  }
+  .jump[hidden] { display: none; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: rgba(20,20,20,.93); color: #fff; padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; z-index: 30; opacity: 0; transition: opacity .18s ease; pointer-events: none;
+    max-width: calc(100vw - 32px); text-align: center;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📡 Telegram 频道</h1>
+  <span class="who" id="who"></span>
+  <span class="pill down sp" id="state"><i></i><span id="stateText">连接中…</span></span>
+  <input id="q" type="search" placeholder="搜索消息…" autocomplete="off">
+  <a class="navbtn" id="back" href="./index.html">📮 回到投递清单</a>
+</header>
+
+<main id="scroll">
+  <div class="note" id="setup" hidden>
+    <h2 id="setupTitle">还没有收到任何消息 —— 需要先接上 Telegram</h2>
+    <ol id="setupSteps"></ol>
+    <div class="sm">
+      Bot API 拿不到它加入之前的历史消息，只能从接上 webhook 那一刻起往后同步。
+    </div>
+  </div>
+  <div class="feed" id="feed"></div>
+  <div class="empty" id="empty" hidden>还没有消息。往那个群 / 频道里发一条试试。</div>
+</main>
+
+<button class="jump" id="jump" type="button" hidden>↓ 有新消息</button>
+<div class="toast" id="toast"></div>
+
+<script id="cfg" type="application/json">__CONFIG__</script>
+<script>
+(function () {
+  'use strict';
+
+  var CONFIG = JSON.parse(document.getElementById('cfg').textContent) || {};
+  var ENDPOINT = CONFIG.tgEndpoint || '';
+  var APPKEY = CONFIG.tgAppKey || '';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+
+  var toastTimer = null;
+  function toast(m) {
+    var t = $('toast');
+    t.textContent = m;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+
+  /* ---------- 状态 ---------- */
+  var MSGS = [];              // uid → 消息，展开成数组，按 ts 升序
+  var BY_UID = {};
+  var newest = 0;             // 已经收到的最新时间戳（编辑也算），拉增量时传给 Worker
+  var live = false;           // 是否走 Durable Object（能开 WebSocket）
+  var hooked = false;         // Worker 上配了 WEBHOOK_SECRET 没有
+  var ws = null;
+  var wsTries = 0;
+  var pollTimer = null;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtTime(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function fmtDay(ms) {
+    var d = new Date(ms), t = new Date();
+    var same = d.toDateString() === t.toDateString();
+    var y = new Date(t.getTime() - 86400000);
+    if (same) return '今天';
+    if (d.toDateString() === y.toDateString()) return '昨天';
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function fmtFull(ms) {
+    var d = new Date(ms);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+         + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  function setState(kind, text) {
+    var p = $('state');
+    p.className = 'pill sp ' + kind;
+    $('stateText').textContent = text;
+  }
+
+  /* ---------- 渲染 ---------- */
+  // 正文里的链接做成可点的；其余一律走 textContent，不碰 innerHTML
+  var URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+  function textNodes(into, text, needle) {
+    String(text).split(URL_RE).forEach(function (part, i) {
+      if (!part) return;
+      if (i % 2 === 1) {
+        var a = el('a', null, part);
+        a.href = part; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        into.appendChild(a);
+      } else {
+        appendHighlighted(into, part, needle);
+      }
+    });
+  }
+  // 搜索命中的部分套 <mark>，同样只用 DOM 拼
+  function appendHighlighted(into, text, needle) {
+    if (!needle) { into.appendChild(document.createTextNode(text)); return; }
+    var low = text.toLowerCase(), n = needle.toLowerCase(), from = 0, at;
+    while ((at = low.indexOf(n, from)) !== -1) {
+      if (at > from) into.appendChild(document.createTextNode(text.slice(from, at)));
+      into.appendChild(el('mark', null, text.slice(at, at + n.length)));
+      from = at + n.length;
+    }
+    into.appendChild(document.createTextNode(text.slice(from)));
+  }
+
+  function msgNode(m, needle, fresh) {
+    var box = el('div', 'msg' + (m.bot ? ' bot' : '') + (fresh ? ' fresh' : ''));
+    box.id = 'm-' + m.uid;
+
+    var hd = el('div', 'hd');
+    hd.appendChild(el('span', 'au', m.author || (m.bot ? 'Bot' : '匿名')));
+    if (m.editedTs) hd.appendChild(el('span', 'ed', '（已编辑）'));
+    var tm = el('span', 'tm', fmtTime(m.ts));
+    tm.title = fmtFull(m.ts);
+    hd.appendChild(tm);
+    box.appendChild(hd);
+
+    if (m.replyText) box.appendChild(el('div', 're', '↩ ' + m.replyText));
+    if (m.kind) box.appendChild(el('div', 'kind', m.kind));
+    if (m.text) {
+      var tx = el('div', 'tx');
+      textNodes(tx, m.text, needle);
+      box.appendChild(tx);
+    }
+    return box;
+  }
+
+  var lastRenderedIds = '';
+  function render(freshUids) {
+    var needle = $('q').value.trim();
+    var low = needle.toLowerCase();
+    var list = needle
+      ? MSGS.filter(function (m) {
+          return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
+        })
+      : MSGS;
+
+    var feed = $('feed');
+    feed.textContent = '';
+    var lastDay = '';
+    list.forEach(function (m) {
+      var day = fmtDay(m.ts);
+      if (day !== lastDay) { feed.appendChild(el('div', 'daysep', day)); lastDay = day; }
+      feed.appendChild(msgNode(m, needle, freshUids && freshUids[m.uid]));
+    });
+
+    $('empty').hidden = list.length > 0 || (!MSGS.length && !hooked);
+    if (needle && !list.length) { $('empty').hidden = false; $('empty').textContent = '没有匹配「' + needle + '」的消息。'; }
+    else if (!needle) { $('empty').textContent = '还没有消息。往那个群 / 频道里发一条试试。'; }
+
+    $('who').textContent = MSGS.length
+      ? ((MSGS[MSGS.length - 1].chatTitle || '') + '　共 ' + MSGS.length + ' 条　最后一条 ' + fmtFull(MSGS[MSGS.length - 1].ts))
+      : '';
+    updateSetup();
+  }
+
+  /** 滚在底部时才自动跟随；否则显示「↓ 有新消息」 */
+  function atBottom() {
+    var s = $('scroll');
+    return s.scrollHeight - s.scrollTop - s.clientHeight < 80;
+  }
+  function scrollToBottom() {
+    var s = $('scroll');
+    s.scrollTop = s.scrollHeight;
+    $('jump').hidden = true;
+  }
+  $('jump').addEventListener('click', scrollToBottom);
+  $('scroll').addEventListener('scroll', function () { if (atBottom()) $('jump').hidden = true; });
+
+  /** 收到一批消息（初次加载或增量），合并进来 */
+  function ingest(items, animate) {
+    if (!items || !items.length) return 0;
+    var stick = atBottom();
+    var fresh = {}, added = 0;
+    items.forEach(function (m) {
+      if (!m || !m.uid) return;
+      var old = BY_UID[m.uid];
+      if (old) {
+        // 编辑过的消息：原地更新
+        if ((m.editedTs || 0) > (old.editedTs || 0) || m.text !== old.text) {
+          MSGS[MSGS.indexOf(old)] = m;
+          BY_UID[m.uid] = m;
+          fresh[m.uid] = 1;
+          added++;
+        }
+      } else {
+        BY_UID[m.uid] = m;
+        MSGS.push(m);
+        fresh[m.uid] = 1;
+        added++;
+      }
+      newest = Math.max(newest, m.editedTs || 0, m.ts || 0);
+    });
+    // 投递清单那一页靠这个值算「还有几条没看过」
+    try { localStorage.setItem('sgjob_channel_seen', String(newest)); } catch (e) {}
+    if (!added) return 0;
+    MSGS.sort(function (a, b) { return a.ts - b.ts; });
+    render(animate ? fresh : null);
+    if (stick) scrollToBottom(); else $('jump').hidden = false;
+    return added;
+  }
+
+  /* ---------- 拉取 ---------- */
+  function call(payload) {
+    if (!ENDPOINT) return Promise.reject(new Error('还没有配置 Telegram 中继（config.json 的 tgEndpoint）'));
+    var opts = { method: 'POST', body: new URLSearchParams(payload), cache: 'no-store' };
+    if (APPKEY) opts.headers = { 'X-App-Key': APPKEY };
+    return fetch(ENDPOINT, opts)
+      .then(function (res) { return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; }); })
+      .then(function (d) { if (!d.ok) throw new Error(d.description || 'unknown error'); return d; });
+  }
+
+  var failures = 0;
+  function pull(initial) {
+    return call({ action: 'inbox', since: String(initial ? 0 : newest) }).then(function (d) {
+      failures = 0;
+      live = !!d.live;
+      hooked = !!d.hooked;
+      ingest(d.items, !initial);
+      if (initial) { render(); scrollToBottom(); }
+      if (live && !ws) connectWS();
+      if (!live) setState('poll', '轮询中（未启用实时）');
+      return d;
+    }).catch(function (e) {
+      failures++;
+      if (failures >= 2) setState('down', '连不上：' + (e.message || e));
+      updateSetup();
+    });
+  }
+
+  /* ---------- WebSocket：有 Durable Object 时走这条，消息毫秒级到 ---------- */
+  function wsUrl() {
+    var u = new URL(ENDPOINT);
+    u.protocol = (u.protocol === 'http:') ? 'ws:' : 'wss:';
+    u.pathname = (u.pathname.replace(/\/+$/, '')) + '/channel/ws';
+    return u.toString();
+  }
+
+  var beat = null;
+  function connectWS() {
+    if (ws || !live) return;
+    try { ws = new WebSocket(wsUrl()); } catch (e) { ws = null; startPolling(); return; }
+
+    ws.onopen = function () {
+      wsTries = 0;
+      setState('live', '实时连接中');
+      // 拉一次增量，补上握手期间可能漏掉的
+      pull(false);
+      clearInterval(beat);
+      beat = setInterval(function () { try { ws.send('ping'); } catch (e) {} }, 45000);
+      stopPolling();      // 有推送就不用轮询了
+    };
+    ws.onmessage = function (ev) {
+      if (ev.data === 'pong') return;
+      var d = null;
+      try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (d && d.type === 'msg') {
+        if (ingest(d.items, true)) toast('收到新消息');
+      }
+    };
+    ws.onclose = function () {
+      ws = null;
+      clearInterval(beat);
+      setState('poll', '重连中…（暂时轮询）');
+      startPolling();
+      // 指数退避，最长 30 秒
+      var wait = Math.min(30000, 1000 * Math.pow(2, Math.min(wsTries++, 5)));
+      setTimeout(connectWS, wait);
+    };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} };
+  }
+
+  /* ---------- 轮询：没有 WebSocket 时的后备 ----------
+   * 有焦点时 2 秒一次（这是静态页 + Worker 能做到的最快了），
+   * 只是切到后台就没必要烧请求，所以按可见性分档。*/
+  function pollDelay() {
+    if (document.hidden) return 0;                 // 0 = 停
+    return document.hasFocus() ? 2000 : 8000;
+  }
+  function startPolling() {
+    stopPolling();
+    var tick = function () {
+      var d = pollDelay();
+      if (!d) { pollTimer = setTimeout(tick, 1000); return; }   // 后台时只是空转等回来
+      pull(false).then(function () { pollTimer = setTimeout(tick, pollDelay() || 1000); });
+    };
+    pollTimer = setTimeout(tick, 300);
+  }
+  function stopPolling() { clearTimeout(pollTimer); pollTimer = null; }
+
+  // 切回来时立刻对一次账，别等下一个 tick
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) pull(false); });
+  window.addEventListener('focus', function () { pull(false); });
+  window.addEventListener('online', function () { pull(false); if (live) connectWS(); });
+
+  /* ---------- 还没接通时的引导 ---------- */
+  function updateSetup() {
+    var need = !ENDPOINT || !hooked || (!MSGS.length);
+    var box = $('setup');
+    box.hidden = !need;
+    if (!need) return;
+
+    $('setupTitle').textContent = !ENDPOINT
+      ? '还没有配置 Telegram 中继'
+      : (!hooked ? 'Worker 上还没设 WEBHOOK_SECRET' : '还没有收到任何消息 —— 需要先接上 Telegram');
+
+    var host = ENDPOINT ? ENDPOINT.replace(/\/+$/, '') : 'https://<你的-worker>.workers.dev';
+    var steps = [
+      ['把 bot 拉进那个群 / 频道。频道必须把它设成管理员；群里则要在 BotFather 里 ',
+       '/setprivacy → Disable', '，否则 bot 只看得见 @它 的消息。'],
+      ['部署带 Durable Object 的新版 Worker：', 'npx wrangler deploy', ''],
+      ['设一个 webhook 密钥：', 'npx wrangler secret put WEBHOOK_SECRET', ''],
+      ['把 webhook 指过来（<SECRET> 换成上一步那个值）：',
+       'curl -X POST "https://api.telegram.org/bot<TG_TOKEN>/setWebhook" -d "url=' + host + '/tg/webhook" -d "secret_token=<SECRET>" -d \'allowed_updates=["message","channel_post","edited_message","edited_channel_post"]\'', ''],
+      ['往群 / 频道里发一条消息，这一页几秒内就会出现它。', '', '']
+    ];
+    var ol = $('setupSteps');
+    ol.textContent = '';
+    steps.forEach(function (s) {
+      var li = document.createElement('li');
+      li.appendChild(document.createTextNode(s[0]));
+      if (s[1]) li.appendChild(el('code', null, s[1]));
+      if (s[2]) li.appendChild(document.createTextNode(s[2]));
+      ol.appendChild(li);
+    });
+  }
+
+  /* ---------- 启动 ---------- */
+  $('q').addEventListener('input', function () { render(); });
+
+  if (!ENDPOINT) {
+    setState('down', '未配置中继');
+    updateSetup();
+  } else {
+    setState('poll', '连接中…');
+    pull(true).then(function () {
+      if (!live) startPolling();      // 没有 DO 就一直轮询
+    });
+    // 兜底：即使 WebSocket 说自己活着，也每分钟对一次账，防止漏推
+    setInterval(function () { if (!document.hidden) pull(false); }, 60000);
+  }
+})();
+</script>
+</body>
+</html>
