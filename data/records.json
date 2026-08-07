@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-07T05:36:27.555Z",
+ "updatedAt": "2026-08-07T07:47:20.654Z",
  "count": 96,
  "records": [
   {
@@ -641,10 +641,10 @@
    "ts": 1785818528247,
    "tenure": "5.1 years",
    "memo": "",
-   "status": "已投递等联络",
+   "status": "书类落了",
    "scout": false,
    "sector": "",
-   "updatedAt": 0,
+   "updatedAt": 1786088835645,
    "epMonthly": 0,
    "epAnnual": 0
   },
