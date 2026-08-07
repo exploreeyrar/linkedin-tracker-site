@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-07T02:01:37.561Z",
+ "updatedAt": "2026-08-07T02:01:47.982Z",
  "count": 96,
  "records": [
   {
@@ -346,7 +346,9 @@
    "status": "等己方处理(XR ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786068092558,
+   "updatedAt": 1786068102978,
+   "deadlineAt": 1786892400000,
+   "deadlineDone": false,
    "epMonthly": 0,
    "epAnnual": 0
   },
