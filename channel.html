@@ -114,18 +114,10 @@
   .msg.archived { opacity: .72; }
   .msg .archat { font-size: 11px; color: var(--sub); }
 
-  /* 右下角：已 archive 的消息 */
-  .archfab {
-    position: fixed; right: 22px; bottom: 22px; z-index: 25;
-    display: flex; align-items: center; gap: 8px;
-    font: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 999px;
-    border: 1px solid var(--line); background: var(--card); color: var(--fg);
-    box-shadow: var(--pop); cursor: pointer;
-  }
-  .archfab[hidden] { display: none; }
-  .archfab:hover { border-color: var(--accent); color: var(--accent); }
-  .archfab.on { border-color: var(--accent); color: var(--accent); }
-  .archfab b { font-variant-numeric: tabular-nums; }
+  /* 头部那排：Archived (N 件) */
+  .navbtn[hidden] { display: none; }
+  .navbtn.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+  .navbtn b { font-weight: 700; font-variant-numeric: tabular-nums; }
 
   /* 正在看 archive 列表时顶部的横幅 */
   .archbar {
@@ -202,6 +194,7 @@
   <span class="pill down sp" id="state"><i></i><span id="stateText">连接中…</span></span>
   <input id="q" type="search" placeholder="搜索消息…" autocomplete="off">
   <a class="navbtn" id="back" href="./index.html">📮 回到投递清单</a>
+  <button class="navbtn" id="archFab" type="button" hidden>Archived (<b id="archN">0</b> 件)</button>
 </header>
 
 <main id="scroll">
@@ -222,7 +215,6 @@
 </main>
 
 <button class="jump" id="jump" type="button" hidden>↓ 有新消息</button>
-<button class="archfab" id="archFab" type="button" hidden>🗂 已archive 的消息 <b id="archN">0</b></button>
 <div class="lightbox" id="lightbox" hidden><img id="lightboxImg" alt=""></div>
 <div class="toast" id="toast"></div>
 
@@ -377,6 +369,9 @@
   var showArchived = false;
 
   function render(freshUids) {
+    // 最后一条被取回之后，别把人晾在一个空的 archive 视图里（那时按钮已经消失了）
+    if (showArchived && !MSGS.some(function (m) { return m.archivedAt; })) showArchived = false;
+
     var needle = $('q').value.trim();
     var low = needle.toLowerCase();
     var list = MSGS.filter(function (m) { return !!m.archivedAt === showArchived; });
