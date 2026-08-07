@@ -88,7 +88,7 @@ def canon_status(value):
 # 只允许指向招聘站本身的链接进入公开页面，避免脏数据把页面变成任意跳转。
 # jobstreet 各国站都是子域（sg./my./ph.…），另有 jobstreet.com.sg 这种老域名。
 SAFE_URL = re.compile(
-    r"^https://([a-z0-9-]+\.)*(linkedin\.com|jobstreet\.com(\.[a-z]{2})?)/", re.I
+    r"^https://([a-z0-9-]+\.)*(linkedin\.com|jobstreet\.com(\.[a-z]{2})?|jora\.com)/", re.I
 )
 
 
@@ -107,14 +107,19 @@ def url(v):
 
 
 # 有 site 字段就信它，没有（早期记录）就看链接域名，最后一律当 LinkedIn
-SITES = ("linkedin", "jobstreet")
+SITES = ("linkedin", "jobstreet", "jora")
 
 
 def site_of(raw, job_url):
     site = s(raw.get("site"), 20).lower()
     if site in SITES:
         return site
-    return "jobstreet" if "jobstreet." in job_url.lower() else "linkedin"
+    u = job_url.lower()
+    if "jobstreet." in u:
+        return "jobstreet"
+    if "jora." in u:
+        return "jora"
+    return "linkedin"
 
 
 def to_ms(v):
@@ -181,7 +186,9 @@ def normalize(raw):
         hirers.append({"name": name or "(未知)", "url": link, "role": s(h.get("role"), 160)})
 
     status = canon_status(s(raw.get("status"), 40))
-    job_id = re.sub(r"\D", "", s(raw.get("jobId"), 24))[:24]
+    # LinkedIn / Jobstreet 是纯数字，Jora 是 32 位十六进制，所以只能按
+    # 「字母数字」清洗，不能像以前那样把非数字统统删掉（那会把 Jora 的 ID 毁掉）
+    job_id = re.sub(r"[^0-9A-Za-z]", "", s(raw.get("jobId"), 48))[:48]
     job_url = url(raw.get("jobUrl"))
     return {
         "ts": ts,

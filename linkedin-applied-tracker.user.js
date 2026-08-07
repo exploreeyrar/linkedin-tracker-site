@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         LinkedIn / Jobstreet 已递交投递追踪器 (Applied Tracker)
+// @name         LinkedIn / Jobstreet / Jora 已递交投递追踪器 (Applied Tracker)
 // @namespace    local.linkedin.applied.tracker
-// @version      1.7.0
+// @version      1.8.0
 // @updateURL    https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js
 // @downloadURL  https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/linkedin-applied-tracker.user.js
 // @supportURL   https://github.com/exploreeyrar/linkedin-tracker-site/issues
-// @description  在 LinkedIn 与 Jobstreet 的招聘页面左上角添加「已递交投递」悬浮按钮与「已递交清单」悬浮面板：一键记录公司名/岗位名/Hiring team 成员及其主页 URL/投递时间戳/总员工数/要求年限/Job match/Median employee tenure，可填写 MEMO 与状态、设置跟进提醒；按钮与面板可拖拽、面板可缩放可隐藏，所有数据与 UI 状态均持久化到本地；可选自动同步到 GitHub 仓库以驱动 Pages 看板，并在看板页充当回写桥接。Jobstreet 搜索结果里每张卡片还有「✕ 不看」按钮，点过的自动隐藏；投过的同名岗位灰底显示。
+// @description  在 LinkedIn、Jobstreet 与 Jora 的招聘页面左上角添加「已递交投递」悬浮按钮与「已递交清单」悬浮面板：一键记录公司名/岗位名/Hiring team 成员及其主页 URL/投递时间戳/总员工数/要求年限/Job match/Median employee tenure，可填写 MEMO 与状态、设置跟进提醒；按钮与面板可拖拽、面板可缩放可隐藏，所有数据与 UI 状态均持久化到本地；可选自动同步到 GitHub 仓库以驱动 Pages 看板，并在看板页充当回写桥接。Jobstreet / Jora 搜索结果里每张卡片还有「✕ 不看」按钮，点过的自动隐藏；投过的同名岗位灰底显示。
 // @author       you
 // @match        https://www.linkedin.com/jobs/*
 // @match        https://www.linkedin.com/job/*
@@ -14,9 +14,11 @@
 // @match        https://www.linkedin.com/messaging/*
 // @match        https://*.jobstreet.com/*
 // @match        https://*.jobstreet.com.sg/*
+// @match        https://*.jora.com/*
 // @match        https://*.github.io/*
 // @include      file://*linkedin*
 // @include      file://*jobstreet*
+// @include      file://*jora*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
@@ -79,6 +81,10 @@
      推一次 GitHub 到页面真正更新要走 Actions 构建 + Pages 部署，几十秒到几分钟。
      这份镜像让看板在这台机器上立刻看到最新的留言与 MEMO，不必干等部署。 */
   const BOARD_MIRROR = 'sgjob_mirror_v1';
+  /* 心跳。看板页靠它判断「油猴脚本到底在不在这一页跑」——
+     不在的话，改动只会一直堆在待回传队列里，界面必须说清楚，
+     否则就是「点了没反应，也不知道为什么」。 */
+  const BOARD_ALIVE = 'sgjob_bridge_alive_v1';
   const IS_BOARD = /(^|\.)github\.io$/i.test(location.hostname || '');
 
   /* ---- 当前站点 ----------------------------------------------------------
@@ -93,14 +99,24 @@
       catch (e) { return (location.pathname || '').toLowerCase(); }
     }());
     if (/(^|\.)jobstreet\.com(\.[a-z]+)?$/.test(host)) return 'jobstreet';
-    if (location.protocol === 'file:' && path.indexOf('jobstreet') !== -1) return 'jobstreet';
+    if (/(^|\.)jora\.com$/.test(host)) return 'jora';
+    if (location.protocol === 'file:') {
+      if (path.indexOf('jobstreet') !== -1) return 'jobstreet';
+      if (path.indexOf('jora') !== -1) return 'jora';
+    }
     return 'linkedin';
   }());
-  const IS_JS = SITE === 'jobstreet';   // 反过来就是 LinkedIn
+  const IS_JS   = SITE === 'jobstreet';
+  const IS_JORA = SITE === 'jora';
+  // 「不是 LinkedIn」——这两个站都没有 hiring team / Premium 洞察那些东西
+  const IS_BOARD_SITE = IS_JS || IS_JORA;
 
   // Jobstreet 有多个国家站，链接一律拼在当前站点下；离线看存档时退回 sg 站
   const JS_ORIGIN = (IS_JS && /^https?:$/.test(location.protocol))
     ? location.origin : 'https://sg.jobstreet.com';
+  // Jora 同样是多国站
+  const JORA_ORIGIN = (IS_JORA && /^https?:$/.test(location.protocol))
+    ? location.origin : 'https://sg.jora.com';
 
   const TG_PREFIX = '#SGJOB';       // Worker 只放行以此开头的正文
   const TG_LIMIT  = 4096;           // Telegram 单条上限，Worker 也按这个值拦
@@ -612,6 +628,7 @@
    */
   function getJobId() {
     if (IS_JS) return jsJobId();
+    if (IS_JORA) return joraJobId();
     const src = location.href + ' ' + (document.title || '');
     let m = src.match(/jobs[/:%3A]+view[/:%3A]+(\d{6,})/i);
     if (m) return m[1];
@@ -667,6 +684,109 @@
     return '';
   }
 
+  /* ---- Jora ---------------------------------------------------------------
+   * 职缺 ID 是 32 位十六进制（不是数字！），出现在三个地方：
+   *   /job/<slug>-<hex>                详情页
+   *   .job-card 的 id="r_<hex>"        搜索结果卡片
+   *   data-braze-job-panel-view 里的 job_id
+   * 搜索页是分屏的：URL 不变，靠 .job-card[data-active="true"] 认当前那条。
+   * ------------------------------------------------------------------------ */
+  const JORA_ID_RE = /[0-9a-f]{24,40}/i;
+
+  function joraJobId() {
+    let src = location.href;
+    try { src = decodeURIComponent(src); } catch (e) { /* 解不开就用原串 */ }
+    let m = src.match(/\/job\/[^?#]*?([0-9a-f]{24,40})(?:[?#]|$)/i);
+    if (m) return m[1].toLowerCase();
+
+    const card = currentJoraCard();
+    if (card) {
+      const id = joraCardId(card);
+      if (id) return id;
+    }
+    return '';
+  }
+
+  /** 一张 Jora 卡片对应的职缺 ID */
+  function joraCardId(card) {
+    if (!card) return '';
+    const rid = (card.id || '').replace(/^r_/, '');
+    if (JORA_ID_RE.test(rid)) return rid.toLowerCase();
+    const pay = joraCardPayload(card);
+    if (pay && pay.job_id) return String(pay.job_id).toLowerCase();
+    const a = card.querySelector('a[href*="/job/"]');
+    const m = a && (a.getAttribute('href') || '').match(/\/job\/[^?#]*?([0-9a-f]{24,40})/i);
+    return m ? m[1].toLowerCase() : '';
+  }
+
+  /**
+   * Jora 的职缺链接。
+   * 注意：**不能**用 ID 拼 —— /job/<hex> 会返回「Job not found」，
+   * 它的地址必须带 slug（/job/<slug>-<hex>）。所以只能就地把真实链接抓下来。
+   */
+  function joraJobUrl() {
+    const strip = (u) => {
+      try { const x = new URL(u, location.href); return x.origin + x.pathname; }
+      catch (e) { return u; }
+    };
+    if (/\/job\//i.test(location.pathname)) return strip(location.href);
+    const card = currentJoraCard();
+    const a = card && card.querySelector('a[href*="/job/"]');
+    if (a) return strip(a.getAttribute('href'));
+    return strip(location.href);
+  }
+
+  /** 卡片上那份 JSON，岗位名 / 公司名 / 地点都在里面，比读 DOM 稳 */
+  function joraCardPayload(card) {
+    if (!card) return null;
+    const raw = card.getAttribute('data-braze-job-panel-view');
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+
+  /** 分屏页里当前展示的那张卡片 */
+  function currentJoraCard() {
+    return document.querySelector('.job-card[data-active="true"]')
+        || document.querySelector('.job-card');
+  }
+
+  /**
+   * Jora 的岗位名 + 公司名。
+   * 详情页优先用 JSON-LD 的 JobPosting —— 它是站方自己输出的结构化数据，
+   * 比任何 class 都稳；拿不到再退回 DOM，最后退回卡片上的 JSON。
+   */
+  function joraTitleAndCompany() {
+    const ld = joraJobPosting();
+    let title = ld ? norm2(ld.title) : '';
+    let company = (ld && ld.hiringOrganization) ? norm2(ld.hiringOrganization.name) : '';
+
+    if (!title) title = norm(document.querySelector('h1.job-title, #job-info-container h1'));
+    if (!company) company = norm(document.querySelector('#job-info-container a.company, a.company'));
+
+    if (!title || !company) {
+      const pay = joraCardPayload(currentJoraCard());
+      if (pay) {
+        if (!title) title = norm2(pay.job_title);
+        if (!company) company = norm2(pay.company_name);
+      }
+    }
+    return { title: title, company: company };
+  }
+
+  function norm2(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
+
+  /** 页面里的 JSON-LD JobPosting */
+  function joraJobPosting() {
+    const nodes = document.querySelectorAll('script[type="application/ld+json"]');
+    for (const n of nodes) {
+      let d = null;
+      try { d = JSON.parse(n.textContent); } catch (e) { continue; }
+      const list = Array.isArray(d) ? d : [d];
+      for (const x of list) if (x && x['@type'] === 'JobPosting') return x;
+    }
+    return null;
+  }
+
   /** Jobstreet 分屏页里当前选中（右侧正在展示）的那张卡片 */
   function currentJsCard() {
     const id = jsJobId();
@@ -679,7 +799,7 @@
 
   /** 是不是站内信页面（只有 LinkedIn 有） */
   function isMessagingPage() {
-    if (IS_JS) return false;
+    if (IS_BOARD_SITE) return false;
     return /messaging[/:%3A]/i.test(location.href) || !!document.querySelector('.msg-thread-actions__control');
   }
 
@@ -838,7 +958,9 @@
   function getJobUrl() {
     const id = getJobId();
     if (!id) return location.href;
-    return IS_JS ? (JS_ORIGIN + '/job/' + id) : ('https://www.linkedin.com/jobs/view/' + id + '/');
+    if (IS_JS) return JS_ORIGIN + '/job/' + id;
+    if (IS_JORA) return joraJobUrl();
+    return 'https://www.linkedin.com/jobs/view/' + id + '/';
   }
 
   /**
@@ -863,6 +985,7 @@
   /** 岗位名 + 公司名 */
   function getTitleAndCompany() {
     if (IS_JS) return jsTitleAndCompany();
+    if (IS_JORA) return joraTitleAndCompany();
 
     let title = '';
     let company = '';
@@ -919,7 +1042,7 @@
   /** Meet the hiring team → [{ name, url, role }]（Jobstreet 不公开招聘负责人） */
   function getHiringTeam() {
     const out = [];
-    if (IS_JS) return out;
+    if (IS_BOARD_SITE) return out;      // Jobstreet / Jora 都不公开招聘负责人
     const seen = Object.create(null);
 
     const push = (name, url, role) => {
@@ -985,7 +1108,7 @@
   const MATCH_LEVEL = { high: 'High', medium: 'Medium', moderate: 'Medium', low: 'Low' };
 
   function getJobMatch() {
-    if (IS_JS) return '';        // Jobstreet 没有这个指标，它给的是下面的徽章
+    if (IS_BOARD_SITE) return '';   // 只有 LinkedIn 有这个指标
     // 先在小块文本里找，命中的元素更可能是那句原文
     const nodes = document.querySelectorAll('p, span, h1, h2, h3, h4, div, li, strong');
     for (const el of nodes) {
@@ -1054,7 +1177,7 @@
 
   /** Total employees —— 结构是 <p>548</p><p>Total employees</p> 两个兄弟节点 */
   function getTotalEmployees() {
-    if (IS_JS) return '';
+    if (IS_BOARD_SITE) return '';
     const label = findByExactText(['total employees', '员工总数', '従業員数']);
     if (label) {
       const scope = label.parentElement || label;
@@ -1072,7 +1195,7 @@
 
   /** Median employee tenure（LinkedIn Premium 才有） */
   function getMedianTenure() {
-    if (IS_JS) return '';
+    if (IS_BOARD_SITE) return '';
     // 含该短语的元素有一串祖先，取文本最短（也就是最贴近数值）的那个，
     // 否则会把整块 Premium Insights 的文字一起吞进来。
     let best = null;
@@ -1847,16 +1970,22 @@
   ]);
 
   /* ---------- 右上角快捷入口（跟着当前站点走） ---------- */
-  const $nav = el('div', { class: 'navbar' }, IS_JS
+  const NAV_LINKS = IS_JS
     ? [
       el('a', { class: 'navbtn', href: JS_ORIGIN + '/jobs', text: '🔎 Jobstreet 筛工作' }),
       el('a', { class: 'navbtn', href: JS_ORIGIN + '/my-activity/saved-jobs', text: '🔖 Job Saved list' }),
       el('a', { class: 'navbtn', href: JS_ORIGIN + '/my-activity/applied-jobs', text: '📨 Applied jobs' }),
     ]
+    : IS_JORA
+    ? [
+      el('a', { class: 'navbtn', href: JORA_ORIGIN + '/', text: '🔎 Jora 筛工作' }),
+      el('a', { class: 'navbtn', href: JORA_ORIGIN + '/myjora/saved-jobs', text: '🔖 Saved jobs' }),
+    ]
     : [
       el('a', { class: 'navbtn', href: 'https://www.linkedin.com/jobs/', text: '🔎 Linkedin 筛工作' }),
       el('a', { class: 'navbtn', href: 'https://www.linkedin.com/jobs-tracker/', text: '🔖 Job Saved list' }),
-    ]);
+    ];
+  const $nav = el('div', { class: 'navbar' }, NAV_LINKS);
 
   /* ---------- 右下角：公司数据 ---------- */
   const $stEmp    = el('b');
@@ -2842,7 +2971,9 @@
    * 和 LinkedIn 上「有这栏但没抓到」的「—」区分开。
    */
   function hirerNodes(rec) {
-    if (recSite(rec) === 'jobstreet') return [el('span', { class: 'hirer', text: 'Jobstreet' })];
+    const st = recSite(rec);
+    if (st === 'jobstreet') return [el('span', { class: 'hirer', text: 'Jobstreet' })];
+    if (st === 'jora') return [el('span', { class: 'hirer', text: 'Jora' })];
     const hirers = rec && rec.hirers;
     if (!hirers || !hirers.length) return [el('span', { class: 'role', text: '—' })];
     const out = [];
@@ -3595,7 +3726,10 @@
    */
   function recSite(r) {
     if (r && r.site) return r.site;
-    return (r && /jobstreet\./i.test(r.jobUrl || '')) ? 'jobstreet' : 'linkedin';
+    const u = (r && r.jobUrl) || '';
+    if (/jobstreet\./i.test(u)) return 'jobstreet';
+    if (/jora\./i.test(u)) return 'jora';
+    return 'linkedin';
   }
 
   /** 当前站点已投递过的职位 ID（职位 ID 只在本站内唯一，跨站不能混着比） */
@@ -3646,7 +3780,9 @@
       jobId: id,
       title: title,
       company: company,
-      url: IS_JS ? (JS_ORIGIN + '/job/' + id) : ('https://www.linkedin.com/jobs/view/' + id + '/'),
+      url: IS_JS ? (JS_ORIGIN + '/job/' + id)
+         : IS_JORA ? joraJobUrl()
+         : ('https://www.linkedin.com/jobs/view/' + id + '/'),
       ts: Date.now(),
     };
     saveHiddenJobs();
@@ -3816,7 +3952,8 @@
     });
 
     // 跟在岗位名后面最稳妥：绝对不会和站点自己的「收藏」按钮叠在一起
-    const anchor = card.querySelector('[data-automation="jobTitle"]');
+    const anchor = card.querySelector('[data-automation="jobTitle"]')   // Jobstreet
+                || card.querySelector('.job-title');                    // Jora
     if (anchor && anchor.parentElement) anchor.parentElement.appendChild(chip);
     else { chip.classList.add('corner'); card.appendChild(chip); }
   }
@@ -3852,6 +3989,39 @@
       const same = applied || !!(k && k.length >= 3 && titles[k] && titles[k].length);
       if (same !== card.classList.contains(SAME_CLASS)) card.classList.toggle(SAME_CLASS, same);
       if (applied !== card.classList.contains(MARK_CLASS)) card.classList.toggle(MARK_CLASS, applied);
+    });
+  }
+
+  /**
+   * Jora：搜索结果里的每张 .job-card。
+   * 卡片没有 data-job-id，ID 藏在 id="r_<hex>" 和那份 JSON 里（见 joraCardId）。
+   */
+  function markJoraCards() {
+    const ids = recordedJobIds();
+    const companies = recordedCompanies();
+    const titles = appliedTitles();
+    const currentId = getJobId();
+
+    document.querySelectorAll('.job-card').forEach((card) => {
+      const id = joraCardId(card);
+      if (!id) return;
+
+      const shell = cardShell(card);
+      const hide = isHidden(id);
+      if (hide !== shell.classList.contains(HIDE_CLASS)) shell.classList.toggle(HIDE_CLASS, hide);
+      if (hide) return;
+
+      mountHideChip(card, id);
+      markCompanyIn(card, companies);
+
+      const pay = joraCardPayload(card);
+      const applied = !!ids[id];
+      const k = titleKey((pay && pay.job_title) || norm(card.querySelector('.job-title')));
+      const same = applied || !!(k && k.length >= 3 && titles[k] && titles[k].length);
+      if (same !== card.classList.contains(SAME_CLASS)) card.classList.toggle(SAME_CLASS, same);
+      // 正在看的那条不划线，否则右侧详情对应的卡片一直是灰的
+      const mark = applied && id !== currentId;
+      if (mark !== card.classList.contains(MARK_CLASS)) card.classList.toggle(MARK_CLASS, mark);
     });
   }
 
@@ -3893,6 +4063,7 @@
   let markTimer = null;
   function markPageCards() {
     if (IS_JS) markJobstreetCards();
+    else if (IS_JORA) markJoraCards();
     else markLinkedInCards();
   }
 
@@ -5761,6 +5932,12 @@
         else console.warn('[applied-tracker] 看板改了 ' + n + ' 条，但没配 GitHub Token，推不上去');
       }
       pushMirror();
+      // 心跳带上「能不能推」：没配 Token 的话，队列一样会卡住，看板要说得出原因
+      try {
+        localStorage.setItem(BOARD_ALIVE, JSON.stringify({
+          at: Date.now(), ready: ghReady(), err: gh.lastError || '',
+        }));
+      } catch (e) { /* 存不下就算了，看板会当成没有桥 */ }
     };
     runBridge();
     setInterval(runBridge, 4000);       // 看板上现改的，几秒内就回写

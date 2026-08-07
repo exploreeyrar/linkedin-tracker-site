@@ -170,6 +170,26 @@ curl -X POST "https://api.telegram.org/bot<TG_TOKEN>/setWebhook" -d "url=https:/
 - 每个项目名下面附职位链接，项目顺序照清单里的显示顺位（重要度 → 状态顺位 → 更新时间）。
 - 「已投递等联络」不算新情况，不进速报。
 
+### 支持的招聘站
+
+| 站点 | 职缺 ID | 备注 |
+|---|---|---|
+| LinkedIn | 纯数字 | 有 Hiring team、Job match、员工数、中位任职 |
+| Jobstreet | 纯数字 | 分屏页靠 `aria-selected` 认当前那条；有薪资与徽章 |
+| Jora | **32 位十六进制** | 不公开招聘负责人，也没有那几项 Premium 数据 |
+
+Jora 有两点和另外两家不一样，改代码时容易踩：
+
+- **职缺 ID 不是数字**，所以 `build.py` 清洗 ID 时只能去掉非字母数字字符，
+  看板的 `#job-<id>` 锚点正则也得认十六进制。
+- **链接必须带 slug**：`/job/<hex>` 会返回「Job not found」，只有
+  `/job/<slug>-<hex>` 能打开。所以 Jora 的 `jobUrl` 是就地抓的真实链接，
+  不是用 ID 拼出来的。
+
+搜索结果页的卡片信息优先读 `data-braze-job-panel-view` 里那份 JSON（含
+job_id / job_title / company_name），详情页优先读 JSON-LD 的 `JobPosting` ——
+都比 class 名稳。
+
 ### 处理期限（deadline）
 
 状态改成下面这三种之一时，油猴脚本会**自动弹窗**要一个日期：

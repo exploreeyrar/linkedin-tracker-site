@@ -528,6 +528,12 @@
     box-shadow: var(--pop); padding: 8px 16px; font-size: 12px; color: var(--sub);
   }
   .pendbar[hidden] { display: none; }
+  /* 传不上去的时候不能还是一副「在处理中」的样子 */
+  .pendbar.warn {
+    border-color: var(--c-rejitv); color: var(--c-rejitv); font-weight: 600;
+    max-width: min(680px, calc(100vw - 32px)); text-align: center; line-height: 1.6;
+    border-radius: 12px;
+  }
 
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
@@ -572,7 +578,7 @@
     <button class="toggle" id="fscout" type="button" aria-pressed="false">🌟 人事主动 scout 的案件</button>
     <button class="toggle" id="openPrefs" type="button" title="显示设置">⚙ 设置</button>
     <span class="hint" id="shown"></span>
-    <span class="hint" title="按住 Shift 后鼠标划过或点击若干行即可多选，右下角会出现「发送速报」">⇧ 多选</span>
+    <span class="hint" id="pickHint" hidden title="按住 Shift 后鼠标划过或点击若干行即可多选，右下角会出现「发送速报」">⇧ 多选</span>
   </div>
 
   <div class="tblwrap">
@@ -720,6 +726,9 @@
       <span class="status" id="fbState" style="margin:0"></span>
     </div>
 
+    <label style="margin-top:18px">清单</label>
+    <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
+
     <label style="margin-top:18px">通知</label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
     <label class="chk"><input type="checkbox" id="pfNotify"><span>有新留言时弹 Chrome 通知<small id="pfNotifyHint"></small></span></label>
@@ -743,6 +752,7 @@
       <div class="dtgrid" id="dtBody" hidden></div>
       <div id="dtMemoHd" class="previewhdr">
         <span id="dtMemoCount">MEMO</span>
+        <button class="linkbtn" id="dtMemoOrder" type="button" title="切换 MEMO 的排列方向">旧 → 新</button>
         <button class="linkbtn sp" id="dtMore" type="button">显示其余项目信息</button>
       </div>
       <div class="stickywrap" id="dtMemos"></div>
@@ -1103,6 +1113,8 @@
     // 所以先存本机顶掉构建进来的值，同时排进 OUTBOX 等油猴脚本回写。
     followUp: {},
     fuDone: {},                    // 已经弹过并被手动关掉的：'<key>@<日期>' → 关掉时间
+    pickMode: false,               // 多选：默认关，在设置里开
+    memoAsc: true,                 // 详情页 MEMO 排列：true = 旧 → 新
     memoPushed: {},                // recKey → 最后一次推到 Telegram 的 MEMO 时间
     showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
     board: { x: 0, y: 0, w: 380, h: 440, placed: false, max: true }
@@ -1142,14 +1154,38 @@
     try { localStorage.setItem(OUTBOX, JSON.stringify(list.slice(-200))); } catch (e) {}
     refreshPending();
   }
+  /* 油猴脚本在这一页跑着没有。它每 4 秒写一次心跳；15 秒内有就算活着。
+     没有桥的话改动只会一直堆在队列里，界面必须说清楚原因 ——
+     否则就是「点了没反应，MEMO 一直挂着『待回传』，也不知道为什么」。 */
+  var ALIVE_KEY = 'sgjob_bridge_alive_v1';
+  function bridgeState() {
+    var v = null;
+    try { v = JSON.parse(localStorage.getItem(ALIVE_KEY) || 'null'); } catch (e) { v = null; }
+    if (!v || !v.at || Date.now() - v.at > 15000) return { alive: false };
+    return { alive: true, ready: !!v.ready, err: v.err || '' };
+  }
+
   function refreshPending() {
     var n = outboxRead().length;
     var bar = $('pendBar');
     if (!bar) return;
     bar.hidden = !n;
-    bar.textContent = n
-      ? ('⏳ ' + n + ' 项改动待回传：在 LinkedIn / 本页面开着油猴脚本时会自动写回仓库')
-      : '';
+    if (!n) { bar.textContent = ''; bar.classList.remove('warn'); return; }
+
+    var b = bridgeState();
+    var msg;
+    if (!b.alive) {
+      msg = '⚠️ ' + n + ' 项改动传不上去：这一页没有检测到油猴脚本。'
+          + '确认 Tampermonkey 已启用、脚本的 @match 覆盖本站，然后刷新一次。';
+    } else if (!b.ready) {
+      msg = '⚠️ ' + n + ' 项改动传不上去：油猴脚本在跑，但还没配 GitHub 仓库 / Token。';
+    } else if (b.err) {
+      msg = '⚠️ ' + n + ' 项改动回传失败：' + b.err;
+    } else {
+      msg = '⏳ ' + n + ' 项改动待回传：油猴脚本已连接，几秒内写回仓库。';
+    }
+    bar.textContent = msg;
+    bar.classList.toggle('warn', !b.alive || !b.ready || !!b.err);
   }
 
   /* ---------- 本机新增的内容 ----------
@@ -1577,7 +1613,8 @@
       var more = el('button', 'morebtn', bs.length > 1 ? ('查看全部 ' + bs.length + ' 条') : 'more..');
       more.type = 'button';
       more.hidden = true;
-      more.addEventListener('click', function (e) { e.stopPropagation(); openMemoFull(r); });
+      // 点这里直接开详情页 —— MEMO 便签墙比原来那个只读弹窗好用得多
+      more.addEventListener('click', function (e) { e.stopPropagation(); openDetail(r); });
       td.appendChild(box);
       td.appendChild(more);
       // 有多条时按钮一定要露出来，不管最新那条有没有被截断
@@ -1601,6 +1638,7 @@
       var td = document.createElement('td');
       // Jobstreet 不公开招聘负责人，这一格一律写站点名，和 LinkedIn 的「没抓到」区分开
       if (r.site === 'jobstreet') { td.textContent = 'Jobstreet'; return td; }
+      if (r.site === 'jora') { td.textContent = 'Jora'; return td; }
       if (r.hirers && r.hirers.length) {
         r.hirers.forEach(function (h) {
           var name = h.name || h.url || '(未知)';
@@ -1705,7 +1743,7 @@
        一旦选中过任何一条就进入「选中模式」，这时普通单击是切换选中，
        不再弹详情 —— 直到点「清空」退出为止。 */
     tr.addEventListener('mouseenter', function (e) {
-      if (!e.shiftKey) return;
+      if (!prefs.pickMode || !e.shiftKey) return;
       setPicked(r, true);
       lastPickIdx = idx;
       refreshPickBar();
@@ -1735,7 +1773,7 @@
     decorateScheduled(tr, r);
     tr.addEventListener('click', function (e) {
       // Shift 点、或者已经在选中模式里 → 这一下是「选/不选」，不是「看详情」
-      if (e.shiftKey || selMode()) {
+      if (prefs.pickMode && (e.shiftKey || selMode())) {
         setPicked(r, !PICKED[recKey(r)]);
         lastPickIdx = idx;
         refreshPickBar();
@@ -1865,6 +1903,7 @@
 
   /* ---------- 设置 ---------- */
   function syncPrefsUI() {
+    $('pfPick').checked = !!prefs.pickMode;
     $('pfDot').checked = !!prefs.showDot;
     $('pfNotify').checked = !!prefs.notify;
     var hint = '';
@@ -1876,6 +1915,13 @@
   $('openPrefs').addEventListener('click', function () { syncPrefsUI(); $('prefsMask').hidden = false; });
   $('pfClose').addEventListener('click', function () { $('prefsMask').hidden = true; });
   $('prefsMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  $('pfPick').addEventListener('change', function () {
+    prefs.pickMode = this.checked;
+    if (!prefs.pickMode) { PICKED = {}; lastPickIdx = -1; }   // 关掉就把已选的清干净
+    savePrefs();
+    $('pickHint').hidden = !prefs.pickMode;
+    apply();
+  });
   $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
   $('pfNotify').addEventListener('change', function () {
     var want = this.checked;
@@ -1978,8 +2024,12 @@
   function renderDetailMemos(r) {
     var wrap = $('dtMemos');
     wrap.textContent = '';
-    var bs = memoBlocks(r).slice().reverse();      // 旧 → 新
-    $('dtMemoCount').textContent = bs.length ? ('MEMO（' + bs.length + ' 条，旧 → 新）') : 'MEMO';
+    // memoBlocks 给的是新 → 旧；prefs.memoAsc 为真就翻过来
+    var bs = memoBlocks(r).slice();
+    if (prefs.memoAsc) bs.reverse();
+    var dir = prefs.memoAsc ? '旧 → 新' : '新 → 旧';
+    $('dtMemoCount').textContent = bs.length ? ('MEMO（' + bs.length + ' 条，' + dir + '）') : 'MEMO';
+    $('dtMemoOrder').textContent = dir;
     if (!bs.length) {
       wrap.appendChild(el('div', 'stickyempty', '还没有 MEMO。在下面写一条，会立刻贴上来。'));
       return;
@@ -1987,11 +2037,23 @@
     var pushed = prefs.memoPushed[recKey(r)] || 0;
     bs.forEach(function (b, i) {
       if (i) wrap.appendChild(el('div', 'stickyar', '→'));
-      var note = el('div', 'sticky' + (i === bs.length - 1 ? ' newest' : ''));
+      var newest = prefs.memoAsc ? (i === bs.length - 1) : (i === 0);
+      var note = el('div', 'sticky' + (newest ? ' newest' : ''));
       var hd = el('div', 'sts');
       hd.appendChild(el('span', null, fmtDT(b.ts)));
-      if (b.local) hd.appendChild(el('em', null, '待回传'));
-      else if (b.ts > pushed) hd.appendChild(el('em', null, '未推送'));
+      if (b.local) {
+        var wait = el('em', null, '待回传');
+        // 别叫 bs —— var 会提升到整个回调顶部，把外面那个 bs 数组遮掉
+        var bst = bridgeState();
+        wait.title = bst.alive
+          ? (bst.ready ? '油猴脚本已连接，几秒内写回仓库' : '油猴脚本在跑，但还没配 GitHub 仓库 / Token')
+          : '这一页没有检测到油猴脚本，改动暂时传不上去';
+        hd.appendChild(wait);
+      } else if (b.ts > pushed) {
+        var np = el('em', null, '未推送');
+        np.title = '还没用「一键推送所有新MEMO」发到 Telegram';
+        hd.appendChild(np);
+      }
       note.appendChild(hd);
       note.appendChild(el('div', 'stx', b.text));
       wrap.appendChild(note);
@@ -2023,6 +2085,8 @@
     add('投递时间', fmtDT(r.ts) + '（' + daysSince(r.ts) + ' 天前）');
     if (r.site === 'jobstreet') {
       add('Hiring team', 'Jobstreet');
+    } else if (r.site === 'jora') {
+      add('Hiring team', 'Jora');
     } else if (r.hirers && r.hirers.length) {
       var box = document.createElement('div');
       r.hirers.forEach(function (h) {
@@ -2056,6 +2120,12 @@
     $('detailMask').hidden = false;
     $('dtMemoInput').focus();
   }
+
+  $('dtMemoOrder').addEventListener('click', function () {
+    prefs.memoAsc = !prefs.memoAsc;
+    savePrefs();
+    if (detailTarget) renderDetailMemos(detailTarget);
+  });
 
   /* 其余字段与那三个按钮默认都折起来 —— 详情页的主角是 MEMO。
      点这里一起放出来，需要时还能用。 */
@@ -2999,20 +3069,22 @@
 
   /* ---------- Telegram 链接定位 + 高亮 ---------- */
   function targetJobId() {
-    var m = (location.hash || '').match(/^#(?:job|memo)-(\d+)$/);
+    // Jora 的职缺 ID 是十六进制串，不能只认数字
+    var m = (location.hash || '').match(/^#(?:job|memo)-([0-9A-Za-z]+)$/);
     return m ? m[1] : '';
   }
 
   // #memo-<jobId>：Telegram 里那条「MEMO 太长，点这里看全文」的链接，
   // 定位之外还要直接把这条的 MEMO 时间轴弹出来。
   function openMemoFromHash() {
-    var m = (location.hash || '').match(/^#memo-(\d+)$/);
+    var m = (location.hash || '').match(/^#memo-([0-9A-Za-z]+)$/);
     if (!m) return;
     var rec = null;
     for (var i = 0; i < RECORDS.length; i++) {
       if (String(RECORDS[i].jobId) === m[1]) { rec = RECORDS[i]; break; }
     }
-    if (rec) openMemoFull(rec);
+    // 和清单里的「查看全部 N 条」一致，统一开详情页的便签墙
+    if (rec) openDetail(rec);
   }
 
   function applyHighlight(scroll) {

@@ -213,11 +213,16 @@
     </div>
   </div>
   <div class="gapnote" id="gapnote" hidden></div>
+  <div class="archbar" id="archbar" hidden>
+    <span id="archbarText">正在看已 archive 的消息</span>
+    <button type="button" id="archBack">← 回到通知流</button>
+  </div>
   <div class="feed" id="feed"></div>
   <div class="empty" id="empty" hidden>还没有消息。往那个群 / 频道里发一条试试。</div>
 </main>
 
 <button class="jump" id="jump" type="button" hidden>↓ 有新消息</button>
+<button class="archfab" id="archFab" type="button" hidden>🗂 已archive 的消息 <b id="archN">0</b></button>
 <div class="lightbox" id="lightbox" hidden><img id="lightboxImg" alt=""></div>
 <div class="toast" id="toast"></div>
 
@@ -312,7 +317,7 @@
   }
 
   function msgNode(m, needle, fresh) {
-    var box = el('div', 'msg' + (m.bot ? ' bot' : '') + (fresh ? ' fresh' : ''));
+    var box = el('div', 'msg' + (m.bot ? ' bot' : '') + (fresh ? ' fresh' : '') + (m.archivedAt ? ' archived' : ''));
     box.id = 'm-' + m.uid;
 
     var hd = el('div', 'hd');
@@ -322,11 +327,14 @@
     tm.title = fmtFull(m.ts);
     hd.appendChild(tm);
 
-    var del = el('button', 'del', '🗑');
-    del.type = 'button';
-    del.title = '从这个看板上删掉（不会动 Telegram 里的原消息）';
-    del.addEventListener('click', function () { removeMsg(m); });
-    hd.appendChild(del);
+    var arch = el('button', 'arch', m.archivedAt ? '↩ 取回' : '🗂 archive');
+    arch.type = 'button';
+    arch.title = m.archivedAt
+      ? '放回通知流（不会动 Telegram 里的原消息）'
+      : '收进 archive（不会动 Telegram 里的原消息）';
+    arch.addEventListener('click', function () { setArchived(m, !m.archivedAt); });
+    hd.appendChild(arch);
+    if (m.archivedAt) hd.appendChild(el('span', 'archat', '🗂 ' + fmtFull(m.archivedAt)));
     box.appendChild(hd);
 
     if (m.replyText) box.appendChild(el('div', 're', '↩ ' + m.replyText));
@@ -364,15 +372,19 @@
   $('lightbox').addEventListener('click', function () { this.hidden = true; });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('lightbox').hidden = true; });
 
-  var lastRenderedIds = '';
+  /* archive 的状态存在服务端（见 Worker 的 inbox_archive），不是各人的浏览器里 ——
+     谁 archive 的，所有连着的页面立刻同步，别人打开看到的也一样。 */
+  var showArchived = false;
+
   function render(freshUids) {
     var needle = $('q').value.trim();
     var low = needle.toLowerCase();
-    var list = needle
-      ? MSGS.filter(function (m) {
-          return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
-        })
-      : MSGS;
+    var list = MSGS.filter(function (m) { return !!m.archivedAt === showArchived; });
+    if (needle) {
+      list = list.filter(function (m) {
+        return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
+      });
+    }
 
     var feed = $('feed');
     feed.textContent = '';
@@ -383,16 +395,41 @@
       feed.appendChild(msgNode(m, needle, freshUids && freshUids[m.uid]));
     });
 
+    var live = MSGS.filter(function (m) { return !m.archivedAt; });
+    var arch = MSGS.length - live.length;
+
     $('empty').hidden = list.length > 0 || (!MSGS.length && !hooked);
     if (needle && !list.length) { $('empty').hidden = false; $('empty').textContent = '没有匹配「' + needle + '」的消息。'; }
+    else if (showArchived && !list.length) { $('empty').hidden = false; $('empty').textContent = '还没有 archive 过任何消息。'; }
     else if (!needle) { $('empty').textContent = '还没有消息。往那个群 / 频道里发一条试试。'; }
 
+    // 右下角那颗按钮：archive 过东西才出现
+    $('archFab').hidden = !arch;
+    $('archFab').classList.toggle('on', showArchived);
+    $('archN').textContent = String(arch);
+    $('archbar').hidden = !showArchived;
+    $('archbarText').textContent = '正在看已 archive 的消息（' + arch + ' 条）';
+
     renderGaps();
-    $('who').textContent = MSGS.length
-      ? ((MSGS[MSGS.length - 1].chatTitle || '') + '　共 ' + MSGS.length + ' 条　最后一条 ' + fmtFull(MSGS[MSGS.length - 1].ts))
+    var newest = live.length ? live[live.length - 1] : (MSGS.length ? MSGS[MSGS.length - 1] : null);
+    $('who').textContent = newest
+      ? ((newest.chatTitle || '') + '　共 ' + live.length + ' 条'
+         + (arch ? ('（另有 ' + arch + ' 条已 archive）') : '')
+         + '　最后一条 ' + fmtFull(newest.ts))
       : '';
     updateSetup();
   }
+
+  $('archFab').addEventListener('click', function () {
+    showArchived = !showArchived;
+    render();
+    scrollToBottom();
+  });
+  $('archBack').addEventListener('click', function () {
+    showArchived = false;
+    render();
+    scrollToBottom();
+  });
 
   /** 滚在底部时才自动跟随；否则显示「↓ 有新消息」 */
   function atBottom() {
@@ -454,12 +491,18 @@
     return gone;
   }
 
-  function removeMsg(m) {
-    if (!confirm('把这条从看板上删掉？\n（Telegram 里的原消息不会动）\n\n' + (m.text || m.kind || '').slice(0, 120))) return;
-    forget([m.uid]);          // 先动界面，别让人等网络
-    call({ action: 'inbox_delete', uids: JSON.stringify([m.uid]) })
-      .then(function () { toast('已删除'); })
-      .catch(function (e) { toast('删除失败：' + (e.message || e)); pull(true); });
+  /** archive / 取回。不弹确认框 —— 消息还在，随时能从右下角取回来。 */
+  function setArchived(m, on) {
+    var prev = m.archivedAt || 0;
+    m.archivedAt = on ? Date.now() : 0;   // 先动界面，别让人等网络
+    render();
+    call({ action: 'inbox_archive', uids: JSON.stringify([m.uid]), on: on ? '1' : '0' })
+      .then(function () { toast(on ? '已 archive' : '已取回'); })
+      .catch(function (e) {
+        m.archivedAt = prev;              // 服务端没认，界面退回去
+        render();
+        toast((on ? 'archive' : '取回') + '失败：' + (e.message || e));
+      });
   }
 
   /* ---------- 缺号提示 ----------
@@ -469,8 +512,9 @@
    * 编辑事件会把它连同原始时间戳一起送过来。 */
   function renderGaps() {
     var box = $('gapnote');
-    var off = false;
-    try { off = localStorage.getItem('sgjob_channel_gapoff') === '1'; } catch (e) {}
+    // 默认不显示。想看的话把 localStorage 的 sgjob_channel_gapoff 设成 '0'。
+    var off = true;
+    try { off = localStorage.getItem('sgjob_channel_gapoff') !== '0'; } catch (e) {}
     // msgId 在一个会话里连续递增，缺号就是没收到的
     var ids = MSGS.map(function (m) { return Number(m.msgId); })
                   .filter(function (n) { return n > 0; })
@@ -572,6 +616,16 @@
         if (ingest(d.items, true)) toast('收到新消息');
       } else if (d && d.type === 'del') {
         if (forget(d.uids || [])) toast('有消息被删除');
+      } else if (d && d.type === 'arch') {
+        // 别处（另一台设备 / 另一个人）archive 的，这边同步过来
+        var hit = 0;
+        (d.uids || []).forEach(function (uid) {
+          var m = BY_UID[uid];
+          if (!m) return;
+          m.archivedAt = d.on ? (d.at || Date.now()) : 0;
+          hit++;
+        });
+        if (hit) render();
       }
     };
     ws.onclose = function () {
