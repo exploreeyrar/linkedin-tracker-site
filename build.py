@@ -198,6 +198,10 @@ def normalize(raw):
         "site": site_of(raw, job_url),            # 'linkedin' | 'jobstreet'
         "jobId": job_id,                          # 看板锚点用（#job-<id>）
         "updatedAt": to_ms(raw.get("updatedAt")),  # 最后一次改 MEMO / 状态的时间
+        # 状态最后一次**改变**的时刻。updatedAt 会被写 MEMO、设截止时间这些
+        # 动作一起顶上来，所以「当日速报」只认这一个。由 Worker 的
+        # mergeIntoRepo 在状态真的变了的时候盖章。
+        "statusAt": to_ms(raw.get("statusAt")),
         "company": s(raw.get("company"), 120),
         "title": s(raw.get("title"), 200),
         "jobUrl": job_url,

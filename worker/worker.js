@@ -258,16 +258,22 @@ function listOrderComparator(statusOrder) {
 }
 
 /**
- * 把这一批窗口内有状态变化的记录整理成一条简报。
+ * 把这一批窗口内**状态**变过的记录整理成一条简报。
  * 没有变化就返回 null —— 没消息就不发，别每天定时打扰。
+ *
+ * 判据是 statusAt（状态最后一次改变的时刻），不是 updatedAt。
+ * updatedAt 会被写 MEMO、设截止时间、改跟进提醒这些动作一起顶上来，
+ * 拿它当判据会让速报里塞满「其实状态没动」的项目。statusAt 由
+ * mergeIntoRepo 在状态真的变了的时候盖章，所以不依赖某台机器的脚本版本。
+ * 没有 statusAt 的老记录一律不算 —— 我们确实不知道它的状态是哪天变的。
  */
 function buildReport(data, now, boardUrl, start) {
   const records = (data && data.records) || [];
   const end = now || Date.now();
   const skip = reportSkipSet(data);
   const hits = records.filter((r) => {
-    if (!r || !r.updatedAt) return false;                 // 没改过（含当天新投的）
-    if (r.updatedAt < start || r.updatedAt > end) return false;
+    if (!r || !r.statusAt) return false;                  // 状态没变过（或还没盖过章）
+    if (r.statusAt < start || r.statusAt > end) return false;
     return !skip[r.status];
   });
   if (!hits.length) return null;
@@ -285,7 +291,7 @@ function buildReport(data, now, boardUrl, start) {
   const fmt = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 16).replace('T', ' ');
   const lines = [
     HEADER_PREFIX + ' ' + REPORT_TITLE,
-    jstDate(now) + '（JST）　共 ' + hits.length + ' 家有新情况',
+    jstDate(now) + '（JST）　共 ' + hits.length + ' 家状态有变',
     '统计范围：' + fmt(start) + ' ～ ' + fmt(end) + '（JST）'
   ];
   for (const [status, list] of groups) {
@@ -959,6 +965,24 @@ function redactRecord(env, r) {
   return out;
 }
 
+/**
+ * 给记录盖上「状态是什么时候变的」这个章 —— 当日速报只认它。
+ * 推上来的整条记录里没有这个字段（脚本不一定是新版），所以在这里判：
+ * 状态和仓库里的不一样 → 现在就是变的时刻；一样 → 把旧章原样带过去，
+ * 别被一次写 MEMO 的同步顺手抹掉。
+ */
+function stampStatus(next, prev) {
+  if (!prev) {
+    // 新记录：投递那一刻就是它当前状态的起点
+    return next.statusAt ? next : Object.assign({}, next, { statusAt: next.ts || next.updatedAt || Date.now() });
+  }
+  if (String(next.status || '') !== String(prev.status || '')) {
+    return Object.assign({}, next, { statusAt: next.updatedAt || Date.now() });
+  }
+  const keep = next.statusAt || prev.statusAt;
+  return keep ? Object.assign({}, next, { statusAt: keep }) : next;
+}
+
 function mergeIntoRepo(env, repo, incoming) {
   const dead = (incoming.deleted && typeof incoming.deleted === 'object') ? incoming.deleted : {};
   const stat = { recAdded: 0, recUpdated: 0, recRemoved: 0, msgAdded: 0, msgUpdated: 0, msgRemoved: 0 };
@@ -971,8 +995,8 @@ function mergeIntoRepo(env, repo, incoming) {
     if (dead[r.id]) return;                       // 这台机器删过，别又推回来
     const red = redactRecord(env, r);
     const cur = byId.get(r.id);
-    if (!cur) { byId.set(r.id, red); stat.recAdded++; return; }
-    if (recStamp(red) >= recStamp(cur)) { byId.set(r.id, red); stat.recUpdated++; }
+    if (!cur) { byId.set(r.id, stampStatus(red, null)); stat.recAdded++; return; }
+    if (recStamp(red) >= recStamp(cur)) { byId.set(r.id, stampStatus(red, cur)); stat.recUpdated++; }
   });
   Object.keys(dead).forEach((id) => { if (byId.delete(id)) stat.recRemoved++; });
   repo.records = Array.from(byId.values());
@@ -1007,26 +1031,85 @@ function mergeIntoRepo(env, repo, incoming) {
   return stat;
 }
 
-/** 队列 key 用零填充的时间戳打头，KV 按字典序 list 出来就是按时间先后 */
-function queueKey(at, id) {
-  return 'sch:' + String(at).padStart(13, '0') + ':' + id;
+/* ---- 预约队列：整张队列存在一个 key 里 ------------------------------------
+ * 以前是「一条一个 key」，每次要 list 一遍再逐条 get。KV 免费额度里
+ * list 只有 1,000 次/天，而 Cron 每 5 分钟扫一次 = 288 次/天（28.8%），
+ * 队列空着也照扫；队列里有 N 条时还要额外 288×N 次 read。
+ *
+ * 改成单 key 之后，每种操作的 KV 开销是固定的、和队列长度无关：
+ *   Cron 空转      1 read，0 list，0 write
+ *   Cron 有到点的  1 read + 1 write
+ *   入队/取消/立发 1 read + 1 write
+ *   看板拉列表     1 read
+ *
+ * 两个代价，都在可接受范围：
+ *   - 同一个 key 的写入上限是 1 次/秒。预约是人手点出来的低频操作，够用。
+ *   - 过期得自己剪：expirationTtl 是按 key 的，现在只剩一个 key，所以
+ *     用 QUEUE_KEEP_MS 在每次读的时候把陈年条目筛掉。
+ * -------------------------------------------------------------------------- */
+const QUEUE_KEY = 'sch:index';         // 整张队列
+const LEGACY_PREFIX = 'sch:';          // 旧的一条一个 key，首次读到时收拢过来
+const QUEUE_KEEP_MS = 7 * 86400000;    // 到点后一直发不出去的，留 7 天就丢
+
+/**
+ * 读出整张队列，顺手做一次性迁移和过期剪枝，按时间排好序。
+ * dirty = true 表示内存里这份和 KV 里那份已经不一样了，调用方该写回去。
+ */
+async function readQueue(env) {
+  if (!env.SCHEDULE) return { items: [], dirty: false };
+
+  const raw = await env.SCHEDULE.get(QUEUE_KEY);
+  let items = null;
+  if (raw) {
+    try { items = JSON.parse(raw); } catch (e) { items = null; }
+    if (!Array.isArray(items)) items = null;   // 坏数据当没有，走下面的迁移路径重建
+  }
+
+  let dirty = false;
+  if (!items) {
+    items = await migrateLegacyQueue(env);
+    dirty = true;                              // 整个生命周期里只会发生一次
+  }
+
+  const cutoff = Date.now() - QUEUE_KEEP_MS;
+  const seen = new Set();
+  const alive = [];
+  for (const it of items) {
+    // id 去重：万一迁移被并发跑了两遍，也不会把同一条发两次
+    if (!it || !it.id || seen.has(it.id)) continue;
+    if (!(Number(it.at) > cutoff)) continue;
+    seen.add(it.id);
+    alive.push(it);
+  }
+  if (alive.length !== items.length) dirty = true;
+  alive.sort((a, b) => a.at - b.at);
+  return { items: alive, dirty: dirty };
 }
 
-async function listQueue(env, limit) {
-  if (!env.SCHEDULE) return [];
+async function writeQueue(env, items) {
+  if (!env.SCHEDULE) return;
+  await env.SCHEDULE.put(QUEUE_KEY, JSON.stringify(items));
+}
+
+/**
+ * 一次性：把旧的 sch:<ts>:<id> 收进索引。
+ * 只读不删 —— 先把索引安全写下来才是要紧事，旧 key 各自带着 expirationTtl，
+ * 到期 KV 自己会清掉，白留几天也不碍事。要是这里边删边读中途挂了，
+ * 反而会把还没发的预约弄丢。
+ */
+async function migrateLegacyQueue(env) {
   const out = [];
   let cursor;
   do {
-    const page = await env.SCHEDULE.list({ prefix: 'sch:', limit: 1000, cursor: cursor });
+    const page = await env.SCHEDULE.list({ prefix: LEGACY_PREFIX, limit: 1000, cursor: cursor });
     for (const k of page.keys) {
+      if (k.name === QUEUE_KEY) continue;
       const raw = await env.SCHEDULE.get(k.name);
       if (!raw) continue;
       try {
         const item = JSON.parse(raw);
-        item.key = k.name;
-        out.push(item);
+        if (item && item.id) out.push(item);
       } catch (e) { /* 坏数据直接跳过 */ }
-      if (limit && out.length >= limit) return out;
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);

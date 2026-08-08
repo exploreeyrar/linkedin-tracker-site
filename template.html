@@ -816,6 +816,10 @@
       <span>附上看板链接（点开直接定位并高亮这一条）</span>
     </label>
     <label class="chk">
+      <input type="checkbox" id="rmToMemo" checked>
+      <span>本条信息添加至 MEMO<small>只记「备注」里实际写的那段；处理人、优先级、链接这些模板内容属于 Telegram 那边的格式，不进 MEMO</small></span>
+    </label>
+    <label class="chk">
       <input type="checkbox" id="rmSched">
       <span>定时发送<small>交给 Cloudflare Worker 定时投递，浏览器关掉也会照常发出</small></span>
     </label>
@@ -1189,7 +1193,7 @@
     { key: 'act',        label: '留言',        sort: null,    align: 'center' },
     { key: 'memo',       label: 'MEMO',        sort: null },
     { key: 'company',    label: '公司',        sort: 'company' },
-    { key: 'title',      label: '岗位',        sort: 'title' },
+    { key: 'title',      label: '岗位链接',     sort: 'title' },
     { key: 'hirers',     label: 'Hiring team', sort: null },
     { key: 'updatedAt',  label: '更新时间',    sort: 'updatedAt' },
     { key: 'ts',         label: '投递时间',    sort: 'ts' },
@@ -3524,8 +3528,9 @@
       toast(sched ? '已设定定时发送' : '提醒已发送');
 
       /* MEMO 只记「备注」里实际写的那段 —— 处理人、优先级、链接这些
-         标准模板信息属于 Telegram 那边的格式，进了 MEMO 只会把它撑爆。 */
-      if (note) {
+         标准模板信息属于 Telegram 那边的格式，进了 MEMO 只会把它撑爆。
+         勾去掉就纯发 Telegram，不动 MEMO。 */
+      if (note && $('rmToMemo').checked) {
         appendMemo(r, note);
         if (detailTarget && recKey(detailTarget) === recKey(r)) renderDetailMemos(r);
         apply();
