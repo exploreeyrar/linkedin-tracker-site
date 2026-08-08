@@ -732,6 +732,29 @@
   .mrule .del:hover { border-color: var(--c-rejitv); color: var(--c-rejitv); }
   .mrule .del.armed { border-color: var(--c-rejitv); color: var(--c-rejitv); font-weight: 700; }
   .mrule .qhint { font-size: 11.5px; color: var(--sub); line-height: 1.6; margin-top: 4px; }
+
+  /* 顶上那排（总开关 / 回看范围）在窄屏里会被挤到把「回看范围」四个字
+     竖着排下来 —— 允许换行，标签本身不许断字 */
+  #mailMask .row.mailtop { flex-wrap: wrap; }
+  #mailMask .row.mailtop label[for="mailLookback"] { white-space: nowrap; }
+
+  /* 搜索语法速查。默认折叠：它很长，但一年也就展开那么几次 */
+  .mrule .ops { margin-top: 8px; }
+  .mrule .ops > summary {
+    cursor: pointer; font-size: 12px; color: var(--sub);
+    padding: 4px 0; list-style: revert; user-select: none;
+  }
+  .mrule .ops > summary:hover { color: var(--accent); }
+  .mrule .opgroup { margin: 8px 0 0; }
+  .mrule .opttl { font-size: 11px; color: var(--sub); opacity: .8; margin-bottom: 4px; }
+  .mrule .opchips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .mrule .opchip {
+    font: inherit; font-size: 11.5px; cursor: pointer;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  .mrule .opchip:hover { border-color: var(--accent); color: var(--accent); }
   .mrule code {
     background: var(--card); border: 1px solid var(--line); border-radius: 4px;
     padding: 0 5px; font-size: 11.5px;
@@ -1015,12 +1038,20 @@
       Telegram 和频道页。<b>规则存在 Worker 上</b>，在这里改完就生效，不用再去动 Apps Script。
     </div>
 
-    <div class="row" style="margin-top:4px">
+    <div class="row mailtop" style="margin-top:4px">
       <label class="chk" style="margin:0"><input type="checkbox" id="mailOn"><span>总开关<small>关掉之后脚本照跑，但一封都不投</small></span></label>
       <span class="sp"></span>
       <label for="mailLookback" style="margin:0 8px 0 0">回看范围</label>
       <input type="number" id="mailLookback" min="5" max="1440" step="5" style="width:90px">
-      <span class="status" style="margin:0">分钟（要比脚本的运行间隔大一些，否则会漏）</span>
+      <span class="status" style="margin:0">分钟（要比脚本的运行间隔大一些，否则某一轮失败就会漏掉那段）</span>
+    </div>
+    <div class="tip">
+      触发器间隔在 Apps Script 那边设，可选 1 / 5 / 10 / 15 / 30 分钟。
+      免费（个人 Gmail）账号的硬限制是<b>触发器每天总共只能跑 90 分钟</b> ——
+      1 分钟一跑＝一天 1440 次，每次哪怕只花 3 秒也要 72 分钟，几乎顶满，
+      超了当天剩下的触发器会直接不再执行（而且不会告诉你）。
+      5 分钟一跑＝288 次，约 15 分钟，留足余量。想更快就把间隔调到 1 分钟、
+      同时把规则数压到最少（每条规则都是一次 Gmail 搜索），并盯几天「执行数」页面的耗时。
     </div>
 
     <div id="mailList"></div>
@@ -4516,6 +4547,53 @@ function bootBoard(PAYLOAD) {
     var DOC = { on: true, lookbackMin: 60, rules: [] };
     var loaded = false;
 
+    /* 常用的 Gmail 搜索运算符，按实际用到的频率从高到低分组。
+       只收真正存在的那些 —— 网上流传的列表里混着不少早就废掉的写法
+       （比如用 + 强制精确匹配），填进去不会报错，只会安静地搜不到东西。 */
+    var MAIL_OPS = [
+      ['最常用', [
+        ['from:someone@example.com', '发件人。写域名也行：from:@lever.co'],
+        ['to:me', '收件人是我'],
+        ['subject:面接', '标题里含这个词'],
+        ['in:inbox', '只搜收件箱。强烈建议加上 —— 默认连「已发送」一起搜'],
+        ['is:unread', '只搜未读'],
+        ['has:attachment', '有附件的']
+      ]],
+      ['组合与排除', [
+        ['-from:me', '前面加减号＝排除。这里是「不要我自己发的」'],
+        ['OR', '或者。不写就是「而且」，注意必须大写'],
+        ['{a b}', '大括号也是「或者」，等价于 a OR b'],
+        ['("A" OR "B")', '括号分组，长条件里用来断句'],
+        ['"完整短语"', '当短语搜（仍然不区分大小写 —— 严格判定交给上面的关键字栏）']
+      ]],
+      ['发件方与收件方', [
+        ['cc:someone@example.com', '抄送里有这个人'],
+        ['bcc:someone@example.com', '密送（只对你自己发的有效）'],
+        ['deliveredto:me@gmail.com', '投递到这个地址的（别名 / 转发时有用）'],
+        ['list:info@example.com', '来自某个邮件列表'],
+        ['replyto:someone@example.com', '回复地址是这个']
+      ]],
+      ['分类与标签', [
+        ['category:primary', '主要（其余：social / promotions / updates / forums）'],
+        ['label:求职', '带某个标签'],
+        ['is:starred', '加了星标'],
+        ['is:important', '被标为重要'],
+        ['has:nouserlabels', '一个自定义标签都没打的']
+      ]],
+      ['附件与大小', [
+        ['filename:pdf', '附件名或扩展名'],
+        ['has:drive', 'Google 云端硬盘链接（另有 document / spreadsheet / presentation）'],
+        ['larger:5M', '大于这个体积'],
+        ['smaller:1M', '小于这个体积']
+      ]],
+      ['位置与时间（时间一般用不上）', [
+        ['in:anywhere', '连垃圾邮件和回收站一起搜'],
+        ['in:spam', '只搜垃圾邮件'],
+        ['newer_than:2d', '最近 N 天（d/m/y）。回看范围已经在管时间了，一般不用写'],
+        ['older_than:1y', '早于 N 天 / 月 / 年']
+      ]]
+    ];
+
     function newRule() {
       return {
         id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -4603,15 +4681,52 @@ function bootBoard(PAYLOAD) {
       hint.appendChild(document.createTextNode('Gmail 搜索语法都能用：'));
       hint.appendChild(el('code', null, 'from:noreply@google.com'));
       hint.appendChild(document.createTextNode('　'));
-      hint.appendChild(el('code', null, 'to:me'));
+      hint.appendChild(el('code', null, 'in:inbox'));
       hint.appendChild(document.createTextNode('　'));
       hint.appendChild(el('code', null, 'subject:面接'));
       hint.appendChild(document.createTextNode('　'));
       hint.appendChild(el('code', null, 'has:attachment'));
       hint.appendChild(document.createTextNode('　'));
       hint.appendChild(el('code', null, '-from:me'));
-      hint.appendChild(document.createTextNode('。多个条件用空格＝而且，用 OR 表示或者。'));
+      hint.appendChild(document.createTextNode('。多个条件用空格＝而且，用 OR 表示或者。建议都加上 '));
+      hint.appendChild(el('code', null, 'in:inbox'));
+      hint.appendChild(document.createTextNode('：搜索默认连「已发送」一起搜，'
+        + '自己发给自己测试时会命中两封（发件箱一封、收件箱一封），于是投两次。'));
       box.appendChild(hint);
+
+      /* 常用搜索语法。收在 <details> 里默认折叠 —— 这份东西谁也记不全，
+         但摊开来又会把规则卡片撑得没法看。点一下直接塞进上面那个输入框，
+         省得来回切到 Gmail 帮助页抄。 */
+      var ops = document.createElement('details');
+      ops.className = 'ops';
+      var sum = document.createElement('summary');
+      sum.textContent = '📖 常用搜索语法（点一下插入）';
+      ops.appendChild(sum);
+
+      MAIL_OPS.forEach(function (group) {
+        var g = el('div', 'opgroup');
+        g.appendChild(el('div', 'opttl', group[0]));
+        var wrap = el('div', 'opchips');
+        group[1].forEach(function (op) {
+          var b = el('button', 'opchip', op[0]);
+          b.type = 'button';
+          b.title = op[1];
+          b.addEventListener('click', function () {
+            var cur = q.value.replace(/\s+$/, '');
+            q.value = (cur ? (cur + ' ') : '') + op[0];
+            q.dispatchEvent(new Event('input'));   // 让 r.query 跟着更新
+            q.focus();
+            q.setSelectionRange(q.value.length, q.value.length);
+          });
+          wrap.appendChild(b);
+        });
+        g.appendChild(wrap);
+        ops.appendChild(g);
+      });
+      ops.appendChild(el('div', 'qhint',
+        '插进来之后把示例值改成你要的。时间不用自己写 —— 上面的「回看范围」已经会加 after:，'
+        + '再写 newer_than 只会互相打架。'));
+      box.appendChild(ops);
 
       var row = el('div', 'mrow');
       var scopeWrap = el('span', null, '关键字找哪儿：');
