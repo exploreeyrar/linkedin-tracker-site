@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T01:33:18.219Z",
+ "updatedAt": "2026-08-08T01:33:18.456Z",
  "count": 97,
  "records": [
   {
@@ -1828,6 +1828,13 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjp9afxqrur",
+   "text": "📝 MEMO 新增\nUnity / Lead Sales Development Representative, APAC\nyyyy",
+   "createdAt": 1786152796701,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjp8abd0ytq",
    "text": "📝 MEMO 新增\nPostman / Account Development Representative\nxxxx",
