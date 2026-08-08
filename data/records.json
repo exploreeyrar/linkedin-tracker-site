@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T05:39:59.283Z",
+ "updatedAt": "2026-08-08T05:59:14.284Z",
  "count": 97,
  "records": [
   {
@@ -368,14 +368,18 @@
    "hirers": [],
    "ts": 1785821808541,
    "tenure": "2.7 years",
-   "memo": "[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
+   "memo": "[2026-08-08 14:37] test\n\n[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
    "status": "等己方处理(胖 ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786167597774,
+   "updatedAt": 1786167468648,
    "deadlineAt": 1786892400000,
    "deadlineDone": false,
    "memos": [
+    {
+     "ts": 1786167468648,
+     "text": "test"
+    },
     {
      "ts": 1786163871406,
      "text": "胖已解决。"
@@ -1233,12 +1237,16 @@
    "hirers": [],
    "ts": 1785760832212,
    "tenure": "5.1 years",
-   "memo": "[2026-08-07 21:23] web test DONE\n\n[2026-08-06 10:43] [2026-08-05 23:44] Google 申了 3 个 role 其中一个过书审了（其他 2 个落了）。8.6 之前需完成以下webテスト。\n\nHi W O,\n\nThanks again for applying for a role at Google. The next step of the hiring process will be to complete the Google Hiring Assessment, which should take about 30 minutes.\n\nYou may find your assessment link in your Candidate Portal or you may also copy and paste this link into your browser: https://www.google.com/about/careers/applications/dashboard\n\nPlease complete the Google Hiring Assessment by 6:05AM ET/3:05AM PT on August 9. We can only consider your application for a role at Google if your assessment is completed by the deadline. The results of this assessment will determine if you're eligible to move forward with the hiring process.\n\nThe Google Hiring Assessment questions, along with your responses, are for your eyes only. Do not forward or share them.\n\nInstructions\nPlease complete this ~30-minute Google Hiring Assessment which will evaluate your work styles that are important to success at Google.\nIf you need troubleshooting support with your assessment, please send an email to assessment-help@google.com and include your:\nFirst and Last Name\nQuestion or description of the issue and any relevant screenshots\n\nAccommodations\n\nWe understand there are many ways to process information. If you require an accommodation due to a medical condition, disability, or neurodivergence, please send an email to assessment-help@google.com to request a specific accommodation or determine what options may be available. Let us know your accommodation needs before engaging in or completing the assessment. Accommodations include, but are not limited to:\nExtra time to complete the assessment\nGuidance on screen reader resources:\nGoogle Accessibility - built in screen reader\nBrowser URL:\nhttps://support.google.com/accessibility/answer/7031755?hl=en#zippy=%2Cchoose-text-with-your-cursor\nMicrosoft - Narrator\nBrowser URL:\nhttps://support.microsoft.com/en-us/windows/complete-guide-to-narrator-e4397a0d-ef4f-b386-d8ae-c172f109bdb1\n\nThere is no need to provide us with the nature of or reason for your request for accommodations at this time. Any information you do provide us regarding your health is provided with your explicit consent to our using such information to assess your accommodation request. You can withdraw that consent at any time by sending a subsequent email to assessment-help@google.com. However, if you withdraw consent before we have made an assessment we may not be able to provide you with an accommodation.\n\nConfidentiality: The information you provide in an accommodation request will only be reviewed by our global disability partner, Korn Ferry, in order to assess and provide you with reasonable accommodations. Google does not require a diagnosis, treatment plan, or Government disability certificate.\n\nThanks!\nGoogle Recruiting\nFAQs:\n\nCan I have an extension to complete the assessment?\nTo keep our process consistent, we ask that everyone complete the Google Hiring Assessment by the deadline. If you have a scheduling conflict that absolutely can't be moved, let us know as soon as possible by emailing assessment-help@google.com and we're happy to talk through options.Note: while we expect the GHA to take about 30 minutes to complete, you can spend as much time on it as you’d like up until your deadline noted above.\n\nPlease note, if you hear from a recruiter before you've completed the Google Hiring Assessment, you'll still need to finish it by the deadline.\n\n\n[Measurement Lab tool URL: https://www.google.com/search?q=internet%20speed%20test]\nAdditional questions? Check the Google Hiring Assessment FAQs.",
+   "memo": "[2026-08-08 14:58] After you submit an assessment, it can take up to an hour for your application to reflect that. You'll receive results 1-2 days after you've completed the assessment.\n\nhttps://www.google.com/about/careers/applications/u/6/workflow/a8554e4a-e2cb-4d47-ae65-cc1aa508ea39/b7efc570-a3c2-4f39-91fc-532094190743?hl=en_US&ohl=default\n\n[2026-08-07 21:23] web test DONE\n\n[2026-08-06 10:43] [2026-08-05 23:44] Google 申了 3 个 role 其中一个过书审了（其他 2 个落了）。8.6 之前需完成以下webテスト。\n\nHi W O,\n\nThanks again for applying for a role at Google. The next step of the hiring process will be to complete the Google Hiring Assessment, which should take about 30 minutes.\n\nYou may find your assessment link in your Candidate Portal or you may also copy and paste this link into your browser: https://www.google.com/about/careers/applications/dashboard\n\nPlease complete the Google Hiring Assessment by 6:05AM ET/3:05AM PT on August 9. We can only consider your application for a role at Google if your assessment is completed by the deadline. The results of this assessment will determine if you're eligible to move forward with the hiring process.\n\nThe Google Hiring Assessment questions, along with your responses, are for your eyes only. Do not forward or share them.\n\nInstructions\nPlease complete this ~30-minute Google Hiring Assessment which will evaluate your work styles that are important to success at Google.\nIf you need troubleshooting support with your assessment, please send an email to assessment-help@google.com and include your:\nFirst and Last Name\nQuestion or description of the issue and any relevant screenshots\n\nAccommodations\n\nWe understand there are many ways to process information. If you require an accommodation due to a medical condition, disability, or neurodivergence, please send an email to assessment-help@google.com to request a specific accommodation or determine what options may be available. Let us know your accommodation needs before engaging in or completing the assessment. Accommodations include, but are not limited to:\nExtra time to complete the assessment\nGuidance on screen reader resources:\nGoogle Accessibility - built in screen reader\nBrowser URL:\nhttps://support.google.com/accessibility/answer/7031755?hl=en#zippy=%2Cchoose-text-with-your-cursor\nMicrosoft - Narrator\nBrowser URL:\nhttps://support.microsoft.com/en-us/windows/complete-guide-to-narrator-e4397a0d-ef4f-b386-d8ae-c172f109bdb1\n\nThere is no need to provide us with the nature of or reason for your request for accommodations at this time. Any information you do provide us regarding your health is provided with your explicit consent to our using such information to assess your accommodation request. You can withdraw that consent at any time by sending a subsequent email to assessment-help@google.com. However, if you withdraw consent before we have made an assessment we may not be able to provide you with an accommodation.\n\nConfidentiality: The information you provide in an accommodation request will only be reviewed by our global disability partner, Korn Ferry, in order to assess and provide you with reasonable accommodations. Google does not require a diagnosis, treatment plan, or Government disability certificate.\n\nThanks!\nGoogle Recruiting\nFAQs:\n\nCan I have an extension to complete the assessment?\nTo keep our process consistent, we ask that everyone complete the Google Hiring Assessment by the deadline. If you have a scheduling conflict that absolutely can't be moved, let us know as soon as possible by emailing assessment-help@google.com and we're happy to talk through options.Note: while we expect the GHA to take about 30 minutes to complete, you can spend as much time on it as you’d like up until your deadline noted above.\n\nPlease note, if you hear from a recruiter before you've completed the Google Hiring Assessment, you'll still need to finish it by the deadline.\n\n\n[Measurement Lab tool URL: https://www.google.com/search?q=internet%20speed%20test]\nAdditional questions? Check the Google Hiring Assessment FAQs.",
    "status": "已投递等联络",
    "scout": false,
-   "updatedAt": 1786105448759,
+   "updatedAt": 1786168754011,
    "priority": 0,
    "memos": [
+    {
+     "ts": 1786168716559,
+     "text": "After you submit an assessment, it can take up to an hour for your application to reflect that. You'll receive results 1-2 days after you've completed the assessment.\n\nhttps://www.google.com/about/careers/applications/u/6/workflow/a8554e4a-e2cb-4d47-ae65-cc1aa508ea39/b7efc570-a3c2-4f39-91fc-532094190743?hl=en_US&ohl=default"
+    },
     {
      "ts": 1786105431598,
      "text": "web test DONE"
@@ -1250,6 +1258,8 @@
    ],
    "deadlineAt": 0,
    "deadlineDone": false,
+   "followUpAt": 1786460400000,
+   "followUpNote": "https://www.google.com/about/careers/applications/u/6/workflow/a8554e4a-e2cb-4d47-ae65-cc1aa508ea39/b7efc570-a3c2-4f39-91fc-532094190743?hl=en_US&ohl=default",
    "epMonthly": 0,
    "epAnnual": 0
   },
@@ -1824,6 +1834,62 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjyq8yjl5tn",
+   "text": "📝 MEMO 删除\nGoogle / Account Manager, Large Customer Sales, SEAS\ntest",
+   "createdAt": 1786168704475,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjyq86tqa6b",
+   "text": "📝 MEMO 删除\nGoogle / Account Manager, Large Customer Sales, SEAS\n3",
+   "createdAt": 1786168703477,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjyq7ttmm41",
+   "text": "📝 MEMO 删除\nGoogle / Account Manager, Large Customer Sales, SEAS\n5",
+   "createdAt": 1786168703009,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjyq7pm8rya",
+   "text": "📝 MEMO 删除\nGoogle / Account Manager, Large Customer Sales, SEAS\n6",
+   "createdAt": 1786168702858,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjyq7k3mvlc",
+   "text": "📝 MEMO 删除\nGoogle / Account Manager, Large Customer Sales, SEAS\n7",
+   "createdAt": 1786168702659,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjyq76necmw",
+   "text": "📝 MEMO 删除\nGoogle / Account Manager, Large Customer Sales, SEAS\n8",
+   "createdAt": 1786168702175,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjyodrewxdy",
+   "text": "📝 MEMO 删除\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\nTESTT",
+   "createdAt": 1786168617386,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjynfo3l1l9",
+   "text": "📤 已发送到 Telegram\n\n#SGJOB 状态更新请求\n处理人：通知\n\n公司：CrowdStrike\n岗位：Manager, Sales Development - Southeast and North Asia\n投递时间：2026-08-04 14:36\n链接：https://www.linkedin.com/jobs/view/4423636831/\n当前状态：等己方处理(胖 ball)\n看板：https://exploreeyrar.github.io/linkedin-tracker-site/#job-4423636831\n\n🟢 备注：TESTT",
+   "createdAt": 1786168573204,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjy2id76d4c",
    "text": "📝 MEMO 删除\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\nt",
