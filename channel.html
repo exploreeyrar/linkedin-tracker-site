@@ -500,6 +500,21 @@
   $('lightbox').addEventListener('click', function () { this.hidden = true; });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('lightbox').hidden = true; });
 
+  /* 搜索词、优先级、在不在 archive 视图：都记在本机，刷新后原样恢复。
+     看到一半刷新一下就被打回全量通知流、还得重新点一遍，太烦。 */
+  var VIEW_KEY = 'sgjob_channel_view_v1';
+  function saveView() {
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({
+        q: $('q').value, prio: $('prio').value, arch: !!showArchived
+      }));
+    } catch (e) {}
+  }
+  function loadView() {
+    try { return JSON.parse(localStorage.getItem(VIEW_KEY) || 'null') || {}; }
+    catch (e) { return {}; }
+  }
+
   /* archive 的状态存在服务端（见 Worker 的 inbox_archive），不是各人的浏览器里 ——
      谁 archive 的，所有连着的页面立刻同步，别人打开看到的也一样。 */
   var showArchived = false;
@@ -588,6 +603,7 @@
       $('archbarText').textContent = '搜索结果里有 ' + nArch + ' 条是已 archive 的（淡显那几条）';
     }
 
+    saveView();
     renderGaps();
     var newest = live.length ? live[live.length - 1] : (MSGS.length ? MSGS[MSGS.length - 1] : null);
     $('who').textContent = newest
@@ -956,12 +972,27 @@
   /* ---------- 启动 ---------- */
   $('q').addEventListener('input', function () { render(); });
 
+  /* 上次的搜索词 / 优先级 / archive 视图。要在第一次 render 之前摆好，
+     否则会先闪一下全量列表。archive 视图只在真有 archive 过的消息时才恢复
+     —— render() 开头那道兜底会把空的 archive 视图弹回来，白闪一下。 */
+  var pendingArch = false;      // 先声明再赋值：var 会提升，反过来写会被下面这行抹掉
+  (function () {
+    var v = loadView();
+    if (v.q) $('q').value = v.q;
+    if (v.prio) {
+      $('prio').value = v.prio;
+      if ($('prio').value !== v.prio) $('prio').value = '';   // 选项变了就当没筛过
+    }
+    pendingArch = !!v.arch;
+  })();
+
   if (!ENDPOINT) {
     setState('down', '未配置中继');
     updateSetup();
   } else {
     setState('poll', '连接中…');
     pull(true).then(function () {
+      if (pendingArch && MSGS.some(function (m) { return m.archivedAt; })) showArchived = true;
       render();
       // 带着 #m-<uid> 进来就是冲某一条来的，别把它滚走
       if (targetUid()) focusMsg(targetUid(), true);

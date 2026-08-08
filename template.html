@@ -1408,6 +1408,9 @@ function bootBoard(PAYLOAD) {
     showPushTg: false,             // 一键推送旁那个「推送至 telegram」勾：默认藏起来
     memoPushed: {},                // recKey → 最后一次推到 Telegram 的 MEMO 时间
     showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
+    // 搜索词与各个 filter 的当下状态：刷新 / 重开页面后原样恢复，
+    // 免得看到一半刷新一下就被打回全量清单，还得重新点一遍
+    filters: { q: '', status: '', scout: false, follow: false, group: '' },
     board: { x: 0, y: 0, w: 380, h: 440, placed: false, max: true }
   };
   try {
@@ -1418,6 +1421,8 @@ function bootBoard(PAYLOAD) {
       if (!prefs.followUp || typeof prefs.followUp !== 'object') prefs.followUp = {};
       if (!prefs.fuDone || typeof prefs.fuDone !== 'object') prefs.fuDone = {};
       if (!prefs.memoPushed || typeof prefs.memoPushed !== 'object') prefs.memoPushed = {};
+      prefs.filters = Object.assign({ q: '', status: '', scout: false, follow: false, group: '' },
+                                    prefs.filters || {});
     }
   } catch (e) { /* 用默认值 */ }
   function savePrefs() { try { localStorage.setItem(PK, JSON.stringify(prefs)); } catch (e) {} }
@@ -2514,6 +2519,41 @@ function bootBoard(PAYLOAD) {
       var row = document.getElementById('job-' + hid);
       if (row) row.classList.add('hl');
     }
+
+    saveFilters();
+  }
+
+  /* 所有改筛选的入口最后都会走到 apply()，所以只在这里存一次就够了，
+     不必去每个 handler 上挂。写的是 prefs，和别的偏好一起进 localStorage。 */
+  function saveFilters() {
+    var f = prefs.filters;
+    var next = {
+      q: $('q').value,
+      status: $('fstatus').value,
+      scout: $('fscout').classList.contains('on'),
+      follow: $('ffollow').classList.contains('on'),
+      group: groupFilter || ''
+    };
+    if (f.q === next.q && f.status === next.status && f.scout === next.scout
+        && f.follow === next.follow && f.group === next.group) return;   // 没变就别写
+    prefs.filters = next;
+    savePrefs();
+  }
+
+  /** 开页面时把上次的搜索词 / filter 原样摆回去 */
+  function restoreFilters() {
+    var f = prefs.filters || {};
+    $('q').value = f.q || '';
+    // 状态下拉的选项是构建出来的；万一那个状态被改名 / 删了，就当没筛过
+    var sel = $('fstatus');
+    sel.value = f.status || '';
+    if (sel.value !== (f.status || '')) sel.value = '';
+    groupFilter = (f.group === 'todo' && !sel.value) ? 'todo' : '';
+    [['fscout', !!f.scout], ['ffollow', !!f.follow]].forEach(function (pair) {
+      var b = $(pair[0]);
+      b.classList.toggle('on', pair[1]);
+      b.setAttribute('aria-pressed', String(pair[1]));
+    });
   }
 
   $('q').addEventListener('input', apply);
@@ -4090,6 +4130,7 @@ function bootBoard(PAYLOAD) {
       $('q').value = ''; $('fstatus').value = '';
       $('fscout').classList.remove('on');
       $('ffollow').classList.remove('on');
+      if (groupFilter) { groupFilter = ''; renderKPIs(); }
       apply();
       row = document.getElementById('job-' + id);
     }
@@ -4144,6 +4185,7 @@ function bootBoard(PAYLOAD) {
   $('footnote').hidden = !prefs.showFoot;
   paintMemoTg();
   paintPushTgVisible();
+  restoreFilters();     // 先把上次的搜索词 / filter 摆回去，再画 KPI 和清单
   renderKPIs();
   renderColList();
   buildStatusPanel();
