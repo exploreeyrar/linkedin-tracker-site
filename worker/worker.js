@@ -179,22 +179,20 @@ function prevReportBoundary(now) {
   return jstDayStart(now) - 86400000 + (REPORT_HOUR * 60 + REPORT_MIN) * 60000;
 }
 
-function reportKey(now) { return 'report:' + jstDate(now); }
-const REPORT_CURSOR_KEY = 'report:cursor';   // 上一批速报统计到哪个时刻为止
-// 「今天没有新情况」的节流标记，和「已发过」分开存：
-// 否则一旦定时那一轮扫到空，当天就再也发不出手动速报了。
-function reportEmptyKey(now) { return 'reportempty:' + jstDate(now); }
+// 速报的三个标记都存在 BoardStore 里（原来在 KV）。
+// 「今天没有新情况」和「已发过」分开存：否则一旦定时那一轮扫到空，
+// 当天就再也发不出手动速报了。
+function reportKey(now) { return 'sent:' + jstDate(now); }
+function reportEmptyKey(now) { return 'empty:' + jstDate(now); }
+const REPORT_CURSOR_KEY = 'cursor';          // 上一批速报统计到哪个时刻为止
 
 async function reportSent(env, now) {
-  if (!env.SCHEDULE) return null;
-  return await env.SCHEDULE.get(reportKey(now));
+  try { return (await board(env, '/rep/get', { key: reportKey(now) })).val; }
+  catch (e) { return null; }
 }
 
 async function markReportSent(env, now, by) {
-  if (!env.SCHEDULE) return;
-  // 留 3 天足够了，KV 到期自动清
-  await env.SCHEDULE.put(reportKey(now), JSON.stringify({ at: Date.now(), by: by || 'auto' }),
-    { expirationTtl: 3 * 86400 });
+  await board(env, '/rep/put', { key: reportKey(now), val: { at: Date.now(), by: by || 'auto' } });
 }
 
 /**
@@ -204,11 +202,10 @@ async function markReportSent(env, now, by) {
  */
 async function reportWindowStart(env, now) {
   const fallback = prevReportBoundary(now);
-  if (!env.SCHEDULE) return fallback;
-  const raw = await env.SCHEDULE.get(REPORT_CURSOR_KEY);
-  if (!raw) return fallback;
-  let at = 0;
-  try { at = Number(JSON.parse(raw).at) || 0; } catch (e) { at = 0; }
+  let val = null;
+  try { val = (await board(env, '/rep/get', { key: REPORT_CURSOR_KEY })).val; }
+  catch (e) { return fallback; }
+  const at = Number(val && val.at) || 0;
   // 游标太旧（超过 7 天没发过）就别把一大堆陈年变化翻出来
   if (!at || at > now || at < now - 7 * 86400000) return fallback;
   return at;
@@ -216,18 +213,17 @@ async function reportWindowStart(env, now) {
 
 /** 记下这一批统计到哪儿为止，下一批从这里接着算 */
 async function saveReportCursor(env, end) {
-  if (!env.SCHEDULE) return;
-  await env.SCHEDULE.put(REPORT_CURSOR_KEY, JSON.stringify({ at: end }),
-    { expirationTtl: 30 * 86400 });
+  await board(env, '/rep/put', { key: REPORT_CURSOR_KEY, val: { at: end } });
 }
 
-/** 拉取看板数据源（油猴脚本推上去的那份 records.json） */
+/**
+ * 拉取看板数据源。
+ * 以前是去 GitHub raw 拉 records.json，现在真相源就在 DO 里，直接问它 ——
+ * 少一次 subrequest，也不会再读到 CDN 上的旧值。
+ */
 async function fetchRecords(env) {
-  const url = env.RECORDS_URL;
-  if (!url) return null;
-  const res = await fetch(url, { headers: { 'User-Agent': 'sgjob-worker' } });
-  if (!res.ok) return null;
-  const blob = await res.json().catch(() => null);
+  let blob = null;
+  try { blob = await board(env, '/doc'); } catch (e) { return null; }
   if (!blob) return null;
   if (Array.isArray(blob)) return { records: blob, statusOrder: DEFAULT_STATUS_ORDER, statusDefs: [] };
   const defs = Array.isArray(blob.statusDefs) ? blob.statusDefs : [];
@@ -450,64 +446,10 @@ function inboxKey(msg) {
   return 'in:' + String(msg.ts).padStart(13, '0') + ':' + msg.uid;
 }
 
-/** 拿到那个唯一的收件箱 DO；没绑定 DO 时返回 null（退回 KV） */
+/** 拿到那个唯一的收件箱 DO */
 function inboxStub(env) {
   if (!env.INBOX) return null;
   return env.INBOX.get(env.INBOX.idFromName(INBOX_ROOM));
-}
-
-/* ---- KV 兜底实现 ----------------------------------------------------------
- * 没配 Durable Object（或迁移还没跑）时也要能用，只是新消息最多可能晚 60 秒
- * 才看得到 —— KV 是最终一致的，这是它的固有延迟，不是 bug。
- * -------------------------------------------------------------------------- */
-async function kvInboxAppend(env, msg) {
-  if (!env.SCHEDULE) return;
-  await env.SCHEDULE.put(inboxKey(msg), JSON.stringify(msg),
-    { expirationTtl: 180 * 86400 });
-  // 图片代理只放行确实出现在收件箱里的 file_id，免得 Worker 变成任人使用的下载代理
-  if (msg.media && msg.media.fileId) {
-    await env.SCHEDULE.put('fid:' + msg.media.fileId, '1', { expirationTtl: 180 * 86400 });
-  }
-}
-
-/** 返回真正删掉的 uid —— 和 DO 那条路的返回形状保持一致 */
-async function kvInboxDelete(env, uids) {
-  if (!env.SCHEDULE) return [];
-  const all = await kvInboxList(env, 0);
-  const hit = [];
-  for (const m of all) {
-    if (uids.indexOf(m.uid) === -1) continue;
-    await env.SCHEDULE.delete(inboxKey(m));
-    // 连带把图片的通行证收回：消息都删了，那张图不该还能下载
-    if (m.media && m.media.fileId) await env.SCHEDULE.delete('fid:' + m.media.fileId);
-    hit.push(m.uid);
-  }
-  return hit;
-}
-
-async function kvFileAllowed(env, fileId) {
-  if (!env.SCHEDULE) return false;
-  return !!(await env.SCHEDULE.get('fid:' + fileId));
-}
-
-async function kvInboxList(env, since) {
-  if (!env.SCHEDULE) return [];
-  const out = [];
-  let cursor;
-  do {
-    const page = await env.SCHEDULE.list({ prefix: 'in:', limit: 1000, cursor: cursor });
-    for (const k of page.keys) {
-      const raw = await env.SCHEDULE.get(k.name);
-      if (!raw) continue;
-      try {
-        const m = JSON.parse(raw);
-        if (!since || (m.editedTs || m.ts) > since) out.push(m);
-      } catch (e) { /* 坏数据跳过 */ }
-    }
-    cursor = page.list_complete ? null : page.cursor;
-  } while (cursor);
-  out.sort((a, b) => a.ts - b.ts);
-  return out.slice(-INBOX_MAX);
 }
 
 /**
@@ -653,10 +595,534 @@ export class ChannelInbox {
   async webSocketError(ws) { /* 交给 close 处理 */ }
 }
 
-/** 一条 update 落库（DO 优先，没有就用 KV） */
+/* ==========================================================================
+ * BoardStore —— 看板数据的真相源
+ *
+ * 以前投递记录是 build.py 烤进 dist/index.html 的：数据跟着构建产物走，
+ * 谁打开 GitHub Pages 谁就看得到全文。现在整份搬进这个单实例 DO，
+ * 页面运行时带着 WRITE_KEY 找 Worker 要 —— 构建产物里只剩一个空壳。
+ *
+ * 顺带解决了三件老问题：
+ *   · 合并在 DO 内部串行执行，不再有「读 GitHub → 合并 → PUT 撞 409 → 重来」
+ *     那个循环，也不会两台机器互相抹掉。
+ *   · 预约队列和速报标记一起搬进来，KV 整个 namespace 可以退役
+ *     （免费额度的 list 桶本来就是被 5 分钟一次的队列扫描吃掉的）。
+ *   · 改动通过 WebSocket 直接推给看板，不用再等 GitHub Actions 部署完
+ *     ——「同步成功 ≠ 页面更新」那段几十秒的空窗没了。
+ *
+ * 存储分四个前缀：
+ *   rec:<id>            一条投递记录
+ *   msg:<id>            一条留言
+ *   sch:<padAt>:<id>    一条预约（key 按时间排序，alarm 只看头一条）
+ *   rep:*               速报的「已发过 / 当天为空 / 统计游标」标记
+ *   meta:doc            statusDefs / statusOrder / updatedAt / rev
+ * ========================================================================== */
+
+const BOARD_ROOM = 'main';             // 只有一份看板，DO 用固定名字
+const BOARD_WS_PATH = '/board/ws';
+
+function schKey(at, id) {
+  return 'sch:' + String(at).padStart(13, '0') + ':' + id;
+}
+
+export class BoardStore {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  broadcast(obj) {
+    const payload = JSON.stringify(obj);
+    for (const ws of this.state.getWebSockets()) {
+      try { ws.send(payload); } catch (e) { /* 断了就断了，close 事件会清掉 */ }
+    }
+  }
+
+  /* ---- 读 ---------------------------------------------------------------- */
+
+  async meta() {
+    return (await this.state.storage.get('meta:doc')) || { statusDefs: [], statusOrder: [], updatedAt: '', rev: 0 };
+  }
+
+  /** 把分散的 key 重新拼成 build.py / mergeIntoRepo 一直在用的那个文档形状 */
+  async doc() {
+    const recs = await this.state.storage.list({ prefix: 'rec:' });
+    const msgs = await this.state.storage.list({ prefix: 'msg:' });
+    const m = await this.meta();
+    return {
+      records: [...recs.values()],
+      messages: [...msgs.values()],
+      statusDefs: m.statusDefs || [],
+      statusOrder: m.statusOrder || [],
+      updatedAt: m.updatedAt || '',
+      rev: m.rev || 0,
+    };
+  }
+
+  /**
+   * 整份写回。记录条数是百这个量级，storage.put 一次最多 128 对，
+   * 所以分批；消失的 id 要显式删掉，不然会像幽灵一样留在库里。
+   */
+  async putDoc(doc) {
+    const want = new Map();
+    (doc.records || []).forEach((r) => { if (r && r.id) want.set('rec:' + r.id, r); });
+    (doc.messages || []).forEach((x) => { if (x && x.id) want.set('msg:' + x.id, x); });
+
+    const had = [
+      ...(await this.state.storage.list({ prefix: 'rec:' })).keys(),
+      ...(await this.state.storage.list({ prefix: 'msg:' })).keys(),
+    ];
+    const gone = had.filter((k) => !want.has(k));
+    if (gone.length) {
+      for (let i = 0; i < gone.length; i += 128) {
+        await this.state.storage.delete(gone.slice(i, i + 128));
+      }
+    }
+
+    const entries = [...want.entries()];
+    for (let i = 0; i < entries.length; i += 128) {
+      await this.state.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
+    }
+
+    const m = await this.meta();
+    const rev = (m.rev || 0) + 1;
+    await this.state.storage.put('meta:doc', {
+      statusDefs: doc.statusDefs || m.statusDefs || [],
+      statusOrder: doc.statusOrder || m.statusOrder || [],
+      updatedAt: doc.updatedAt || new Date().toISOString(),
+      rev: rev,
+    });
+    // 看板收到就自己再拉一次；推的是「变了」而不是整份数据，省带宽
+    this.broadcast({ type: 'rev', rev: rev, updatedAt: doc.updatedAt || '' });
+    return rev;
+  }
+
+  /* ---- 写 ---------------------------------------------------------------- */
+
+  /** 油猴脚本的整份同步。合并语义原样沿用 mergeIntoRepo，只是换了个存储 */
+  async merge(incoming) {
+    const doc = await this.doc();
+    const stat = mergeIntoRepo(this.env, doc, incoming);
+    doc.updatedAt = new Date().toISOString();
+    const rev = await this.putDoc(doc);
+    return { stat: stat, rev: rev, counts: { records: doc.records.length, messages: doc.messages.length } };
+  }
+
+  /** 看板上的零散改动（memo / followUp / deadline） */
+  async ops(list) {
+    const doc = await this.doc();
+    const res = applyBoardOps(this.env, doc, list);
+    if (!res.applied.length) return { applied: res.applied, skipped: res.skipped, rev: (await this.meta()).rev || 0 };
+    doc.updatedAt = new Date().toISOString();
+    const rev = await this.putDoc(doc);
+    return { applied: res.applied, skipped: res.skipped, rev: rev };
+  }
+
+  /** 首次启动时从 GitHub 把现有数据搬进来，只会成功一次 */
+  async seed(doc) {
+    if (await this.state.storage.get('meta:seeded')) return { seeded: false, why: '已经导入过了' };
+    const rev = await this.putDoc(doc);
+    await this.state.storage.put('meta:seeded', { at: Date.now() });
+    return { seeded: true, rev: rev, records: (doc.records || []).length, messages: (doc.messages || []).length };
+  }
+
+  /* ---- 预约队列（原来在 KV，现在靠 alarm 精确到秒）------------------------ */
+
+  async schList() {
+    const all = await this.state.storage.list({ prefix: 'sch:' });
+    return [...all.values()];              // key 零填充过，list 出来就是时间序
+  }
+
+  async schAdd(item) {
+    await this.state.storage.put(schKey(item.at, item.id), item);
+    await this.arm();
+    return item;
+  }
+
+  /** 按 id 删除，返回删掉的那条（取消 / 立刻发送都走这里） */
+  async schRemove(id) {
+    const all = await this.state.storage.list({ prefix: 'sch:' });
+    for (const [k, v] of all) {
+      if (v && v.id === id) {
+        await this.state.storage.delete(k);
+        await this.arm();
+        return v;
+      }
+    }
+    return null;
+  }
+
+  /** 闹钟对准队列里最早的那条 */
+  async arm() {
+    const all = await this.state.storage.list({ prefix: 'sch:', limit: 1 });
+    const first = [...all.values()][0];
+    if (!first) { await this.state.storage.deleteAlarm(); return; }
+    // 已经过点的立刻响；DO 保证 alarm 至少触发一次，失败会自动重试
+    await this.state.storage.setAlarm(Math.max(Number(first.at) || 0, Date.now() + 1000));
+  }
+
+  async alarm() {
+    const now = Date.now();
+    const all = await this.state.storage.list({ prefix: 'sch:' });
+    for (const [k, item] of all) {
+      if (!item || Number(item.at) > now) break;        // 时间序，后面的更没到点
+      const data = await tgSend(this.env, item.text);
+      // 发送失败就留着，下一轮再试；Telegram 明确拒绝（4xx）的才丢弃
+      if (data.ok || (data.error_code && data.error_code >= 400 && data.error_code < 500)) {
+        await this.state.storage.delete(k);
+      } else {
+        // 这一条卡住了，5 分钟后整体重试，别把后面的堵死在同一次 alarm 里
+        await this.state.storage.setAlarm(Date.now() + 5 * 60000);
+        return;
+      }
+    }
+    await this.arm();
+  }
+
+  /* ---- 速报标记 ---------------------------------------------------------- */
+
+  async repGet(key) { return (await this.state.storage.get('rep:' + key)) || null; }
+  async repPut(key, val) { await this.state.storage.put('rep:' + key, val); }
+
+  /* ---- HTTP 入口 --------------------------------------------------------- */
+
+  async fetch(request) {
+    if (request.headers.get('Upgrade') === 'websocket') {
+      const pair = new WebSocketPair();
+      this.state.acceptWebSocket(pair[1]);
+      return new Response(null, { status: 101, webSocket: pair[0] });
+    }
+
+    const url = new URL(request.url);
+    const p = url.pathname;
+    const body = (request.method === 'POST') ? await request.json().catch(() => ({})) : {};
+    const reply = (o) => new Response(JSON.stringify(o), { headers: { 'Content-Type': 'application/json' } });
+
+    if (p === '/doc')       return reply(await this.doc());
+    if (p === '/meta')      return reply(await this.meta());
+    if (p === '/merge')     return reply(await this.merge(body.incoming || {}));
+    if (p === '/ops')       return reply(await this.ops(body.ops || []));
+    if (p === '/seed')      return reply(await this.seed(body.doc || {}));
+
+    if (p === '/sch/list')  return reply({ items: await this.schList() });
+    if (p === '/sch/add')   return reply({ item: await this.schAdd(body.item) });
+    if (p === '/sch/del')   return reply({ item: await this.schRemove(String(body.id || '')) });
+
+    if (p === '/rep/get')   return reply({ val: await this.repGet(String(body.key || '')) });
+    if (p === '/rep/put')   { await this.repPut(String(body.key || ''), body.val); return reply({ ok: true }); }
+
+    return new Response('not found', { status: 404 });
+  }
+
+  async webSocketMessage(ws, data) {
+    if (String(data) === 'ping') { try { ws.send('pong'); } catch (e) {} }
+  }
+  async webSocketClose(ws, code, reason, wasClean) { try { ws.close(code, reason); } catch (e) {} }
+  async webSocketError(ws) { /* 交给 close 处理 */ }
+}
+
+/** 拿到那个唯一的看板 DO */
+function boardStub(env) {
+  if (!env.BOARD) return null;
+  return env.BOARD.get(env.BOARD.idFromName(BOARD_ROOM));
+}
+
+/** 对 BoardStore 发一次内部调用 */
+async function board(env, path, payload) {
+  const stub = boardStub(env);
+  if (!stub) throw new Error('BOARD Durable Object 未绑定');
+  const init = payload === undefined
+    ? {}
+    : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+  const res = await stub.fetch('https://do' + path, init);
+  if (!res.ok) throw new Error('BoardStore ' + path + ' → HTTP ' + res.status);
+  return await res.json();
+}
+
+/**
+ * 看板数据第一次用之前，把 GitHub 上那份搬进 DO。
+ * seed 自己是幂等的（DO 里有 meta:seeded 挡着），所以这里可以放心多调。
+ */
+async function seedBoardFromGitHub(env) {
+  if (!env.GH_TOKEN || !env.GH_REPO) throw new Error('Worker 上还没配 GH_TOKEN / GH_REPO，没法导入');
+  const read = await ghReadRecords(env);
+  return await board(env, '/seed', { doc: read.data });
+}
+
+/* ==========================================================================
+ * 出库清洗 —— build.py 里 normalize() / canon_status() 那一套的 JS 版
+ *
+ * 以前这一步在构建时做（Python），所以页面拿到的一直是清洗过的形状：状态名
+ * 归一过、老记录的整段 memo 拆成了 memos 时间轴、时间戳统一成毫秒、脏链接
+ * 被挡掉、长文本按显示需要截断。数据搬进 DO 之后构建产物里没有数据了，
+ * 这一步就得挪到出库的时候来做 —— 否则页面会突然收到未清洗的原始记录，
+ * 那是行为变化，不是搬家。
+ *
+ * 刻意只在**读**的时候清洗：存储里始终留全文。截断是为了页面好看，
+ * 把它写回真相源等于永久丢字。
+ * ========================================================================== */
+
+const NEW_RECORD_STATUS = '已投递等联络';   // 新记录的初始状态，不等于顺位第一
+const STATUS_ALIAS = {
+  '对方来联络了': '対方来联络了',
+  '已安排面试': '已安排面试、面试准备中',
+  '等己方处理': '等己方处理(胖 ball)',
+  // XR → 胖 的改名（含之前手改出来的带空格写法）
+  '等己方处理(XR ball)': '等己方处理(胖 ball)',
+  '等己方 处理(XR ball)': '等己方处理(胖 ball)',
+};
+// 只允许指向招聘站本身的链接出门，避免脏数据把页面变成任意跳转
+const SAFE_URL = /^https:\/\/([a-z0-9-]+\.)*(linkedin\.com|jobstreet\.com(\.[a-z]{2})?|jora\.com)\//i;
+const SITES = ['linkedin', 'jobstreet', 'jora'];
+
+/**
+ * 按**码点**截断。
+ * build.py 那边是 Python 的 str[:n]，一个 emoji 算一格；JS 的 slice 按 UTF-16
+ * 码元算，🎉 这种星平面字符要占两格。MEMO 里就有 emoji，直接用 slice 会比
+ * 构建时代少截几个字 —— 对不上就说明这次搬家改了行为。
+ */
+function cut(t, limit) {
+  const cps = Array.from(t);
+  return cps.length <= limit ? t : cps.slice(0, limit).join('');
+}
+
+/** 去掉控制字符、限长 */
+function nstr(v, limit) {
+  if (v == null) return '';
+  let t = String(v).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  t = t.split('').filter((ch) => ch === '\n' || ch >= ' ').join('');
+  return cut(t.trim(), limit || 400);
+}
+
+function nurl(v) {
+  const t = nstr(v, 500);
+  return SAFE_URL.test(t) ? t : '';
+}
+
+// datetime.fromisoformat 只吃 ISO-8601，"−5"、"嗯？" 这种一律 ValueError → 0。
+// Date.parse 宽松得多（"-5" 都能给出一个日期），所以先用这个把门关上。
+const ISO_RE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
+/** 时间戳统一成毫秒整数。接受数字或 ISO 字符串 */
+function nms(v) {
+  if (typeof v === 'number' && v > 0) {
+    const n = Math.trunc(v);
+    return n < 10000000000 ? n * 1000 : n;          // 秒 → 毫秒
+  }
+  const t = nstr(v, 40);
+  if (!t || !ISO_RE.test(t)) return 0;
+  // 不带时区的当 UTC 算。build.py 那边走的是 .timestamp()，也就是构建机的本地
+  // 时区（Actions 上是 UTC）—— 实际数据里的 ISO 全都带 Z，这条分支碰不到。
+  const p = Date.parse(/(Z|[+-]\d{2}:?\d{2})$/.test(t) ? t : (t.replace(' ', 'T') + 'Z'));
+  return isFinite(p) && p > 0 ? p : 0;
+}
+
+function nclamp(v, lo, hi) {
+  const n = Number(v);
+  if (!isFinite(n)) return lo;                       // 脏数据不该让出库失败
+  return Math.max(lo, Math.min(hi, Math.trunc(n)));
+}
+
+// 逐字匹配之外再做一次「去标点 + 対/对 统一」的模糊匹配，老数据不会落到未知状态
+function looseStatus(s) {
+  return String(s || '').replace(/[，,、･·・ \t]/g, '').replace(/対/g, '对');
+}
+
+function canonStatus(value, activeNames, activeDefault) {
+  if (!value) return activeDefault;
+  if (activeNames.indexOf(value) !== -1) return value;
+  // 内置别名只在目标名字确实还在用时才生效（用户可能已经把它改名或删掉了）
+  const alias = STATUS_ALIAS[value];
+  if (alias && activeNames.indexOf(alias) !== -1) return alias;
+  const loose = new Map(activeNames.map((n) => [looseStatus(n), n]));
+  return loose.get(looseStatus(value)) || value;
+}
+
+function builtinDefs() {
+  const closed = ['面试落了', '书类落了', '对方招到人了', '无消息疑似书类落了'];
+  const rejected = ['面试落了', '书类落了'];
+  const advanced = ['已安排面试、面试准备中', '一次面试通过、等対方安排下一轮',
+    '二次面试通过、等对方安排下一轮', '三次面试通过、等对方安排下一轮',
+    '四次面试通过、等对方安排下一轮', '人事 Offer Call', '内定'];
+  const waiting = ['已投递等联络', '等己方处理(胖 ball)', '等己方处理(己 ball)',
+    '一次人事面谈结束、等对方联络'];
+  const roles = { '已投递等联络': 'default', '无消息疑似书类落了': 'nonews' };
+  return DEFAULT_STATUS_ORDER.map((n, i) => ({
+    id: 'b' + i, name: n,
+    closed: closed.indexOf(n) !== -1, rejected: rejected.indexOf(n) !== -1,
+    advanced: advanced.indexOf(n) !== -1, waiting: waiting.indexOf(n) !== -1,
+    role: roles[n] || '',
+  }));
+}
+
+/**
+ * 状态定义。脚本里状态可以改名 / 新增 / 删除，所以这里**不做名字白名单** ——
+ * 推上来的就是权威，否则用户自定义的状态会被整条丢掉。
+ */
+function normalizeDefs(rawDefs, order) {
+  const out = [];
+  const seen = new Set();
+
+  // 推上来的完整定义就是权威，连顺序都以它为准（statusOrder 只在没有定义时才看）
+  (Array.isArray(rawDefs) ? rawDefs : []).forEach((d, i) => {
+    if (!d || typeof d !== 'object') return;
+    const name = nstr(d.name, 40);
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    out.push({
+      id: nstr(d.id, 40) || ('s' + i),
+      name: name,
+      closed: !!d.closed, rejected: !!d.rejected,
+      advanced: !!d.advanced, waiting: !!d.waiting,
+      role: nstr(d.role, 20),
+    });
+  });
+  if (out.length) return out;
+
+  // 老版本只推了 statusOrder（纯名字数组）：按它排，属性从内置定义里认领
+  const byName = new Map(builtinDefs().map((d) => [d.name, d]));
+  const names = (Array.isArray(order) ? order : []).filter((x) => typeof x === 'string' && x);
+  if (!names.length) return builtinDefs();
+  names.forEach((n, i) => {
+    if (seen.has(n)) return;
+    seen.add(n);
+    out.push(byName.get(n) || {
+      id: 'o' + i, name: n, closed: false, rejected: false,
+      advanced: false, waiting: false, role: '',
+    });
+  });
+  return out;
+}
+
+/** 有 site 字段就信它，没有（早期记录）就看链接域名，最后一律当 LinkedIn */
+function siteOf(raw, jobUrl) {
+  const site = nstr(raw.site, 20).toLowerCase();
+  if (SITES.indexOf(site) !== -1) return site;
+  const u = String(jobUrl || '').toLowerCase();
+  if (u.includes('jobstreet.')) return 'jobstreet';
+  if (u.includes('jora.')) return 'jora';
+  return 'linkedin';
+}
+
+/**
+ * MEMO 的时间轴。新脚本推上来的是 memos 数组（一次一条，带时间）；
+ * 老记录只有一整段 memo，就当成一条，时间取最后改动时间。最多留 50 条。
+ */
+function memoBlocks(raw) {
+  const out = [];
+  for (const b of (Array.isArray(raw.memos) ? raw.memos : []).slice(0, 50)) {
+    if (!b || typeof b !== 'object') continue;
+    const text = nstr(b.text, 2000);
+    const ts = nms(b.ts);
+    if (text && ts) out.push({ ts: ts, text: text });
+  }
+  if (out.length) { out.sort((a, b) => b.ts - a.ts); return out; }
+  const memo = nstr(raw.memo, 2000);
+  if (!memo) return [];
+  const ts = nms(raw.updatedAt) || nms(raw.ts);
+  return ts ? [{ ts: ts, text: memo }] : [];
+}
+
+/** 清洗单条记录；返回 null 表示丢弃 */
+function normalizeRecord(raw, activeNames, activeDefault) {
+  if (!raw || typeof raw !== 'object') return null;
+  const ts = nms(raw.ts) || nms(raw.timestamp);
+  if (!ts) return null;
+
+  const hirers = [];
+  for (const h of (Array.isArray(raw.hirers) ? raw.hirers : []).slice(0, 6)) {
+    if (!h || typeof h !== 'object') continue;
+    const name = nstr(h.name, 80), link = nurl(h.url);
+    if (!name && !link) continue;
+    hirers.push({ name: name || '(未知)', url: link, role: nstr(h.role, 160) });
+  }
+
+  const jobUrl = nurl(raw.jobUrl);
+  return {
+    // id 页面用不上（build.py 也没输出），但 DO 里按它建 key，留着方便对账
+    ts: ts,
+    site: siteOf(raw, jobUrl),
+    // LinkedIn / Jobstreet 是纯数字，Jora 是 32 位十六进制，所以只能按
+    // 「字母数字」清洗，不能把非数字统统删掉（那会把 Jora 的 ID 毁掉）
+    jobId: nstr(raw.jobId, 48).replace(/[^0-9A-Za-z]/g, '').slice(0, 48),
+    updatedAt: nms(raw.updatedAt),
+    statusAt: nms(raw.statusAt),
+    company: nstr(raw.company, 120),
+    title: nstr(raw.title, 200),
+    jobUrl: jobUrl,
+    hirers: hirers,
+    employees: nstr(raw.employees, 20),
+    years: nstr(raw.years, 40),
+    jobMatch: nstr(raw.jobMatch, 40),
+    tenure: nstr(raw.tenure, 30),
+    status: canonStatus(nstr(raw.status, 40), activeNames, activeDefault),
+    priority: nclamp(raw.priority, 0, 3),
+    followUpAt: nms(raw.followUpAt),
+    followUpNote: nstr(raw.followUpNote, 300),
+    deadlineAt: nms(raw.deadlineAt),
+    deadlineDone: !!raw.deadlineDone,
+    memo: nstr(raw.memo, 1000),
+    memos: memoBlocks(raw),
+    scout: !!raw.scout,
+    sector: nstr(raw.sector, 120),
+    epMonthly: Math.max(0, Math.trunc(Number(raw.epMonthly) || 0)),
+    epAnnual: Math.max(0, Math.trunc(Number(raw.epAnnual) || 0)),
+  };
+}
+
+function normalizeMessage(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const text = nstr(raw.text, 4000);
+  if (!text) return null;
+  const created = nms(raw.createdAt) || nms(raw.ts);
+  if (!created) return null;
+  const edited = nms(raw.editedAt);
+  return {
+    id: nstr(raw.id, 40) || ('m' + created),
+    text: text,
+    createdAt: created,
+    editedAt: (edited && edited !== created) ? edited : 0,
+    author: nstr(raw.author, 40),
+  };
+}
+
+/** 把 DO 里那份原始文档整理成页面一直在用的形状（等价于 build.py 的 load()） */
+function normalizeDoc(doc) {
+  const defs = normalizeDefs(doc.statusDefs, doc.statusOrder);
+  const statuses = defs.map((d) => d.name);
+  const defaultName = (defs.find((d) => d.role === 'default') || defs[0] || {}).name || NEW_RECORD_STATUS;
+
+  const records = (doc.records || [])
+    .map((r) => normalizeRecord(r, statuses, defaultName))
+    .filter(Boolean);
+  // 重要度最优先（★ 多的排最上面，无视状态与时间），
+  // 其次状态顺位，同状态再按投递时间从新到旧
+  const rank = new Map(statuses.map((n, i) => [n, i]));
+  records.sort((a, b) =>
+    (b.priority - a.priority)
+    || ((rank.has(a.status) ? rank.get(a.status) : statuses.length)
+        - (rank.has(b.status) ? rank.get(b.status) : statuses.length))
+    || (b.ts - a.ts));
+
+  const messages = (doc.messages || []).map(normalizeMessage).filter(Boolean);
+  messages.sort((a, b) => b.createdAt - a.createdAt);
+
+  let updated = nstr(doc.updatedAt, 40);
+  if (!updated && records.length) {
+    updated = new Date(Math.max(...records.map((r) => r.ts))).toISOString();
+  }
+  return { records, messages, statusDefs: defs, statuses, updatedAt: updated };
+}
+
+/* ---- 收件箱：全部走 DO ----------------------------------------------------
+ * 以前每个函数都带一条 KV 兜底分支，那是 Durable Object 还没接上时的过渡。
+ * 现在 KV namespace 已经整个退役，兜底分支跟着删掉 —— 留着只会让人以为
+ * 还有第二条路可走。DO 没绑定就直接报错，比默默写进一个不存在的地方好。
+ * -------------------------------------------------------------------------- */
+
 async function inboxAppend(env, msg) {
   const stub = inboxStub(env);
-  if (!stub) return await kvInboxAppend(env, msg);
+  if (!stub) return;
   await stub.fetch('https://do/push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -666,11 +1132,7 @@ async function inboxAppend(env, msg) {
 
 async function inboxList(env, since) {
   const stub = inboxStub(env);
-  if (!stub) {
-    const all = await kvInboxList(env, 0);
-    const items = since ? all.filter((m) => (m.editedTs || m.ts) > since) : all;
-    return { items: items, total: all.length, gaps: msgIdGaps(all), live: false };
-  }
+  if (!stub) return { items: [], total: 0, gaps: [], live: false };
   const res = await stub.fetch('https://do/list?since=' + encodeURIComponent(since || 0));
   const data = await res.json().catch(() => ({ items: [] }));
   return { items: data.items || [], total: data.total || 0, gaps: data.gaps || [], live: true };
@@ -678,19 +1140,7 @@ async function inboxList(env, since) {
 
 async function inboxArchive(env, uids, on) {
   const stub = inboxStub(env);
-  if (!stub) {
-    // KV 兜底：整条重写一遍，只改 archivedAt
-    if (!env.SCHEDULE) return [];
-    const all = await kvInboxList(env, 0);
-    const hit = [];
-    for (const m of all) {
-      if (uids.indexOf(m.uid) === -1) continue;
-      m.archivedAt = on ? Date.now() : 0;
-      await env.SCHEDULE.put(inboxKey(m), JSON.stringify(m), { expirationTtl: 180 * 86400 });
-      hit.push(m.uid);
-    }
-    return hit;
-  }
+  if (!stub) return [];
   const res = await stub.fetch('https://do/archive', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uids: uids, on: !!on })
@@ -701,7 +1151,7 @@ async function inboxArchive(env, uids, on) {
 
 async function inboxDelete(env, uids) {
   const stub = inboxStub(env);
-  if (!stub) return await kvInboxDelete(env, uids);
+  if (!stub) return [];
   const res = await stub.fetch('https://do/delete', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uids: uids })
@@ -712,10 +1162,7 @@ async function inboxDelete(env, uids) {
 
 async function inboxClear(env) {
   const stub = inboxStub(env);
-  if (!stub) {
-    const all = await kvInboxList(env, 0);
-    return (await kvInboxDelete(env, all.map((m) => m.uid))).length;   // 统一返回条数
-  }
+  if (!stub) return 0;
   const res = await stub.fetch('https://do/clear', { method: 'POST' });
   const d = await res.json().catch(() => ({ removed: 0 }));
   return d.removed || 0;
@@ -723,7 +1170,7 @@ async function inboxClear(env) {
 
 async function inboxFileAllowed(env, fileId) {
   const stub = inboxStub(env);
-  if (!stub) return await kvFileAllowed(env, fileId);
+  if (!stub) return false;
   const res = await stub.fetch('https://do/fileok?id=' + encodeURIComponent(fileId));
   const d = await res.json().catch(() => ({ ok: false }));
   return !!d.ok;
@@ -805,6 +1252,40 @@ async function ghWriteRecords(env, data, sha, message) {
       sha: sha,
     }),
   });
+}
+
+/**
+ * 把 DO 里那份镜像回 GitHub 当备份。
+ *
+ * DO 才是真相源，所以这里是**整份覆盖**，不合并 —— 也就不需要原来那个
+ * 「读 → 合并 → PUT 撞 409 → 重来」的三次循环，只在 sha 过期时重取一次。
+ * 调用方都用 ctx.waitUntil 把它扔到后台：备份失败不该让写入本身失败。
+ */
+async function mirrorToGitHub(env, message) {
+  if (!env.GH_TOKEN || !env.GH_REPO) return { ok: false, why: 'GH_TOKEN / GH_REPO 未配置' };
+  let doc;
+  try { doc = await board(env, '/doc'); }
+  catch (e) { return { ok: false, why: String(e.message || e) }; }
+
+  const payload = {
+    updatedAt: doc.updatedAt,
+    records: doc.records || [],
+    messages: doc.messages || [],
+    statusDefs: doc.statusDefs || [],
+    statusOrder: doc.statusOrder || [],
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let sha;
+    try { sha = (await ghReadRecords(env)).sha; }
+    catch (e) { return { ok: false, why: String(e.message || e) }; }
+    const put = await ghWriteRecords(env, payload, sha, message);
+    if (put.ok) return { ok: true };
+    if (put.status !== 409) {
+      const detail = await put.text().catch(() => '');
+      return { ok: false, why: 'HTTP ' + put.status + ' ' + detail.slice(0, 160) };
+    }
+  }
+  return { ok: false, why: '409 冲突没能解决' };
 }
 
 /* ---- 脱敏 ----------------------------------------------------------------
@@ -1031,102 +1512,20 @@ function mergeIntoRepo(env, repo, incoming) {
   return stat;
 }
 
-/* ---- 预约队列：整张队列存在一个 key 里 ------------------------------------
- * 以前是「一条一个 key」，每次要 list 一遍再逐条 get。KV 免费额度里
- * list 只有 1,000 次/天，而 Cron 每 5 分钟扫一次 = 288 次/天（28.8%），
- * 队列空着也照扫；队列里有 N 条时还要额外 288×N 次 read。
- *
- * 改成单 key 之后，每种操作的 KV 开销是固定的、和队列长度无关：
- *   Cron 空转      1 read，0 list，0 write
- *   Cron 有到点的  1 read + 1 write
- *   入队/取消/立发 1 read + 1 write
- *   看板拉列表     1 read
- *
- * 两个代价，都在可接受范围：
- *   - 同一个 key 的写入上限是 1 次/秒。预约是人手点出来的低频操作，够用。
- *   - 过期得自己剪：expirationTtl 是按 key 的，现在只剩一个 key，所以
- *     用 QUEUE_KEEP_MS 在每次读的时候把陈年条目筛掉。
+/* ---- 预约队列 ------------------------------------------------------------
+ * 队列本体在 BoardStore 里（storage 前缀 sch:），到点靠 DO 的 alarm() 触发，
+ * 精度到秒。以前是 KV + 每 5 分钟一次 Cron 扫描：那条路每天要烧掉 288 次 list
+ * （免费额度的 28.8%），而且最快也只能 5 分钟粒度。
  * -------------------------------------------------------------------------- */
-const QUEUE_KEY = 'sch:index';         // 整张队列
-const LEGACY_PREFIX = 'sch:';          // 旧的一条一个 key，首次读到时收拢过来
-const QUEUE_KEEP_MS = 7 * 86400000;    // 到点后一直发不出去的，留 7 天就丢
 
-/**
- * 读出整张队列，顺手做一次性迁移和过期剪枝，按时间排好序。
- * dirty = true 表示内存里这份和 KV 里那份已经不一样了，调用方该写回去。
- */
-async function readQueue(env) {
-  if (!env.SCHEDULE) return { items: [], dirty: false };
-
-  const raw = await env.SCHEDULE.get(QUEUE_KEY);
-  let items = null;
-  if (raw) {
-    try { items = JSON.parse(raw); } catch (e) { items = null; }
-    if (!Array.isArray(items)) items = null;   // 坏数据当没有，走下面的迁移路径重建
-  }
-
-  let dirty = false;
-  let legacy = [];
-  if (!items) {
-    const got = await migrateLegacyQueue(env);  // 整个生命周期里只会发生一次
-    items = got.items;
-    legacy = got.keys;
-    dirty = true;
-  }
-
-  const cutoff = Date.now() - QUEUE_KEEP_MS;
-  const seen = new Set();
-  const alive = [];
-  for (const it of items) {
-    // id 去重：万一迁移被并发跑了两遍，也不会把同一条发两次
-    if (!it || !it.id || seen.has(it.id)) continue;
-    if (!(Number(it.at) > cutoff)) continue;
-    seen.add(it.id);
-    alive.push(it);
-  }
-  if (alive.length !== items.length) dirty = true;
-  alive.sort((a, b) => a.at - b.at);
-  return { items: alive, dirty: dirty, legacy: legacy };
+async function listQueue(env) {
+  try { return (await board(env, '/sch/list')).items || []; }
+  catch (e) { return []; }
 }
 
-/**
- * 写回队列。第三个参数是 readQueue 的返回值：如果这一次是从旧格式迁移来的，
- * 等索引确实落地之后再把旧 key 删掉 —— 顺序反过来的话，中途失败就会把
- * 还没发出去的预约弄丢。
- */
-async function writeQueue(env, items, q) {
-  if (!env.SCHEDULE) return;
-  await env.SCHEDULE.put(QUEUE_KEY, JSON.stringify(items));
-  if (q && q.legacy && q.legacy.length) {
-    for (const name of q.legacy) await env.SCHEDULE.delete(name);
-    q.legacy = [];
-  }
-}
-
-/** 一次性：把旧的 sch:<ts>:<id> 收进索引，同时记下它们的 key 等着被清掉 */
-async function migrateLegacyQueue(env) {
-  const items = [];
-  const keys = [];
-  let cursor;
-  do {
-    const page = await env.SCHEDULE.list({ prefix: LEGACY_PREFIX, limit: 1000, cursor: cursor });
-    for (const k of page.keys) {
-      if (k.name === QUEUE_KEY) continue;
-      keys.push(k.name);
-      const raw = await env.SCHEDULE.get(k.name);
-      if (!raw) continue;
-      try {
-        const item = JSON.parse(raw);
-        if (item && item.id) items.push(item);
-      } catch (e) { /* 坏数据直接跳过 */ }
-    }
-    cursor = page.list_complete ? null : page.cursor;
-  } while (cursor);
-  return { items: items, keys: keys };
-}
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const allowed = String(env.ALLOWED_ORIGINS || '*')
       .split(',').map(s => s.trim()).filter(Boolean);
     const origin = request.headers.get('Origin') || 'null';
@@ -1199,6 +1598,24 @@ export default {
       const stub = inboxStub(env);
       if (!stub) return json({ ok: false, description: 'Durable Object 未绑定，请用轮询' }, 501, headers);
       return await stub.fetch(request);      // 原样转发，Upgrade 头必须留着
+    }
+
+    /* ---- 看板的 WebSocket ----
+     * 数据一变就推一个 rev 过去，页面自己再拉一次。这条路取代了原来
+     * 「等 GitHub Actions 部署完 index.html」的几十秒空窗。
+     *
+     * 这里不查 WRITE_KEY：WebSocket 握手带不上自定义头，而推过去的只有一个
+     * 递增的 rev 数字，本身不含任何数据 —— 真要取内容还是得走 records_read。*/
+    if (url.pathname === BOARD_WS_PATH) {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return json({ ok: false, description: 'expected websocket upgrade' }, 426, headers);
+      }
+      if (!(allowed.includes('*') || allowed.includes(origin))) {
+        return json({ ok: false, description: 'origin not allowed: ' + origin }, 403, headers);
+      }
+      const stub = boardStub(env);
+      if (!stub) return json({ ok: false, description: 'BoardStore 未绑定，请用轮询' }, 501, headers);
+      return await stub.fetch(request);
     }
 
     if (request.method === 'OPTIONS') {
@@ -1317,10 +1734,46 @@ export default {
       return json({ ok: true, scanned: (all.items || []).length, changed: changed }, 200, headers);
     }
 
-    /* ---- 看板代写 records.json ----
-     * 让任何一台电脑（不装油猴脚本也行）都能把 MEMO / 跟进提醒 / 处理期限
-     * 写回仓库。读-改-写 + sha 乐观锁，409 就重来 —— 比油猴脚本那条
-     * 「整文件盲覆盖」的路安全，多台机器同时写也不会互相抹掉。 */
+    /* ---- 看板运行时拉数据 ----
+     * 以前这份是 build.py 烤进 index.html 的，等于挂在公开的 GitHub Pages 上。
+     * 现在构建产物只剩空壳，数据要带 WRITE_KEY 来这里取。 */
+    if (action === 'records_read') {
+      if (!env.WRITE_KEY) {
+        return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
+        return json({ ok: false, description: '写入密钥不对' }, 403, headers);
+      }
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
+
+      let doc = await board(env, '/doc');
+      // 第一次跑：DO 还是空的，把 GitHub 上那份搬进来
+      if (!doc.records.length && !doc.messages.length) {
+        try { await seedBoardFromGitHub(env); doc = await board(env, '/doc'); }
+        catch (e) { return json({ ok: false, description: '导入失败：' + String(e.message || e) }, 502, headers); }
+      }
+      const rev = Number(body.rev || 0);
+      // 页面手里已经是最新的就只回一个 rev，省掉几十 KB 的往返
+      if (rev && rev === doc.rev) return json({ ok: true, rev: doc.rev, unchanged: true }, 200, headers);
+
+      // 清洗放在出库这一步 —— 页面拿到的形状和 build.py 时代逐字段一致
+      const view = normalizeDoc(doc);
+      return json({
+        ok: true,
+        rev: doc.rev,
+        updatedAt: view.updatedAt,
+        count: view.records.length,
+        records: view.records,
+        messages: view.messages,
+        statusDefs: view.statusDefs,
+        statuses: view.statuses,
+        wsPath: BOARD_WS_PATH,
+      }, 200, headers);
+    }
+
+    /* ---- 看板上的零散改动（MEMO / 跟进提醒 / 处理期限）----
+     * 落到 DO 里，串行执行、强一致；GitHub 那份改成事后异步镜像，
+     * 所以这里不再有「读 → 改 → PUT 撞 409 → 重来」那个循环。 */
     if (action === 'records_write') {
       if (!env.WRITE_KEY) {
         return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
@@ -1328,9 +1781,8 @@ export default {
       if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
         return json({ ok: false, description: '写入密钥不对' }, 403, headers);
       }
-      if (!env.GH_TOKEN || !env.GH_REPO) {
-        return json({ ok: false, description: 'Worker 上还没配 GH_TOKEN / GH_REPO' }, 501, headers);
-      }
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
+
       let ops = [];
       try { ops = JSON.parse(body.ops || '[]'); } catch (e) { ops = []; }
       if (!Array.isArray(ops) || !ops.length) {
@@ -1338,32 +1790,14 @@ export default {
       }
       ops = ops.slice(0, 100);
 
-      let last = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        let read;
-        try { read = await ghReadRecords(env); }
-        catch (e) { return json({ ok: false, description: String(e.message || e) }, 502, headers); }
-
-        const res = applyBoardOps(env, read.data, ops);
-        if (!res.applied.length) {
-          // 一条都没改动（都被跳过）→ 不必提交
-          return json({ ok: true, applied: [], skipped: res.skipped, committed: false }, 200, headers);
-        }
-        read.data.updatedAt = new Date().toISOString();
-        const put = await ghWriteRecords(env, read.data, read.sha,
-          'chore(board): ' + res.applied.length + ' 项来自看板的改动');
-        if (put.ok) {
-          return json({ ok: true, applied: res.applied, skipped: res.skipped, committed: true },
-                      200, headers);
-        }
-        last = put;
-        // 409 = 手里的 sha 不是最新的（别处刚写过）。重新读一遍再套用。
-        if (put.status !== 409) break;
+      const res = await board(env, '/ops', { ops: ops });
+      if (res.applied.length) {
+        // 备份是后台的事，别让用户等 GitHub
+        ctx.waitUntil(mirrorToGitHub(env,
+          'chore(board): ' + res.applied.length + ' 项来自看板的改动'));
       }
-      const detail = last ? await last.text().catch(() => '') : '';
-      return json({ ok: false,
-        description: '写入仓库失败：HTTP ' + (last ? last.status : '?') + ' ' + detail.slice(0, 200)
-      }, 502, headers);
+      return json({ ok: true, applied: res.applied, skipped: res.skipped,
+                    rev: res.rev, committed: !!res.applied.length }, 200, headers);
     }
 
     /* ---- 油猴脚本的整份同步：合并进仓库，而不是覆盖 ---- */
@@ -1374,9 +1808,7 @@ export default {
       if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
         return json({ ok: false, description: '写入密钥不对' }, 403, headers);
       }
-      if (!env.GH_TOKEN || !env.GH_REPO) {
-        return json({ ok: false, description: 'Worker 上还没配 GH_TOKEN / GH_REPO' }, 501, headers);
-      }
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
       const pick = (k) => { try { return JSON.parse(body[k] || 'null'); } catch (e) { return null; } };
       const incoming = {
         records: pick('records') || [],
@@ -1394,33 +1826,23 @@ export default {
         return json({ ok: false, description: '这台机器一条记录都没有，拒绝同步（避免误操作）' }, 400, headers);
       }
 
-      let last = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        let read;
-        try { read = await ghReadRecords(env); }
-        catch (e) { return json({ ok: false, description: String(e.message || e) }, 502, headers); }
-
-        const before = JSON.stringify(read.data);
-        const stat = mergeIntoRepo(env, read.data, incoming);
-        read.data.updatedAt = new Date().toISOString();
-
-        // 除了 updatedAt 什么都没变 → 别提交一个空 commit
-        const probe = Object.assign({}, read.data, { updatedAt: JSON.parse(before).updatedAt });
-        if (JSON.stringify(probe) === before) {
-          return json({ ok: true, stat: stat, committed: false }, 200, headers);
-        }
-
-        const put = await ghWriteRecords(env, read.data, read.sha,
-          'chore(records): ' + (read.data.records || []).length + ' 条投递记录 / '
-          + (read.data.messages || []).length + ' 条留言（合并）');
-        if (put.ok) return json({ ok: true, stat: stat, committed: true }, 200, headers);
-        last = put;
-        if (put.status !== 409) break;      // 409 = 别处刚写过，重读重并
+      // 首次跑：DO 还空着的话，先把 GitHub 上那份搬进来当底，
+      // 否则这台机器推上来的就成了唯一一份，仓库里的历史会被当成「没有」。
+      const cur = await board(env, '/doc');
+      if (!cur.records.length && !cur.messages.length) {
+        try { await seedBoardFromGitHub(env); }
+        catch (e) { return json({ ok: false, description: '导入失败：' + String(e.message || e) }, 502, headers); }
       }
-      const detail = last ? await last.text().catch(() => '') : '';
-      return json({ ok: false,
-        description: '写入仓库失败：HTTP ' + (last ? last.status : '?') + ' ' + detail.slice(0, 200)
-      }, 502, headers);
+
+      // 合并在 DO 内部串行完成，多台机器同时推也不会互相抹掉
+      const res = await board(env, '/merge', { incoming: incoming });
+      const touched = Object.values(res.stat || {}).some((n) => n > 0);
+      if (touched) {
+        ctx.waitUntil(mirrorToGitHub(env,
+          'chore(records): ' + res.counts.records + ' 条投递记录 / '
+          + res.counts.messages + ' 条留言（合并）'));
+      }
+      return json({ ok: true, stat: res.stat, rev: res.rev, committed: touched }, 200, headers);
     }
 
     /* ---- 外部来源直接推一条进收件箱（Mac 上的 iMessage 桥用）----
@@ -1517,32 +1939,27 @@ export default {
 
     // ---- 查询待发队列 ----
     if (action === 'list') {
-      if (!env.SCHEDULE) return json({ ok: false, description: 'KV 未绑定，定时功能不可用' }, 501, headers);
-      const q = await readQueue(env);
-      // 只有首次迁移和剪掉陈年条目这两种情况会写回，平时就是一次纯读
-      if (q.dirty) await writeQueue(env, q.items, q);
-      return json({ ok: true, items: q.items.map(i => ({ id: i.id, at: i.at, text: i.text, meta: i.meta || {} })) }, 200, headers);
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定，定时功能不可用' }, 501, headers);
+      const items = await listQueue(env);
+      return json({ ok: true, items: items.map(i => ({ id: i.id, at: i.at, text: i.text, meta: i.meta || {} })) }, 200, headers);
     }
 
     // ---- 取消 / 立刻发送 ----
     if (action === 'cancel' || action === 'sendnow') {
-      if (!env.SCHEDULE) return json({ ok: false, description: 'KV 未绑定，定时功能不可用' }, 501, headers);
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定，定时功能不可用' }, 501, headers);
       const id = String(body.id || '');
       if (!id) return json({ ok: false, description: 'missing id' }, 400, headers);
 
-      // 单 key 之后不用再靠客户端传 at 来绕开 list 的 60 秒延迟：
-      // 刚写过这个 key 的浏览器下一次读打的是同一个 colo，拿到的就是新值。
-      const q = await readQueue(env);
-      const idx = q.items.findIndex((i) => i.id === id);
-      if (idx === -1) return json({ ok: false, description: 'not found' }, 404, headers);
-      const item = q.items[idx];
-
       if (action === 'sendnow') {
-        const data = await tgSend(env, item.text);
+        // 先看一眼正文，发出去了才真的出队 —— 发送失败时预约得留着
+        const items = await listQueue(env);
+        const hit = items.find((i) => i.id === id);
+        if (!hit) return json({ ok: false, description: 'not found' }, 404, headers);
+        const data = await tgSend(env, hit.text);
         if (!data.ok) return json(data, 502, headers);
       }
-      q.items.splice(idx, 1);
-      await writeQueue(env, q.items, q);
+      const gone = (await board(env, '/sch/del', { id: id })).item;
+      if (!gone && action === 'cancel') return json({ ok: false, description: 'not found' }, 404, headers);
       return json({ ok: true }, 200, headers);
     }
 
@@ -1557,23 +1974,21 @@ export default {
 
     // ---- 定时入队 ----
     if (action === 'schedule') {
-      if (!env.SCHEDULE) return json({ ok: false, description: 'KV 未绑定，定时功能不可用' }, 501, headers);
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定，定时功能不可用' }, 501, headers);
       const at = Number(body.at);
       if (!at || !isFinite(at)) return json({ ok: false, description: 'missing at' }, 400, headers);
       if (at > Date.now() + MAX_AHEAD_MS) {
         return json({ ok: false, description: '排得太远了（最多 180 天）' }, 400, headers);
       }
-      const q = await readQueue(env);
-      if (q.items.length >= MAX_QUEUE) {
+      if ((await listQueue(env)).length >= MAX_QUEUE) {
         return json({ ok: false, description: '队列已满（上限 ' + MAX_QUEUE + ' 条）' }, 429, headers);
       }
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       let meta = {};
       try { meta = body.meta ? JSON.parse(body.meta) : {}; } catch (e) { meta = {}; }
       const item = { id: id, at: at, text: text, createdAt: Date.now(), meta: meta };
-      q.items.push(item);
-      q.items.sort((a, b) => a.at - b.at);   // Cron 只看头一条，所以顺序要维持住
-      await writeQueue(env, q.items, q);
+      // DO 那边落库之后顺手把 alarm 对到最早的一条，不再依赖 Cron 扫描
+      await board(env, '/sch/add', { item: item });
       return json({ ok: true, id: id, at: at }, 200, headers);
     }
 
@@ -1582,56 +1997,37 @@ export default {
     return json(data, data.ok ? 200 : 502, headers);
   },
 
-  /** Cron 触发：把到点的消息发出去，顺带看看该不该发当日速报 */
+  /**
+   * Cron 现在只剩当日速报这一件事。
+   *
+   * 预约发送已经交给 BoardStore 的 alarm()（精确到秒），所以 Cron 不必再每
+   * 5 分钟扫一遍队列 —— 触发频率也跟着从「全天 288 次」收窄成「JST 傍晚
+   * 那几个小时里 12 次」，见 wrangler.toml 的 crons。
+   */
   async scheduled(event, env, ctx) {
-    if (!env.SCHEDULE || !env.TG_TOKEN) return;
+    if (!env.BOARD || !env.TG_TOKEN) return;
     const now = Date.now();
 
-    // ---- 当日速报（JST 21:30 之后的第一次 cron）----
     const jstNow = new Date(now + 9 * 3600000);
     const mins = jstNow.getUTCHours() * 60 + jstNow.getUTCMinutes();
-    if (mins >= REPORT_HOUR * 60 + REPORT_MIN && !(await reportSent(env, now))
-        && !(await env.SCHEDULE.get(reportEmptyKey(now)))) {
-      const data = await fetchRecords(env);
-      const start = await reportWindowStart(env, now);
-      const text = data ? buildReport(data, now, env.BOARD_URL || '', start) : null;
-      if (text) {
-        const r = await tgSend(env, text);
-        if (r.ok) {
-          await markReportSent(env, now, 'auto');
-          await saveReportCursor(env, now);
-        }
-      } else if (data) {
-        // 这一批没有任何符合条件的状态变化 → 当天不自动发。
-        // 只打一个「空」标记做节流，不占用「已发过」——
-        // 之后手动点「当日速报」照样能发。
-        await env.SCHEDULE.put(reportEmptyKey(now),
-          JSON.stringify({ at: now }), { expirationTtl: 3 * 86400 });
-      }
-    }
+    if (mins < REPORT_HOUR * 60 + REPORT_MIN) return;
+    if (await reportSent(env, now)) return;
+    if ((await board(env, '/rep/get', { key: reportEmptyKey(now) })).val) return;
 
-    /* ---- 待发队列 ----
-     * 绝大多数轮次是没事干的，所以这一段的常态开销必须是「一次读」：
-     * 队列已经按时间排好序，头一条都没到点就整批没到点，直接收工。
-     * 一天 288 轮 = 288 次 read（免费额度的 0.3%），0 次 list、0 次 write。 */
-    const q = await readQueue(env);
-    if (!q.items.length || (q.items[0].at > now && !q.dirty)) {
-      if (q.dirty) await writeQueue(env, q.items, q);
-      return;
-    }
-
-    const keep = [];
-    let changed = q.dirty;
-    for (const item of q.items) {
-      if (item.at > now) { keep.push(item); continue; }
-      const data = await tgSend(env, item.text);
-      // 发送失败就留着，下一轮再试；Telegram 明确拒绝（4xx）的才丢弃
-      if (data.ok || (data.error_code && data.error_code >= 400 && data.error_code < 500)) {
-        changed = true;
-      } else {
-        keep.push(item);
+    const data = await fetchRecords(env);
+    const start = await reportWindowStart(env, now);
+    const text = data ? buildReport(data, now, env.BOARD_URL || '', start) : null;
+    if (text) {
+      const r = await tgSend(env, text);
+      if (r.ok) {
+        await markReportSent(env, now, 'auto');
+        await saveReportCursor(env, now);
       }
+    } else if (data) {
+      // 这一批没有任何符合条件的状态变化 → 当天不自动发。
+      // 只打一个「空」标记做节流，不占用「已发过」——
+      // 之后手动点「当日速报」照样能发。
+      await board(env, '/rep/put', { key: reportEmptyKey(now), val: { at: now } });
     }
-    if (changed) await writeQueue(env, keep, q);
   }
 };

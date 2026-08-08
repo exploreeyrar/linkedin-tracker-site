@@ -15,10 +15,9 @@ TG_CHAT = "-1003974378230"
 #       ここに無くても通る。fetch にフォールバックした時のための保険）
 ALLOWED_ORIGINS = "https://exploreeyrar.github.io,https://www.linkedin.com,https://sg.jobstreet.com,null"
 
-# 当日速报（JST 21:30 自动发一次）要用到的两个地址：
-#   RECORDS_URL —— 油猴脚本推上去的那份数据，Worker 从这里读当天的变化
-#   BOARD_URL   —— 速报末尾附的看板链接
-RECORDS_URL = "https://raw.githubusercontent.com/exploreeyrar/linkedin-tracker-site/main/data/records.json"
+# 速报末尾附的看板链接。
+# （RECORDS_URL 已经不需要了：数据的真相源就是 BoardStore，Worker 直接问它，
+#   不必再绕一趟 GitHub raw，也不会读到 CDN 上的旧值。）
 BOARD_URL = "https://exploreeyrar.github.io/linkedin-tracker-site/"
 
 # TG_TOKEN は Secret として登録する（wrangler secret put TG_TOKEN）。ここには書かない。
@@ -32,13 +31,15 @@ BOARD_URL = "https://exploreeyrar.github.io/linkedin-tracker-site/"
 # Mac 上の iMessage ブリッジが action=inbox_push を叩くときの鍵。
 # 未設定なら inbox_push は 501 を返す（＝入口は既定で閉じている）。
 
-# ---- Worker 代写 records.json ----
-# 让任何一台电脑（不装油猴脚本也行）都能把看板上的改动写回仓库。
+# ---- GitHub 镜像备份 ----
+# 真相源是 BoardStore（下面的 BOARD 绑定），GitHub 上的 data/records.json 退居
+# 异步备份：每次写入之后 Worker 用 ctx.waitUntil 整份覆盖过去，git 历史照旧。
 #   GH_REPO / GH_BRANCH / GH_PATH  写在这里（不是机密）
 #   GH_TOKEN    Secret：fine-grained PAT，只勾这个仓库的 Contents = Read and write
-#   WRITE_KEY   Secret：页面调用时要带的密钥。用户在每台电脑的「⚙ 设置」里手输一次，
-#               存在那台机器的 localStorage 里 —— 绝不能写进构建产物（页面是公开的）。
-#               未设置时 action=records_write 返回 501（入口默认关闭）。
+#   WRITE_KEY   Secret：页面**读**数据和**写**数据都要带的密钥。用户在每台电脑的
+#               「⚙ 设置」里手输一次，存在那台机器的 localStorage 里 ——
+#               绝不能写进构建产物（GitHub Pages 是公开的）。
+#               未设置时 records_read / records_write 都返回 501（入口默认关闭）。
 #   REDACT_RULES Secret（可选）：JSON，形如 [["OKUMA","O"],["XR","胖"]]。
 #               规则本身含真名，所以只能当 Secret，不能进仓库。没配就不替换。
 GH_REPO = "exploreeyrar/linkedin-tracker-site"
@@ -53,21 +54,32 @@ GH_PATH = "data/records.json"
 name = "INBOX"
 class_name = "ChannelInbox"
 
+# ---- 看板数据本体 ----
+# 投递记录 / 留言 / 预约队列 / 速报标记，全都在这一个 DO 里。
+# 以前记录是 build.py 烤进 dist/index.html 的（＝挂在公开的 Pages 上），
+# 预约队列在 KV 里、靠 5 分钟一次的 Cron 扫描。搬进来之后：
+#   · 数据要带 WRITE_KEY 经 Worker 才拿得到，构建产物只剩空壳
+#   · 合并在单实例里串行执行，不再有 GitHub 那套 sha 乐观锁 + 409 重试
+#   · 预约靠 alarm() 精确到秒，Cron 只剩「当日速报」一件事
+#   · KV namespace 整个退役
+[[durable_objects.bindings]]
+name = "BOARD"
+class_name = "BoardStore"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChannelInbox"]
 
-# 予約送信のキュー。先に KV namespace を作って id を貼ること：
-#   npx wrangler kv namespace create SCHEDULE
-#
-# キューは `sch:index` という**単一キー**に JSON 配列で入っている（以前は 1 件 1 キー）。
-# 無料枠の list は 1,000 回/日しかなく、5 分ごとの Cron だけで 288 回（28.8%）を
-# 食い潰していたため。今は Cron が空振りする回＝KV read 1 回だけ、list は 0。
-# 旧形式のキーは初回アクセス時に自動で index へ取り込まれ、そのあと削除される。
-[[kv_namespaces]]
-binding = "SCHEDULE"
-id = "5618df7bf92b4f4886a45644efeefb29"
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["BoardStore"]
 
-# 5 分ごとにキューを見て、時間が来たものを送る
+# KV namespace（binding = SCHEDULE）已经删掉：队列和速报标记都进了 BoardStore。
+# 部署确认无误之后，可以把云端那个 namespace 也删了：
+#   npx wrangler kv namespace delete --namespace-id 5618df7bf92b4f4886a45644efeefb29
+
+# 只剩当日速报要定时（JST 21:30 之后发一次），所以 Cron 收窄到 JST 傍晚那几个
+# 小时：UTC 12:00–14:45 每 15 分钟 = 12 次/天（原来是全天 288 次）。
+# 预约发送不再依赖 Cron —— 那条路走 BoardStore 的 alarm()。
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/15 12-14 * * *"]

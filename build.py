@@ -404,14 +404,23 @@ def main():
     with open(TEMPLATE, encoding="utf-8") as f:
         html = f.read()
 
+    # 构建产物里只放「壳」：站点配置 + 构建时间。
+    #
+    # 投递记录 / 留言 / 状态定义都不再烤进来 —— GitHub Pages 是公开的，烤进来
+    # 等于把整份求职清单公开发布。数据现在住在 Worker 后面的 BoardStore 里，
+    # 页面带着这台设备的 WRITE_KEY 在运行时取（见 template.html 末尾的取数脚本）。
+    #
+    # 下面 load() 出来的那份仍然读，但只用于这里的构建摘要和校验：
+    # data/records.json 已经退居 Worker 异步写出的备份，不再是页面的数据源。
     payload = {
         "builtAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "updatedAt": updated,
-        "count": len(records),
-        "records": records,
-        "messages": messages,
-        "statuses": statuses,       # 只要名字，顺序即显示顺位（页面排序用）
-        "statusDefs": defs,         # 带 closed / advanced / waiting / role 的完整定义
+        "runtime": True,            # 页面据此知道数据要自己去取
+        "updatedAt": "",
+        "count": 0,
+        "records": [],
+        "messages": [],
+        "statuses": [],
+        "statusDefs": [],
         "config": cfg,
     }
     # 嵌进 <script type="application/json">，必须堵死提前闭合标签的可能
@@ -434,8 +443,9 @@ def main():
     for r in records:
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
     scouted = sum(1 for r in records if r["scout"])
-    print(f"✓ dist/index.html — {len(records)} 条记录"
-          f"（scout {scouted} 条）、留言 {len(messages)} 条，数据更新于 {updated or '未知'}")
+    print(f"✓ dist/index.html — 空壳（数据运行时经 Worker 取）")
+    print(f"    备份 data/records.json：{len(records)} 条记录"
+          f"（scout {scouted} 条）、留言 {len(messages)} 条，更新于 {updated or '未知'}")
     print(f"    Telegram 中继: {cfg['tgEndpoint'] or '未配置（config.json 的 tgEndpoint 为空）'}")
     for k in statuses:
         if by_status.get(k):

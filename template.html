@@ -1014,16 +1014,16 @@
 <!-- 未填写入密钥时的进入前提示。z-index 压过所有弹窗（含 .fumask 的 95） -->
 <div class="gate" id="gateMask" hidden>
   <div class="gatebox">
-    <h3>🔑 先填写 Worker 写入密钥</h3>
+    <h3>🔑 先填写 Worker 密钥</h3>
     <div class="desc">
-      这台设备还没配置写入密钥。填上之后，你在这个看板里写的 MEMO、跟进提醒、处理期限
-      才能写回仓库；不填的话改动只会堆在这台机器的本地队列里传不出去。
+      这台设备还没配置密钥。投递记录不在这个页面里 —— 它们在 Worker 后面，
+      要用密钥换。填上之后这一页才会有数据，你写的 MEMO、跟进提醒、处理期限也才能存回去。
     </div>
     <input type="password" id="gateKey" placeholder="Worker 上 wrangler secret put WRITE_KEY 设的那个值" spellcheck="false">
     <div class="status" id="gateState"></div>
     <div class="row">
-      <button class="primary" id="gateGo" type="button">验证并进入</button>
-      <button class="ghost sp" id="gateSkip" type="button">暂时只读浏览</button>
+      <button class="primary" id="gateGo" type="button">验证并载入</button>
+      <button class="ghost sp" id="gateSkip" type="button">先不填（空看板）</button>
     </div>
     <div class="tip">
       会先向 Worker 验证一次再存，填错不会静默留下一个坏配置。<br>
@@ -1034,12 +1034,14 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- 构建产物里只剩「壳」：站点配置和构建时间。投递记录、留言、状态定义都不在
+     这里了 —— 它们在 Worker 后面的 BoardStore 里，页面运行时带着 WRITE_KEY 去取。
+     GitHub Pages 是公开的，烤进来等于公开发布。 -->
 <script id="payload" type="application/json">__DATA__</script>
 <script>
-(function () {
+function bootBoard(PAYLOAD) {
   'use strict';
 
-  var PAYLOAD  = JSON.parse(document.getElementById('payload').textContent);
   var RECORDS  = PAYLOAD.records || [];
   var MESSAGES = PAYLOAD.messages || [];
   var CONFIG   = PAYLOAD.config || {};
@@ -1563,12 +1565,10 @@
       try { localStorage.setItem(WKEY, k); } catch (e) {}
       wstate.err = '';
       st.className = 'status ok';
-      st.textContent = '验证通过，已保存到这台设备。';
-      setTimeout(function () {
-        $('gateMask').hidden = true;
-        refreshPending();
-        flushViaWorker();          // 之前堆着的改动立刻补传
-      }, 700);
+      // 数据是在页面启动时取的，这会儿这一页还是空的 —— 必须重载一次才有内容。
+      // （以前数据烤在页面里，填完密钥只影响「能不能写」，所以不用重载。）
+      st.textContent = '验证通过，正在载入数据…';
+      setTimeout(function () { location.reload(); }, 500);
     }).catch(function (e) {
       st.className = 'status err';
       st.textContent = '验证失败：' + (e.message || e);
@@ -1582,7 +1582,7 @@
   $('gateSkip').addEventListener('click', function () {
     try { sessionStorage.setItem(GATE_SKIP, '1'); } catch (e) {}
     $('gateMask').hidden = true;
-    toastBg('已跳过：这台设备写的改动传不出去，直到填上密钥');
+    toastBg('已跳过：这一页是空的，填上密钥并刷新才会有数据');
   });
 
   function refreshPending() {
@@ -2412,10 +2412,12 @@
     var rows = RECORDS.filter(function (r) {
       if (fs && r.status !== fs) return false;
       if (groupFilter === 'todo' && !isTodo(r.status)) return false;
-      /* 默认藏起来的那几种状态。三种情况照常显示：
-         明确点了这个状态、按了底部那个灰按钮、**正在搜索** ——
-         搜东西的时候不该因为「默认收起来了」就搜不到。 */
-      if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status && !q) return false;
+      /* 默认藏起来的那几种状态。以下情况照常显示：
+         明确点了这个状态、按了底部那个灰按钮、正在搜索、或者开着 scout /
+         已设提醒这类筛选 —— 主动缩小范围的时候，不该因为「默认收起来了」
+         就把符合条件的项目也一起吞掉。 */
+      if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status
+          && !q && !scoutOnly && !followOnly) return false;
       if (scoutOnly && !r.scout) return false;
       // 「已设置提醒」＝设了跟进提醒。走 followUpOf，所以本机刚设、还没回传
       // 仓库的那些也算得上，不然刚设完一筛就不见了。
@@ -2483,8 +2485,8 @@
     var shownTxt = rows.length === RECORDS.length
       ? RECORDS.length + ' 条'
       : '显示 ' + rows.length + ' / ' + RECORDS.length + ' 条';
-    if (q) {
-      // 搜索是全量的，把命中里有多少条属于默认隐藏的状态标出来
+    if (q || scoutOnly || followOnly) {
+      // 这几种情况是全量筛的，把命中里有多少条属于默认隐藏的状态标出来
       var nh = rows.filter(function (r) { return isHiddenStatus(r.status); }).length;
       if (nh && !prefs.showHidden) shownTxt += '（含 ' + nh + ' 条隐藏状态）';
     }
@@ -4195,6 +4197,139 @@
     $('pickMask').hidden = true;
     $('detailMask').hidden = true;
     $('archMask').hidden = true;
+  });
+}
+</script>
+<script>
+/* ==========================================================================
+ * 运行时取数
+ *
+ * 以前 build.py 把整份 records.json 烤进 <script id="payload">，页面同步读一下
+ * 就开跑。数据搬进 Durable Object 之后这里改成：先拿壳里的 config 找到 Worker，
+ * 带上这台设备的 WRITE_KEY 换一份数据，拿到了再 bootBoard()。
+ *
+ * 没有密钥就只启动一个空看板 —— 页面里那道 🔑 门会自己弹出来要，填完刷新即可。
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  var SHELL = JSON.parse(document.getElementById('payload').textContent);
+  var CONFIG = SHELL.config || {};
+  var WKEY = 'sgjob_write_key';
+  var REV = 'sgjob_rev';
+
+  function key() { try { return localStorage.getItem(WKEY) || ''; } catch (e) { return ''; } }
+
+  function boot(extra) {
+    var p = SHELL;
+    if (extra) {
+      p = Object.assign({}, SHELL, extra);
+      // statuses 是页面排序的依据，缺了会让所有记录掉到「未知状态」那一档
+      if (!p.statuses || !p.statuses.length) {
+        p.statuses = (p.statusDefs || []).map(function (d) { return d && d.name; }).filter(Boolean);
+      }
+    }
+    try { bootBoard(p); }
+    catch (e) { fail('页面初始化失败：' + (e.message || e)); throw e; }
+  }
+
+  /* ---- 实时提醒 ----
+   * BoardStore 每次写入都广播一个递增的 rev。别处（另一台机器、油猴脚本的同步、
+   * Telegram 那条回流）改了东西，这一页立刻就知道。
+   *
+   * 刻意**不自动刷新**：用户可能正在写 MEMO，页面自己重载会把没提交的字吃掉。
+   * 后台标签页才直接重载 —— 那时候没人在打字。 */
+  function watch(wsPath, rev) {
+    if (!wsPath || !window.WebSocket) return;
+    var url = CONFIG.tgEndpoint.replace(/^http/, 'ws').replace(/\/+$/, '') + wsPath;
+    var ws = null, tries = 0, beat = null;
+
+    function connect() {
+      try { ws = new WebSocket(url); } catch (e) { return; }
+      ws.onopen = function () {
+        tries = 0;
+        clearInterval(beat);
+        beat = setInterval(function () { try { ws.send('ping'); } catch (e) {} }, 45000);
+      };
+      ws.onmessage = function (ev) {
+        if (ev.data === 'pong') return;
+        var d = null;
+        try { d = JSON.parse(ev.data); } catch (e) { return; }
+        if (!d || d.type !== 'rev' || !(d.rev > rev)) return;
+        rev = d.rev;
+        if (document.hidden) { location.reload(); return; }
+        banner();
+      };
+      ws.onclose = function () {
+        ws = null;
+        clearInterval(beat);
+        setTimeout(connect, Math.min(30000, 1000 * Math.pow(2, Math.min(tries++, 5))));
+      };
+      ws.onerror = function () { try { ws.close(); } catch (e) {} };
+    }
+    connect();
+  }
+
+  function banner() {
+    if (document.getElementById('revBar')) return;
+    var el = document.createElement('div');
+    el.id = 'revBar';
+    el.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:200;padding:9px 12px;'
+      + 'border-radius:8px;background:#1e3a8a;color:#fff;font:13px/1.4 system-ui,sans-serif;'
+      + 'box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer';
+    el.textContent = '🔄 别处有新改动 —— 点这里刷新';
+    el.addEventListener('click', function () { location.reload(); });
+    document.body.appendChild(el);
+  }
+
+  function fail(msg) {
+    var el = document.getElementById('bootErr');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'bootErr';
+      el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:200;padding:10px 14px;'
+        + 'background:#7f1d1d;color:#fff;font:13px/1.5 system-ui,sans-serif';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+  }
+
+  if (!CONFIG.tgEndpoint) {
+    // 没配中继就没有数据源可言，直接空跑（本地预览模板时会走到这里）
+    boot(null);
+    return;
+  }
+  if (!key()) {
+    boot(null);          // 空看板 + 那道 🔑 门
+    return;
+  }
+
+  var headers = { 'X-Write-Key': key() };
+  if (CONFIG.tgAppKey) headers['X-App-Key'] = CONFIG.tgAppKey;
+
+  fetch(CONFIG.tgEndpoint, {
+    method: 'POST',
+    headers: headers,
+    body: new URLSearchParams({ action: 'records_read' }),
+  }).then(function (res) {
+    return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; });
+  }).then(function (data) {
+    if (!data.ok) throw new Error(data.description || 'unknown error');
+    try { localStorage.setItem(REV, String(data.rev || 0)); } catch (e) {}
+    boot({
+      records: data.records || [],
+      messages: data.messages || [],
+      statuses: data.statuses || [],
+      statusDefs: data.statusDefs || [],
+      updatedAt: data.updatedAt || '',
+      rev: data.rev || 0,
+      wsPath: data.wsPath || '',
+    });
+    watch(data.wsPath || '', data.rev || 0);
+  }).catch(function (e) {
+    boot(null);
+    fail('取数据失败：' + (e.message || e) + '　—— 看板是空的，不是数据没了。'
+       + '密钥不对的话可以在「⚙ 设置」里重填。');
   });
 })();
 </script>
