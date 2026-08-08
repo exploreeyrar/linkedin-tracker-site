@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T04:13:23.286Z",
+ "updatedAt": "2026-08-08T04:37:51.835Z",
  "count": 97,
  "records": [
   {
@@ -368,17 +368,17 @@
    "hirers": [],
    "ts": 1785821808541,
    "tenure": "2.7 years",
-   "memo": "[2026-08-08 13:13] 这个工作投递的岗位链接在哪里呢\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
+   "memo": "[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
    "status": "等己方处理(胖 ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786162400404,
+   "updatedAt": 1786163871406,
    "deadlineAt": 1786892400000,
    "deadlineDone": false,
    "memos": [
     {
-     "ts": 1786162400404,
-     "text": "这个工作投递的岗位链接在哪里呢"
+     "ts": 1786163871406,
+     "text": "胖已解决。"
     },
     {
      "ts": 1786068102978,
@@ -1824,6 +1824,13 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjvunqma3yt",
+   "text": "📝 MEMO 新增\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\n胖已解决。",
+   "createdAt": 1786163871406,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjpp8waqjlj",
    "text": "📝 MEMO 删除\nUnity / Lead Sales Development Representative, APAC\ntest",
