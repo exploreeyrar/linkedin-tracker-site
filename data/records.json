@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T06:47:38.449Z",
+ "updatedAt": "2026-08-08T07:14:25.750Z",
  "count": 97,
  "records": [
   {
@@ -368,14 +368,18 @@
    "hirers": [],
    "ts": 1785821808541,
    "tenure": "2.7 years",
-   "memo": "[2026-08-08 14:37] test\n\n[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
-   "status": "等己方处理(胖 ball)",
+   "memo": "[2026-08-08 16:14] 暂定放弃投递因似乎该 role 招聘已结束。\n\n[2026-08-08 14:37] test\n\n[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
+   "status": "已投递等联络",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786167468648,
+   "updatedAt": 1786173265439,
    "deadlineAt": 1786892400000,
    "deadlineDone": false,
    "memos": [
+    {
+     "ts": 1786173265439,
+     "text": "暂定放弃投递因似乎该 role 招聘已结束。"
+    },
     {
      "ts": 1786167468648,
      "text": "test"
@@ -389,6 +393,7 @@
      "text": "Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*"
     }
    ],
+   "statusAt": 1786173084588,
    "epMonthly": 0,
    "epAnnual": 0
   },
