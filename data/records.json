@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T05:25:49.414Z",
+ "updatedAt": "2026-08-08T05:28:17.420Z",
  "count": 97,
  "records": [
   {
@@ -817,8 +817,8 @@
    "status": "已安排面试、面试准备中",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786166281391,
-   "priority": 3,
+   "updatedAt": 1786166886788,
+   "priority": 0,
    "deadlineAt": 1786546800000,
    "deadlineDone": false,
    "memos": [
@@ -1809,8 +1809,8 @@
    "memo": "[2026-08-06 15:30] 26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち\n\n8.13 再度状況確認予定。",
    "status": "一次人事面谈结束、等对方联络",
    "scout": true,
-   "priority": 3,
-   "updatedAt": 1786166745636,
+   "priority": 0,
+   "updatedAt": 1786166891551,
    "memos": [
     {
      "ts": 1785997806909,
@@ -1824,139 +1824,6 @@
   }
  ],
  "messages": [
-  {
-   "id": "pmsjxk9id8785",
-   "text": "📝 MEMO 修改\nUnity / Lead Sales Development Representative, APAC\n26.7.22 人事 linkedin msg scout 26.7.29 人事一面 26.8.2 msg CV 发出 →8.3 已经接收 先方連絡待ち 8.13 再度状況確認予定。",
-   "createdAt": 1786166745637,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjxabankxxf",
-   "text": "📝 MEMO 删除\nPostman / Account Development Representative\ntest",
-   "createdAt": 1786166281391,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjx9uebdhgy",
-   "text": "📝 MEMO 新增\nPostman / Account Development Representative\ntest",
-   "createdAt": 1786166259491,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjw4an0u61r",
-   "text": "📝 MEMO 删除\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\n这个工作投递的岗位链接在哪里呢",
-   "createdAt": 1786164320988,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjvunqma3yt",
-   "text": "📝 MEMO 新增\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\n胖已解决。",
-   "createdAt": 1786163871406,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjpp8waqjlj",
-   "text": "📝 MEMO 删除\nUnity / Lead Sales Development Representative, APAC\ntest",
-   "createdAt": 1786153541194,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjpp435nv4f",
-   "text": "📝 MEMO 删除\nUnity / Lead Sales Development Representative, APAC\nyyyy",
-   "createdAt": 1786153534961,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjpp3do1b05",
-   "text": "📝 MEMO 删除\nUnity / Lead Sales Development Representative, APAC\ntest",
-   "createdAt": 1786153534044,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjpp1bnoz61",
-   "text": "📝 MEMO 删除\nPostman / Account Development Representative\nxxxx",
-   "createdAt": 1786153531379,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjpond2n6oi",
-   "text": "📤 已发送到 Telegram\n\n#SGJOB MEMO 追加\nUnity / Lead Sales Development Representative, APAC\n当前状态：一次人事面谈结束、等对方联络\nhttps://www.linkedin.com/jobs/view/4435467765/\n\ntest\n\n看板：https://exploreeyrar.github.io/linkedin-tracker-site/index.html#memo-4435467765@1786153511658",
-   "createdAt": 1786153513286,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjpom3varyg",
-   "text": "📝 MEMO 新增\nUnity / Lead Sales Development Representative, APAC\ntest",
-   "createdAt": 1786153511659,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp9afxqrur",
-   "text": "📝 MEMO 新增\nUnity / Lead Sales Development Representative, APAC\nyyyy",
-   "createdAt": 1786152796701,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp8abd0ytq",
-   "text": "📝 MEMO 新增\nPostman / Account Development Representative\nxxxx",
-   "createdAt": 1786152749881,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp80aq36mb",
-   "text": "📝 MEMO 删除\nPostman / Account Development Representative\ntest",
-   "createdAt": 1786152736898,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp7znkqhih",
-   "text": "📝 MEMO 删除\nPostman / Account Development Representative\nt2",
-   "createdAt": 1786152736064,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp7mbxud50",
-   "text": "📝 MEMO 删除\nPostman / Account Development Representative\ntest",
-   "createdAt": 1786152718797,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp7kewu8ky",
-   "text": "📝 MEMO 删除\nPostman / Account Development Representative\nt2",
-   "createdAt": 1786152716312,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp7b8sutja",
-   "text": "📝 MEMO 新增\nPostman / Account Development Representative\nt2",
-   "createdAt": 1786152704428,
-   "editedAt": 0,
-   "author": "看板"
-  },
-  {
-   "id": "pmsjp4w6ttkmy",
-   "text": "📝 MEMO 新增\nPostman / Account Development Representative\ntest",
-   "createdAt": 1786152591605,
-   "editedAt": 0,
-   "author": "看板"
-  },
   {
    "id": "gmshnujln58s4",
    "text": "#SGJOB 状态更新请求\n处理人：胖 ball\n📍优先级：紧急\n\n公司：Google\n岗位：Account Manager, Large Customer Sales, SEAS\n投递时间：2026-08-03 21:40:32\n链接：https://www.linkedin.com/jobs/view/4430567950/\n当前状态：等己方处理(胖 ball)\n看板：https://exploreeyrar.github.io/linkedin-tracker-site/#job-4430567950\n\n🟢 备注：Google 申了 3 个 role 其中一个过书审了（其他 2 个落了）。8.9 之前需完成以下webテスト。\n\nHi W O,\n\nThanks again for applying for a role at Google. The next step of the hiring process will be to complete the Google Hiring Assessment, which should take about 30 minutes.\n\nYou may find your assessment link in your Candidate Portal or you may also copy and paste this link into your browser: https://www.google.com/about/careers/applications/dashboard\n\nPlease complete the Google Hiring Assessment by 6:05AM ET/3:05AM PT on August 9. We can only consider your application for a role at Google if your assessment is completed by the deadline. The results of this assessment will determine if you're eligible to move forward with the hiring process.\n\nThe Google Hiring Assessment questions, along with your responses, are for your eyes only. Do not forward or share them.\n\nInstructions\nPlease complete this ~30-minute Google Hiring Assessment which will evaluate your work styles that are important to success at Google.\nIf you need troubleshooting support with your assessment, please send an email to assessment-help@google.com and include your:\nFirst and Last Name\nQuestion or description of the issue and any relevant screenshots\n\nAccommodations\n\nWe understand there are many ways to process information. If you require an accommodation due to a medical condition, disability, or neurodivergence, please send an email to assessment-help@google.com to request a specific accommodation or determine what options may be available. Let us know your accommodation needs before engaging in or completing the assessment. Accommodations include, but are not limited to:\nExtra time to complete the assessment\nGuidance on screen reader resources:\nGoogle Accessibility - built in screen reader\nBrowser URL:\nhttps://support.google.com/accessibility/answer/7031755?hl=en#zippy=%2Cchoose-text-with-your-cursor\nMicrosoft - Narrator\nBrowser URL:\nhttps://support.microsoft.com/en-us/windows/complete-guide-to-narrator-e4397a0d-ef4f-b386-d8ae-c172f109bdb1\n\nThere is no need to provide us with the nature of or reason for your request for accommodations at this time. Any information you do provide us regarding your health is provided with your explicit consent to our using such information to assess your accommodation request. You can withdraw that consent at any time by sending a subsequent email to assessment-help@google.com. However, if you withdraw consent before we have made an assessment we may not be able to provide you with an accommodation.\n\nConfidentiality: The information you provide in an accommodation request will only be reviewed by our global disability partner, Korn Ferry, in order to assess and provide you with reasonable accommodations. Google does not require a diagnosis, treatment plan, or Government disability certificate.\n\nThanks!\nGoogle Recruiting\nFAQs:\n\nCan I have an extension to complete the assessment?\nTo keep our process consistent, we ask that everyone complete the Google Hiring Assessment by the deadline. If you have a scheduling conflict that absolutely can't be moved, let us know as soon as possible by emailing assessment-help@google.com and we're happy to talk through options.Note: while we expect the GHA to take about 30 minutes to complete, you can spend as much time on it as you’d like up until your deadline noted above.\n\nPlease note, if you hear from a recruiter before you've completed the Google Hiring Assessment, you'll still need to finish it by the deadline.\n\n\n[Measurement Lab tool URL: https://www.google.com/search?q=internet%20speed%20test]\nAdditional questions? Check the Google Hiring Assessment FAQs.",
