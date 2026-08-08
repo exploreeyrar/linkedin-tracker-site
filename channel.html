@@ -118,6 +118,8 @@
     line-height: 1.5; padding: 2px 9px; border-radius: 999px; color: var(--sub);
   }
   .msg .arch:hover { border-color: var(--accent); color: var(--accent); }
+  .msg .arch.del:hover { border-color: var(--err); color: var(--err); }
+  .msg .arch.del.armed { border-color: var(--err); color: var(--err); font-weight: 700; }
   .msg.archived { opacity: .72; }
   .msg .archat { font-size: 11px; color: var(--sub); }
 
@@ -431,6 +433,32 @@
       : '收进 archive（不会动 Telegram 里的原消息）';
     arch.addEventListener('click', function () { setArchived(m, !m.archivedAt); });
     hd.appendChild(arch);
+
+    /* 只有在 archive 列表里才给「彻底删除」。这一步不可逆（收件箱里就没了），
+       所以做成两段式：第一下变成「确认删除？」，4 秒内再点一下才真删 ——
+       比弹一个模态框轻，也不会手滑就没了。 */
+    if (m.archivedAt) {
+      var del = el('button', 'arch del', '🗑 彻底删除');
+      del.type = 'button';
+      del.title = '从收件箱里永久移除（Telegram 里的原消息不受影响，但这里再也找不回来）';
+      var armed = false, armTimer = null;
+      del.addEventListener('click', function () {
+        if (!armed) {
+          armed = true;
+          del.textContent = '⚠️ 再点一下确认';
+          del.classList.add('armed');
+          armTimer = setTimeout(function () {
+            armed = false;
+            del.textContent = '🗑 彻底删除';
+            del.classList.remove('armed');
+          }, 4000);
+          return;
+        }
+        clearTimeout(armTimer);
+        purgeMsg(m);
+      });
+      hd.appendChild(del);
+    }
     if (m.archivedAt) hd.appendChild(el('span', 'archat', '🗂 ' + fmtFull(m.archivedAt)));
     box.appendChild(hd);
 
@@ -686,6 +714,21 @@
     });
     if (gone) render();
     return gone;
+  }
+
+  /** 从收件箱里彻底删掉。不可逆，所以调用方要先做二次确认。 */
+  function purgeMsg(m) {
+    var keep = MSGS.slice();
+    forget([m.uid]);                       // 先动界面
+    call({ action: 'inbox_delete', uids: JSON.stringify([m.uid]) })
+      .then(function () { toast('已彻底删除'); })
+      .catch(function (e) {
+        MSGS = keep;                       // 服务端没认，界面退回去
+        BY_UID = {};
+        MSGS.forEach(function (x) { BY_UID[x.uid] = x; });
+        render();
+        toast('删除失败：' + (e.message || e));
+      });
   }
 
   /** archive / 取回。不弹确认框 —— 消息还在，随时能从右下角取回来。 */

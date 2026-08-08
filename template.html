@@ -1267,25 +1267,41 @@
   }
 
   var toastTimer = null;
+  var toastTick = null;
+  var TOAST_ACTION_SEC = 2;      // 带「撤销」这类动作的 toast 停留几秒
   /** msg 之外还能挂一个可点的动作（用于「已删除 · 撤销」这种，不必弹确认框） */
   function toast(msg, actionLabel, onAction) {
     var t = $('toast');
+    clearTimeout(toastTimer);
+    clearInterval(toastTick);
     t.textContent = msg;
     t.classList.remove('act');
+    var ms = 2600;
     if (actionLabel && onAction) {
-      var b = el('button', null, actionLabel);
+      ms = TOAST_ACTION_SEC * 1000;
+      var left = TOAST_ACTION_SEC;
+      var label = function () { return actionLabel + ' (' + left + ')'; };
+      var b = el('button', null, label());
       b.type = 'button';
       b.addEventListener('click', function () {
+        clearInterval(toastTick);
         t.classList.remove('show');
         onAction();
       });
       t.appendChild(b);
       t.classList.add('act');
+      // 按钮上走秒，让人看得见还剩多久可以撤销
+      toastTick = setInterval(function () {
+        left--;
+        if (left <= 0) { clearInterval(toastTick); return; }
+        b.textContent = label();
+      }, 1000);
     }
     t.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove('show'); },
-                            actionLabel ? 7000 : 2600);
+    toastTimer = setTimeout(function () {
+      t.classList.remove('show');
+      clearInterval(toastTick);
+    }, ms);
   }
 
   /* ---------- 本地偏好 ---------- */
@@ -1672,6 +1688,7 @@
     if (r.jobId) {
       outboxPush({ op: 'memo', jobId: String(r.jobId), site: r.site || 'linkedin', text: t, ts: at });
     }
+    logMemoChange(r, '新增', t);
     return true;
   }
 
@@ -1722,6 +1739,7 @@
       else LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
       saveLocal();
       patchQueuedMemo(r, blockTs, t);
+      logMemoChange(r, t ? '修改' : '删除', t || oldText);
       return;
     }
 
@@ -1738,6 +1756,7 @@
                    site: r.site || 'linkedin', blockTs: blockTs, oldText: oldText,
                    text: t, ts: Date.now() });
     }
+    logMemoChange(r, t ? '修改' : '删除', t || oldText);
   }
 
   /** 删掉某一条 MEMO。返回一个「撤销」函数 —— 不弹确认框，但要留退路 */
@@ -1748,6 +1767,7 @@
       LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
       saveLocal();
       patchQueuedMemo(r, blockTs, '');
+      logMemoChange(r, '删除', oldText);
       return function undo() { appendMemo(r, oldText, blockTs); };
     }
 
@@ -1760,6 +1780,7 @@
       outboxPush({ op: 'memoDelete', jobId: String(r.jobId), site: r.site || 'linkedin',
                    blockTs: blockTs, oldText: oldText, ts: Date.now() });
     }
+    logMemoChange(r, '删除', oldText);
     return function undo() {
       delete LOCAL.memoDels[k][blockTs];
       saveLocal();
@@ -1770,6 +1791,36 @@
       try { localStorage.setItem(OUTBOX, JSON.stringify(kept)); } catch (e) {}
       refreshPending();
     };
+  }
+
+  /**
+   * MEMO 有任何变动（新增 / 修改 / 删除）都往通知板记一条。
+   * 走的是和 logSent 同一条路：本机立刻可见 + 排队回传，所以别的设备也看得到。
+   */
+  function logMemoChange(r, action, text) {
+    var who = (r.company || '—') + ' / ' + (r.title || '—');
+    var body = String(text || '').replace(/\s+/g, ' ').trim();
+    if (body.length > 200) body = body.slice(0, 200) + '…';
+    logBoard('📝 MEMO ' + action + '\n' + who + (body ? ('\n' + body) : ''));
+  }
+
+  /** 往通知板追加一条本机消息（不发 Telegram） */
+  function logBoard(text) {
+    var t = String(text == null ? '' : text).trim();
+    if (!t) return;
+    var m = {
+      id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      text: t.slice(0, 3800), createdAt: Date.now(), editedAt: 0, author: '看板'
+    };
+    LOCAL.msgs.push(m);
+    // 自己刚做的事，不该算成「未读」再把通知板顶开
+    prefs.lastRead = Math.max(prefs.lastRead || 0, m.createdAt);
+    saveLocal();
+    savePrefs();
+    outboxPush({ op: 'message', id: m.id, text: m.text, ts: m.createdAt, author: m.author });
+    mergeMessages();
+    renderBoard();
+    refreshUnread();
   }
 
   /** 页面发出去的每一条 Telegram 消息都进通知板 */
@@ -2841,13 +2892,26 @@
   $('dtCopy').addEventListener('click', function () { if (detailTarget) copyAllMemos(detailTarget); });
 
   /** 把这条项目里「上次推送之后新增」的 MEMO 一次性发到 Telegram */
-  $('dtPushNew').addEventListener('click', function () {
+  /**
+   * 推送这条项目的 MEMO 到 Telegram。
+   *
+   * all=true 时忽略「已推送」记录、把全部 MEMO 重发一遍。
+   * 为什么需要这个：推成功之后 memoPushed 会前移，再点就「没有新的」什么也不做 ——
+   * 从用户角度看就是「勾了推送至 telegram 但没发出去」。所以现在不静默拒绝，
+   * 而是在 toast 上给一条「全部重新推送」。
+   */
+  function pushMemosToTg(all) {
     var r = detailTarget;
     if (!r) return;
-    var since = prefs.memoPushed[recKey(r)] || 0;
+    var since = all ? 0 : (prefs.memoPushed[recKey(r)] || 0);
     var fresh = memoBlocks(r).filter(function (b) { return b.ts > since; })
                              .sort(function (a, b) { return a.ts - b.ts; });
-    if (!fresh.length) { toast('没有新的 MEMO 需要推送'); return; }
+    if (!fresh.length) {
+      var total = memoBlocks(r).length;
+      if (!total) { toast('这条还没有 MEMO'); return; }
+      toast('这 ' + total + ' 条都推送过了', '全部重新推送', function () { pushMemosToTg(true); });
+      return;
+    }
     var lines = [
       TG_PREFIX + ' 新 MEMO',
       (r.company || '—') + ' / ' + (r.title || '—'),
@@ -2872,18 +2936,19 @@
       return;
     }
 
-    var btn = this;
+    var btn = $('dtPushNew');
     btn.disabled = true;
     /* tgSend 走 Worker，Worker 那边发成功后会把这条一并写进频道页的收件箱
        （见 worker.js 的 recordOwnMessage）—— 所以不用额外做什么就会出现在
        channel.html 上。注意那个修复要 wrangler deploy 之后才生效。 */
     tgSend(text).then(function () {
       markPushed();
-      toast('已推送 ' + fresh.length + ' 条新 MEMO（Telegram + 频道页）');
+      toast('已推送 ' + fresh.length + ' 条 MEMO（Telegram + 频道页）');
     }).catch(function (e) {
       toast('推送失败：' + (e.message || e));
     }).then(function () { btn.disabled = false; });
-  });
+  }
+  $('dtPushNew').addEventListener('click', function () { pushMemosToTg(false); });
 
   $('dtClose').addEventListener('click', function () { $('detailMask').hidden = true; });
   $('detailMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
@@ -3171,11 +3236,11 @@
     // 有处理期限就一并说明。倒计时的终点是设定日前一天的 21:00 JST
     var dl = deadlineOf(r);
     if (dl.at) {
-      var due = dl.at - DEADLINE_LEAD_MS;
-      var left = due - Date.now();
-      lines.push('⏳ 截止处理时间：' + fmtJst(due)
-        + (dl.done ? '（已标记为已处理）'
-                   : (left > 0 ? ('　剩 ' + fmtLeft(left)) : '　已超时')));
+      // 只报「还剩多久」，不报具体日期 —— 收到消息的人要的是紧迫感，不是日历
+      var left = (dl.at - DEADLINE_LEAD_MS) - Date.now();
+      lines.push('⏳ 截止处理时间：'
+        + (dl.done ? '已标记为已处理'
+                   : (left > 0 ? ('剩 ' + fmtLeft(left)) : '已超时')));
     }
     if ($('rmLink').checked && r.jobId) {
       lines.push('看板：' + location.origin + location.pathname + '#job-' + r.jobId);
