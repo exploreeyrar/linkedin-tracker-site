@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-08-08T11:06:35.619Z",
+ "updatedAt": "2026-08-08T12:10:27.604Z",
  "records": [
   {
    "id": "rmsbqx31qom94x",
@@ -1769,13 +1769,14 @@
    "ts": 1785987546977,
    "tenure": "4.4 years",
    "memo": "",
-   "status": "已投递等联络",
+   "status": "等己方处理(胖 ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 1785997725592,
+   "updatedAt": 1786191026400,
    "memos": [],
    "epMonthly": 0,
-   "epAnnual": 0
+   "epAnnual": 0,
+   "statusAt": 1786191026400
   },
   {
    "id": "rmsixcorxkocty",
