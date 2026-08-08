@@ -393,6 +393,24 @@
     border: 0; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;
   }
   .memoadd button:disabled { opacity: .5; cursor: default; }
+  .memoaddcol { display: flex; flex-direction: column; gap: 7px; align-items: stretch; }
+  .memoaddcol .dtchk { justify-content: center; }
+
+  /* 从 #memo-<jobId>@<ts> 链接点进来时高亮的那一张便签 */
+  .sticky.hl {
+    box-shadow: 0 2px 7px rgba(16,24,40,.16), 0 0 0 3px #eab308;
+    animation: stickyflash 1.6s ease-out;
+  }
+  @keyframes stickyflash {
+    0%, 40% { background: #fff2a8; }
+    100% { background: var(--note); }
+  }
+  @media (prefers-color-scheme: dark) {
+    @keyframes stickyflash {
+      0%, 40% { background: #5c5320; }
+      100% { background: var(--note); }
+    }
+  }
 
   /* 铺满视口的弹窗（详情页默认这样） */
   .dlg.max { width: 100%; max-width: none; height: 100%; max-height: none; display: flex; flex-direction: column; }
@@ -871,7 +889,12 @@
     </div>
     <div class="memoadd">
       <textarea id="dtMemoInput" placeholder="写一条 MEMO，回车换行、Ctrl/⌘+Enter 提交…"></textarea>
-      <button id="dtMemoAdd" type="button">＋ 追加</button>
+      <div class="memoaddcol">
+        <button id="dtMemoAdd" type="button">＋ 追加</button>
+        <label class="dtchk" title="勾上＝追加的同时发一条到 Telegram 群（手机上就有推送）；也会出现在 Telegram 频道页">
+          <input type="checkbox" id="dtMemoTg" checked><span>通知 Telegram</span>
+        </label>
+      </div>
     </div>
     <div class="row dtrow">
       <button id="dtCopy" type="button">⧉ 复制全部</button>
@@ -2578,6 +2601,15 @@
    * 其余字段默认折起来（点「显示其余项目信息」才展开）。 */
   var detailTarget = null;
 
+  /* ---------- 每条 MEMO 的直达链接 ----------
+   * 形如 #memo-<jobId>@<blockTs>：打开详情页、滚到那张便签、高亮一下。
+   * 不带 @<ts> 的老写法（#memo-<jobId>）仍然有效，只开详情页不定位。 */
+  var hlMemoTs = 0;
+  function memoLinkFor(r, b) {
+    if (!r.jobId) return '';
+    return location.origin + location.pathname + '#memo-' + r.jobId + '@' + b.ts;
+  }
+
   /** MEMO 便签墙：一条一张便签，中间用「→」指向下一条 */
   function renderDetailMemos(r) {
     var wrap = $('dtMemos');
@@ -2615,12 +2647,23 @@
 
       // 逐条编辑 / 删除，都不弹确认框
       var ops = el('div', 'stops');
+      var lnk = el('button', null, '🔗');
+      lnk.type = 'button'; lnk.title = '复制指向这一条 MEMO 的直达链接';
       var edit = el('button', null, '✎');
       edit.type = 'button'; edit.title = '编辑这一条';
       var del = el('button', null, '🗑');
       del.type = 'button'; del.title = '删除这一条（可撤销）';
-      ops.appendChild(edit); ops.appendChild(del);
+      ops.appendChild(lnk); ops.appendChild(edit); ops.appendChild(del);
       note.appendChild(ops);
+
+      note.dataset.ts = String(b.ts);
+      if (hlMemoTs && b.ts === hlMemoTs) note.classList.add('hl');
+
+      lnk.addEventListener('click', function () {
+        var url = memoLinkFor(r, b);
+        if (!url) { toast('这条项目没有 Job ID，生成不了链接'); return; }
+        copyText(url, '已复制这条 MEMO 的链接');
+      });
 
       edit.addEventListener('click', function () {
         if (note.querySelector('textarea')) return;      // 已经在编辑
@@ -2878,11 +2921,44 @@
     if (!r) return;
     var t = $('dtMemoInput').value.trim();
     if (!t) { toast('先写点什么'); return; }
-    appendMemo(r, t);
+    var at = Date.now();
+    appendMemo(r, t, at);
     $('dtMemoInput').value = '';
     renderDetailMemos(r);
     apply();                 // 清单里那一格的 MEMO 也跟着更新
-    toast(r.jobId ? '已追加，等油猴脚本回传仓库' : '已追加（这条没有 Job ID，回传不了）');
+
+    if (!$('dtMemoTg').checked) {
+      toast(r.jobId ? '已追加（没有通知 Telegram）' : '已追加（这条没有 Job ID，回传不了）');
+      return;
+    }
+
+    /* 勾了「通知 Telegram」→ 立刻发一条，这样手机上有推送。
+       Worker 那边发成功后会把它一并写进频道页的收件箱（recordOwnMessage），
+       所以 channel.html 上也会出现 —— 前提是那个修复已经 wrangler deploy 过。 */
+    var lines = [TG_PREFIX + ' MEMO 追加', (r.company || '—') + ' / ' + (r.title || '—')];
+    if (r.status) lines.push('当前状态：' + r.status);
+    var dl = deadlineOf(r);
+    if (dl.at && !dl.done) {
+      var left = (dl.at - DEADLINE_LEAD_MS) - Date.now();
+      lines.push('⏳ 截止处理时间：' + (left > 0 ? ('剩 ' + fmtLeft(left)) : '已超时'));
+    }
+    if (r.jobUrl) lines.push(r.jobUrl);
+    lines.push('', t);
+    var link = memoLinkFor(r, { ts: at });
+    if (link) lines.push('', '看板：' + link);
+    var text = lines.join('\n');
+    if (text.length > TG_LIMIT) text = text.slice(0, TG_LIMIT - 12) + '\n…（已截断）';
+
+    toast('已追加，正在通知 Telegram…');
+    tgSend(text).then(function () {
+      // 已经发过了，别让它再算成「未推送」被一键推送重发一遍
+      prefs.memoPushed[recKey(r)] = Math.max(prefs.memoPushed[recKey(r)] || 0, at);
+      savePrefs();
+      renderDetailMemos(r);
+      toast('已追加并通知 Telegram');
+    }).catch(function (e) {
+      toast('已追加，但通知 Telegram 失败：' + (e.message || e));
+    });
   }
   $('dtMemoAdd').addEventListener('click', addDetailMemo);
   $('dtMemoInput').addEventListener('keydown', function (e) {
@@ -2950,7 +3026,10 @@
   }
   $('dtPushNew').addEventListener('click', function () { pushMemosToTg(false); });
 
-  $('dtClose').addEventListener('click', function () { $('detailMask').hidden = true; });
+  $('dtClose').addEventListener('click', function () {
+    $('detailMask').hidden = true;
+    hlMemoTs = 0;
+  });
   $('detailMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   $('dtRemind').addEventListener('click', function () {
     var r = detailTarget;
@@ -3856,14 +3935,22 @@
   // #memo-<jobId>：Telegram 里那条「MEMO 太长，点这里看全文」的链接，
   // 定位之外还要直接把这条的 MEMO 时间轴弹出来。
   function openMemoFromHash() {
-    var m = (location.hash || '').match(/^#memo-([0-9A-Za-z]+)$/);
+    var m = (location.hash || '').match(/^#memo-([0-9A-Za-z]+)(?:@(\d+))?$/);
     if (!m) return;
     var rec = null;
     for (var i = 0; i < RECORDS.length; i++) {
       if (String(RECORDS[i].jobId) === m[1]) { rec = RECORDS[i]; break; }
     }
+    if (!rec) { toast('链接指向的项目不在当前清单里'); return; }
+    hlMemoTs = m[2] ? Number(m[2]) : 0;
     // 和清单里的「查看全部 N 条」一致，统一开详情页的便签墙
-    if (rec) openDetail(rec);
+    openDetail(rec);
+    if (!hlMemoTs) return;
+    setTimeout(function () {
+      var node = $('dtMemos').querySelector('.sticky[data-ts="' + hlMemoTs + '"]');
+      if (node) node.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      else toast('链接指向的那条 MEMO 已经不在了');
+    }, 80);
   }
 
   function applyHighlight(scroll) {
