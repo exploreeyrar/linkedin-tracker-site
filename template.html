@@ -708,6 +708,24 @@
   .gatebox button:disabled { opacity: .5; cursor: default; }
   .gatebox .tip { color: var(--sub); font-size: 11.5px; line-height: 1.7; margin-top: 14px; }
 
+  /* 「请开启通知」那一条。排在页面流里（header 下面），不是悬浮层 ——
+     它要等用户做决定，不该盖住任何东西，也不该 2 秒就自己走。 */
+  .askbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin: 0 0 16px; padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; line-height: 1.6;
+    background: color-mix(in srgb, var(--accent) 8%, var(--card));
+    border: 1px solid var(--accent); color: var(--fg);
+  }
+  .askbar[hidden] { display: none; }
+  .askbar button {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 13px; border-radius: 999px;
+    border: 1px solid transparent; background: var(--accent); color: #fff; cursor: pointer;
+    white-space: nowrap;
+  }
+  .askbar button.ghost { background: transparent; color: var(--sub); border-color: var(--line); font-weight: 500; }
+  .askbar button.ghost:hover { color: var(--fg); border-color: var(--sub); }
+
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
     background: rgba(20,20,20,.93); color: #fff; padding: 10px 18px; border-radius: 10px;
@@ -741,6 +759,14 @@
     </div>
   </header>
 
+  <!-- 通知权限还没给：每次打开都问一次。这是要用户拿主意的事，
+       所以不走灰色浮条，而是排在页面流里的一条（不遮挡任何东西）。 -->
+  <div class="askbar" id="notifyAsk" hidden>
+    <span id="notifyAskText"></span>
+    <button type="button" id="notifyAskGo">开启通知</button>
+    <button class="ghost" type="button" id="notifyAskLater">本次不用</button>
+  </div>
+
   <section class="kpis" id="kpis"></section>
 
   <section class="grid">
@@ -759,7 +785,8 @@
   </section>
 
   <div class="tools">
-    <input id="q" type="search" placeholder="搜索公司 / 岗位 / HR / MEMO…" autocomplete="off">
+    <input id="q" type="search" placeholder="搜索公司 / 岗位 / HR / MEMO…" autocomplete="off"
+           title="搜索范围永远是全部项目 —— 不受「待处理」和其它筛选限制。清空搜索词就回到原来的视图。">
     <select id="fstatus"><option value="">全部状态</option></select>
     <button class="toggle" id="fscout" type="button" aria-pressed="false">🌟 人事主动 scout 的案件</button>
     <button class="toggle" id="ffollow" type="button" aria-pressed="false"
@@ -920,7 +947,7 @@
     <label style="margin-top:18px">清单</label>
     <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
     <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
-    <label class="chk"><input type="checkbox" id="pfAdmin"><span>管理者模式<small>开启后清单的「状态」列变成下拉框，可直接改状态；每行末尾多一个 🗑，两次点击删除该项目。改动经 Worker 写回，其他电脑也会同步。</small></span></label>
+    <label class="chk"><input type="checkbox" id="pfAdmin"><span>管理者模式<small>开启后清单的「状态」列变成下拉框，可直接改状态；每行末尾多一个 🗑，两次点击删除该项目。改动经 Worker 写回，其他电脑也会同步（被服务端拒绝时会退回原状并记进「操作 log」）。⌘/Ctrl+⇧+E 可随时在它和普通浏览模式之间切换；这个开关只影响本机。</small></span></label>
     <label class="chk"><input type="checkbox" id="pfPushTg"><span>详情页显示「推送至 telegram」勾选框<small>默认不显示。藏起来时「📤 一键推送所有新MEMO」一律真的发到 Telegram；放出来才能选择「只标记为已推送、不发出去」</small></span></label>
 
     <label style="margin-top:18px">要望欄</label>
@@ -991,7 +1018,7 @@
 <div class="mask" id="pickMask" hidden>
   <div class="dlg">
     <h3>📣 发送选中项目的速报</h3>
-    <div class="desc">格式与「当日速报」一致，但只包含你勾选的项目，且不占用当天的速报名额。</div>
+    <div class="desc">格式与「当日速报」一致，但只包含你勾选的项目，且不占用当天的速报名额。设了处理期限的会一并报出还剩多久。</div>
     <div class="previewhdr"><span>预览 —— 实际发送的内容</span><span class="cnum" id="pickCount"></span></div>
     <div class="memofull" id="pickText"></div>
     <div class="status" id="pickState"></div>
@@ -1470,12 +1497,48 @@ function bootBoard(PAYLOAD) {
   /* ---------- 回写队列（油猴脚本在本页面上取走并推回 GitHub）---------- */
   var OUTBOX = 'sgjob_outbox_v1';
   var OUTBOX_ACK = 'sgjob_outbox_ack_v1';
+  /* 配了写入密钥的机器改用**另一个键**排队。
+   *
+   * 为什么不共用一条队列：油猴脚本每 4 秒（以及另一个标签页写 sgjob_outbox_v1
+   * 触发 storage 事件时立刻）就来把 sgjob_outbox_v1 抽干，抽走之后只应用到
+   * 它自己那份本地记录里；接着 `if (ghReady()) ghSync()` —— 没配 GitHub
+   * Token（或 Token 失效）的话就只剩一行 console.warn，改动到此为止。
+   * 于是：本机看着改了（LOCAL 覆盖层一直顶着，服务端永远不来确认，也就永远
+   * 不会被 pruneLocal 撤掉），队列空了所以「待回传」的提示也消失了，
+   * 换台电脑打开却还是旧状态 —— 一声不响。
+   *
+   * 有 Worker 可写的时候它就是唯一权威写入方，这条队列不该再让第二个人碰。
+   */
+  var OUTBOX_WK = 'sgjob_outbox_wk_v1';
+  function outboxKey() { return canWorkerWrite() ? OUTBOX_WK : OUTBOX; }
 
   function outboxRead() {
     try {
-      var v = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
+      var v = JSON.parse(localStorage.getItem(outboxKey()) || '[]');
       return Array.isArray(v) ? v : [];
     } catch (e) { return []; }
+  }
+  function outboxSave(list) {
+    try { localStorage.setItem(outboxKey(), JSON.stringify(list)); } catch (e) {}
+  }
+
+  /**
+   * 把还留在共享队列里的操作接管过来。
+   * 一台机器可能是先没密钥、写了几条，之后才在设置里填上密钥的；
+   * 那几条得跟着换到 Worker 这条路上，不然会一直躺在那里等一个不会来的脚本。
+   * 各种 op 重复应用都是安全的（memo 按 ts+text 去重、status / deadline /
+   * followUp 是覆盖式、recDelete 幂等），所以搬过来不怕和脚本撞车。
+   */
+  function outboxAdopt() {
+    if (!canWorkerWrite()) return;
+    var shared = [];
+    try {
+      var v = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
+      shared = Array.isArray(v) ? v : [];
+    } catch (e) { shared = []; }
+    if (!shared.length) return;
+    outboxSave(outboxRead().concat(shared).slice(-200));
+    try { localStorage.removeItem(OUTBOX); } catch (e) {}
   }
   // 「最后一次说了算」的操作才去重；MEMO 与通知板留言是追加的，去重会把前面的吃掉
   var DEDUPE_OPS = { followUp: 1 };
@@ -1487,7 +1550,7 @@ function bootBoard(PAYLOAD) {
       list = list.filter(function (x) { return !(x && x.op === op.op && x.jobId === op.jobId); });
     }
     list.push(op);
-    try { localStorage.setItem(OUTBOX, JSON.stringify(list.slice(-200))); } catch (e) {}
+    outboxSave(list.slice(-200));
     refreshPending();
     // 配了写入密钥就别等油猴脚本了，合并 1.2 秒内的连续操作后直接交给 Worker
     if (canWorkerWrite()) {
@@ -1520,6 +1583,84 @@ function bootBoard(PAYLOAD) {
   function canWorkerWrite() { return !!(writeKey() && CONFIG.tgEndpoint); }
   var wstate = { busy: false, at: 0, err: '', skipped: 0 };
 
+  /**
+   * 服务端明确「跳过」的那些操作：把本机的覆盖层退回去，并且说出来。
+   *
+   * 以前这里只是把它们从队列里摘掉（重试也没用，这没错），可覆盖层留着 ——
+   * 于是本机一直显示着改后的样子，服务端上什么都没发生，别的电脑打开是旧的。
+   * 「管理者模式改了状态，第三方电脑看不到」就是这么来的：不是没传，
+   * 是传了、被拒了、而没人告诉你。
+   *
+   * op === 'message' 不在这里报 —— logBoard() 自己就是往队列里塞一条 message，
+   * 一旦这类 op 被拒就会自我循环，把队列刷满（见 showPend 那段注释）。
+   */
+  function rejectOps(ops, skipped) {
+    if (!skipped.length) return;
+    var why = {};
+    skipped.forEach(function (s) { if (s && s.opId) why[s.opId] = s.why || '服务端拒绝'; });
+
+    var notes = [];
+    ops.forEach(function (o) {
+      if (!o || !why[o.opId]) return;
+      var k = (o.site || 'linkedin') + ':' + o.jobId;
+      var label = '';
+
+      if (o.op === 'status') {
+        var ov = LOCAL.statuses[k];
+        if (ov) {
+          // 覆盖层里存着改之前是什么，照它退回去
+          RECORDS.forEach(function (r) {
+            if (recKey(r) === k && ov.prev) { r.status = ov.prev; r.statusAt = ov.prevAt || 0; }
+          });
+          delete LOCAL.statuses[k];
+        }
+        label = '改状态为「' + o.status + '」';
+      } else if (o.op === 'recDelete') {
+        // 记录对象已经不在内存里了，退不回来 —— 撤掉覆盖层，刷新一下它就回来
+        delete LOCAL.recDels[k];
+        label = '删除这条投递（刷新后它会回来）';
+      } else if (o.op === 'memo') {
+        LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== o.ts; });
+        if (!LOCAL.memos[k].length) delete LOCAL.memos[k];
+        label = '新增 MEMO';
+      } else if (o.op === 'memoEdit') {
+        if (LOCAL.memoEdits[k]) delete LOCAL.memoEdits[k][o.blockTs];
+        label = '修改 MEMO';
+      } else if (o.op === 'memoDelete') {
+        if (LOCAL.memoDels[k]) delete LOCAL.memoDels[k][o.blockTs];
+        label = '删除 MEMO';
+      } else if (o.op === 'deadline') {
+        delete LOCAL.deadlines[k];
+        label = '改处理期限';
+      } else if (o.op === 'followUp') {
+        delete prefs.followUp[k];
+        savePrefs();
+        label = '设跟进提醒';
+      } else if (o.op === 'message') {
+        return;                    // 见上面：这类不报，否则会自我循环
+      } else {
+        label = o.op;
+      }
+      notes.push(label + '（' + why[o.opId] + '）');
+    });
+
+    if (!notes.length) return;
+    saveLocal();
+    var head = notes.length > 1 ? (notes.length + ' 项改动被服务端拒绝：') : '改动被服务端拒绝：';
+    logBoard('⚠️ ' + head + '\n' + notes.join('\n')
+             + '\n（本机的显示已退回原状；这些改动没有写进服务端，别的电脑上也不会有）');
+    /* 这条要排在最后弹。这一轮里还有两处会抢同一个浮条：logBoard 往队列里塞的
+       那条 message 会触发一次「N 项待写入」，flushViaWorker 收尾时的
+       refreshPending() 又是一次 —— 同步弹的话最后留在屏幕上的是那条灰的，
+       用户只看见「正在写入」，看不见「被拒了」。延到下一轮事件循环就稳了
+       （之后 5 秒一次的 refreshPending 文案没变，showPend 会自己去重）。 */
+    var msg = '⚠️ ' + head + notes[0] + (notes.length > 1 ? ' 等' : '') + '　本机已退回原状';
+    setTimeout(function () { toast(msg); }, 60);
+    renderKPIs();
+    buildStatusPanel();
+    apply();
+  }
+
   /** 把队列里的操作交给 Worker。成功的从队列摘掉，跳过的也摘掉（重试也没用）。 */
   function flushViaWorker() {
     if (!canWorkerWrite() || wstate.busy) return Promise.resolve(0);
@@ -1529,20 +1670,21 @@ function bootBoard(PAYLOAD) {
     return tgAction({ action: 'records_write', ops: JSON.stringify(ops.slice(0, 100)) },
                     { 'X-Write-Key': writeKey() })
       .then(function (d) {
-        var gone = {};
-        (d.applied || []).forEach(function (id) { gone[id] = 1; });
+        var gone = {}, applied = {};
+        (d.applied || []).forEach(function (id) { gone[id] = 1; applied[id] = 1; });
         (d.skipped || []).forEach(function (x) { if (x && x.opId) gone[x.opId] = 1; });
         // 记下「已经写进仓库、只是还没构建进页面」的那些 MEMO，状态角标要用
         ops.forEach(function (o) {
-          if (!gone[o.opId] || !o.jobId) return;
+          if (!applied[o.opId] || !o.jobId) return;
           var k = (o.site || 'linkedin') + ':' + o.jobId;
           var ts = (o.op === 'memo') ? o.ts : o.blockTs;
           if (!ts) return;
           (LOCAL.memoWrote[k] = LOCAL.memoWrote[k] || {})[ts] = Date.now();
         });
+        rejectOps(ops, d.skipped || []);
         saveLocal();
         var rest = outboxRead().filter(function (o) { return !gone[o && o.opId]; });
-        try { localStorage.setItem(OUTBOX, JSON.stringify(rest)); } catch (e) {}
+        outboxSave(rest);
         wstate.at = Date.now();
         wstate.err = '';
         wstate.skipped = (d.skipped || []).length;
@@ -1872,7 +2014,8 @@ function bootBoard(PAYLOAD) {
     if (!r.jobId) { toast('这条没有 Job ID，改不了状态（回写定位不到）'); return; }
     var prev = r.status;
     var at = Date.now();
-    LOCAL.statuses[recKey(r)] = { status: next, at: at };
+    // prev / prevAt 是给 rejectOps() 留的退路：服务端拒了这次改动就照它退回去
+    LOCAL.statuses[recKey(r)] = { status: next, at: at, prev: prev, prevAt: r.statusAt || 0 };
     saveLocal();
     r.status = next;
     r.statusAt = at;
@@ -1920,7 +2063,7 @@ function bootBoard(PAYLOAD) {
   function outboxDrop(opId) {
     if (!opId) return;
     var list = outboxRead().filter(function (x) { return x && x.opId !== opId; });
-    try { localStorage.setItem(OUTBOX, JSON.stringify(list)); } catch (e) {}
+    outboxSave(list);
     refreshPending();
   }
 
@@ -1964,7 +2107,7 @@ function bootBoard(PAYLOAD) {
       if (!(o && o.op === 'memo' && String(o.jobId) === String(r.jobId) && o.ts === blockTs)) return o;
       return newText ? Object.assign({}, o, { text: newText }) : null;
     }).filter(Boolean);
-    try { localStorage.setItem(OUTBOX, JSON.stringify(list)); } catch (e) {}
+    outboxSave(list);
     refreshPending();
   }
 
@@ -2035,7 +2178,7 @@ function bootBoard(PAYLOAD) {
         return !(o && o.op === 'memoDelete' && String(o.jobId) === String(r.jobId)
                  && o.blockTs === blockTs);
       });
-      try { localStorage.setItem(OUTBOX, JSON.stringify(kept)); } catch (e) {}
+      outboxSave(kept);
       refreshPending();
     };
   }
@@ -2616,20 +2759,30 @@ function bootBoard(PAYLOAD) {
     var scoutOnly = $('fscout').classList.contains('on');
     var followOnly = $('ffollow').classList.contains('on');
 
+    /* 搜索的范围永远是**全部项目**，不受当下任何 filter 限制。
+       默认那个「待处理」一开就在，所以「搜不到」十次里有九次是因为
+       那条项目根本不在筛出来的范围里 —— 找东西的时候筛选是帮倒忙。
+       所以只要搜索框里有字，状态、待处理、scout、已设提醒这几层一律绕开
+       （原本就绕开的「默认隐藏状态」也照旧）。筛选条件不清空，删掉搜索词
+       就回到原来那个视图。 */
+    var searching = !!q;
+
     var rows = RECORDS.filter(function (r) {
-      if (fs && r.status !== fs) return false;
-      if (groupFilter === 'todo' && !isTodo(r.status)) return false;
-      /* 默认藏起来的那几种状态。以下情况照常显示：
-         明确点了这个状态、按了底部那个灰按钮、正在搜索、或者开着 scout /
-         已设提醒这类筛选 —— 主动缩小范围的时候，不该因为「默认收起来了」
-         就把符合条件的项目也一起吞掉。 */
-      if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status
-          && !q && !scoutOnly && !followOnly) return false;
-      if (scoutOnly && !r.scout) return false;
-      // 「已设置提醒」＝设了跟进提醒。走 followUpOf，所以本机刚设、还没回传
-      // 仓库的那些也算得上，不然刚设完一筛就不见了。
-      if (followOnly && !followUpOf(r).at) return false;
-      if (!q) return true;
+      if (!searching) {
+        if (fs && r.status !== fs) return false;
+        if (groupFilter === 'todo' && !isTodo(r.status)) return false;
+        /* 默认藏起来的那几种状态。以下情况照常显示：
+           明确点了这个状态、按了底部那个灰按钮、或者开着 scout /
+           已设提醒这类筛选 —— 主动缩小范围的时候，不该因为「默认收起来了」
+           就把符合条件的项目也一起吞掉。 */
+        if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status
+            && !scoutOnly && !followOnly) return false;
+        if (scoutOnly && !r.scout) return false;
+        // 「已设置提醒」＝设了跟进提醒。走 followUpOf，所以本机刚设、还没回传
+        // 仓库的那些也算得上，不然刚设完一筛就不见了。
+        if (followOnly && !followUpOf(r).at) return false;
+        return true;
+      }
       var hay = [r.company, r.title, r.memo, r.status]
         .concat((r.hirers || []).map(function (h) { return h.name + ' ' + h.role; }))
         .join(' ').toLowerCase();
@@ -2696,6 +2849,11 @@ function bootBoard(PAYLOAD) {
       // 这几种情况是全量筛的，把命中里有多少条属于默认隐藏的状态标出来
       var nh = rows.filter(function (r) { return isHiddenStatus(r.status); }).length;
       if (nh && !prefs.showHidden) shownTxt += '（含 ' + nh + ' 条隐藏状态）';
+    }
+    /* 搜索是全量的，可是筛选按钮还亮着 —— 不说一句的话，
+       看到一条「待处理」之外的结果会以为是筛选坏了。 */
+    if (searching && (fs || groupFilter === 'todo' || scoutOnly || followOnly)) {
+      shownTxt += '（搜索范围＝全部项目，已跨过当前筛选）';
     }
     $('shown').textContent = shownTxt;
 
@@ -2830,17 +2988,25 @@ function bootBoard(PAYLOAD) {
     wstate.err = '';
     updateWriteHint();
     refreshPending();
-    if (v) flushViaWorker();
+    // 刚填上密钥：把共享队列里还没走掉的接管过来，这台机器从此自己写
+    if (v) { outboxAdopt(); flushViaWorker(); }
     else { try { sessionStorage.removeItem(GATE_SKIP); } catch (e) {} }
   });
 
-  $('pfAdmin').addEventListener('change', function () {
-    prefs.admin = this.checked;
+  /* 管理者模式 ↔ 普通浏览模式。设置里的勾和 ⌘/Ctrl+⇧+E 都走这里，
+     别让两条路各自维护一套「还要记得重画哪些东西」。 */
+  function setAdmin(on) {
+    on = !!on;
+    if (prefs.admin === on) return;
+    prefs.admin = on;
     savePrefs();
+    syncPrefsUI();       // 设置面板开着的时候那个勾也要跟着动
     paintAdmin();
     renderColList();     // 「列」设置里不列这一列，但顺序会变
     apply();             // 整表重画：状态格换形态、多出 / 收掉一列
-  });
+  }
+
+  $('pfAdmin').addEventListener('change', function () { setAdmin(this.checked); });
 
   $('pfPushTg').addEventListener('change', function () {
     prefs.showPushTg = this.checked;
@@ -4103,17 +4269,68 @@ function bootBoard(PAYLOAD) {
     });
   })();
 
-  // 没有权限就在加载后自动申请一次（Chrome 允许无手势调用；被"安静通知"策略拦下时静默失败）
-  (function askNotifyPermission() {
-    if (!prefs.notify || !('Notification' in window)) return;
-    if (Notification.permission !== 'default') return;
+  /* ---------- 通知权限：每次加载都确认一次 ----------
+   * 没有这个权限，「新留言」「新 MEMO」「跟进提醒到点」全都只能等你自己
+   * 切回这一页才看见 —— 等于没有提醒。所以只要权限不是 granted，每次打开
+   * 都摆一条出来问，不记「以后别问了」（本次关掉只管这一次加载）。
+   *
+   * 加载后先静默试一次 requestPermission（Chrome 允许无手势调用，只是可能
+   * 被「安静通知」策略直接拒掉）；不管成没成，那条横幅都按最终状态刷新，
+   * 按钮里的这一次调用带着用户手势，成功率高得多。
+   */
+  function paintNotifyAsk() {
+    var bar = $('notifyAsk');
+    if (!bar) return;
+    if (!('Notification' in window)) { bar.hidden = true; return; }
+    if (Notification.permission === 'granted') { bar.hidden = true; return; }
+    if (notifyAskDismissed) { bar.hidden = true; return; }
+    var denied = Notification.permission === 'denied';
+    $('notifyAskText').textContent = denied
+      ? '🔔 浏览器拒绝了这个站点的通知权限 —— 新留言、新 MEMO、跟进提醒到点都不会推给你。点地址栏左边的图标 →「通知」→ 允许，然后刷新这一页。'
+      : '🔔 还没有通知权限。开启后，新留言、新 MEMO、跟进提醒到点会直接用 Chrome 通知提醒你。';
+    $('notifyAskGo').hidden = denied;         // 拒过了就不能再弹系统框，只能给指引
+    bar.hidden = false;
+  }
+  var notifyAskDismissed = false;
+
+  $('notifyAskGo').addEventListener('click', function () {
+    if (!('Notification' in window)) return;
     try {
       Notification.requestPermission().then(function (p) {
-        if (p !== 'granted') return;
-        syncPrefsUI();
-        notifyPending();          // 刚拿到权限，把这次的未读补提醒一次
+        if (p === 'granted') {
+          // 权限拿到了，顺手把开关打开 —— 不然给了权限还是什么都收不到
+          prefs.notify = true;
+          savePrefs();
+          syncPrefsUI();
+          notifyPending();        // 把这次的未读补提醒一次
+          toastBg('通知已开启');
+        }
+        paintNotifyAsk();
       });
-    } catch (e) { /* 老浏览器的回调式 API，忽略 */ }
+    } catch (e) { paintNotifyAsk(); }
+  });
+  $('notifyAskLater').addEventListener('click', function () {
+    notifyAskDismissed = true;
+    paintNotifyAsk();
+  });
+
+  (function askNotifyPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      try {
+        Notification.requestPermission().then(function (p) {
+          if (p === 'granted') {
+            prefs.notify = true;
+            savePrefs();
+            syncPrefsUI();
+            notifyPending();
+          }
+          paintNotifyAsk();
+        });
+        return;                  // 结果回来时会刷新横幅
+      } catch (e) { /* 老浏览器的回调式 API，落到下面那句 */ }
+    }
+    paintNotifyAsk();
   })();
 
   // Chrome 通知：有比上次已读更新的留言时提醒一次
@@ -4252,6 +4469,16 @@ function bootBoard(PAYLOAD) {
         g.forEach(function (r) {
           var star = r.priority ? ('  ' + '✨'.repeat(r.priority)) : '';
           lines.push('  · ' + (r.company || '—') + ' / ' + (r.title || '—') + star);
+          /* 设了处理期限的就紧跟在标题下面报一句。措辞和「✍️ 请求更新状态」
+             那份完全一致（只报还剩多久，不报具体日期 —— 收到的人要的是紧迫感），
+             位置放在链接之前：这是催办信息，不该排在一串 URL 后面被划过去。 */
+          var dl = deadlineOf(r);
+          if (dl.at) {
+            var left = (dl.at - DEADLINE_LEAD_MS) - Date.now();
+            lines.push('    ⏳ 截止处理时间：'
+              + (dl.done ? '已标记为已处理'
+                         : (left > 0 ? ('剩 ' + fmtLeft(left)) : '已超时')));
+          }
           if (r.jobUrl) lines.push('    ' + r.jobUrl);
           var bs = memoBlocks(r);
           if (bs.length) {
@@ -4429,9 +4656,11 @@ function bootBoard(PAYLOAD) {
   setInterval(refreshPending, 5000);
   // 兜底：上次失败、或别的标签页排进来的，隔一会儿再试一次
   setInterval(function () { if (!document.hidden) flushViaWorker(); }, 20000);
+  // 之前没密钥时排在共享队列里的那几条，接管过来自己写
+  outboxAdopt();
   flushViaWorker();
   window.addEventListener('storage', function (e) {
-    if (e.key === OUTBOX || e.key === OUTBOX_ACK) refreshPending();
+    if (e.key === OUTBOX || e.key === OUTBOX_WK || e.key === OUTBOX_ACK) refreshPending();
     if (e.key === MK) syncFromMirror();
   });
 
@@ -4446,6 +4675,18 @@ function bootBoard(PAYLOAD) {
     apply();
   }
   setInterval(syncFromMirror, 4000);
+
+  /* ⌘/Ctrl + ⇧ + E：在「管理者模式」和「普通浏览模式」之间来回切。
+     用 e.code 判键位而不是 e.key —— 按住 Shift 时 e.key 是 'E'，某些
+     键盘布局下还会变成别的字符，code 一直是 'KeyE'。 */
+  document.addEventListener('keydown', function (e) {
+    if (!e.shiftKey || !(e.metaKey || e.ctrlKey)) return;
+    if ((e.code || '') !== 'KeyE' && String(e.key).toUpperCase() !== 'E') return;
+    if (!$('gateMask').hidden) return;      // 还卡在要密钥那道门上，别切
+    e.preventDefault();
+    setAdmin(!prefs.admin);
+    toast(prefs.admin ? '⚙ 管理者模式：可直接改状态 / 删项目' : '👀 普通浏览模式');
+  });
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
@@ -4517,8 +4758,13 @@ function bootBoard(PAYLOAD) {
         try { d = JSON.parse(ev.data); } catch (e) { return; }
         if (!d || d.type !== 'rev' || !(d.rev > rev)) return;
         rev = d.rev;
-        if (document.hidden) { location.reload(); return; }
-        banner();
+        /* 先去看看这一版里有没有新的 MEMO（别处写的），有就发个 Chrome 通知。
+           发过通知的那种情况**不能**立刻重载：非持久化通知是挂在这个页面上的，
+           页面一卸载它就跟着消失了，等于没提醒。留到切回来时再重载。 */
+        checkNewMemos().then(function (notified) {
+          if (!document.hidden) { banner(); return; }
+          if (notified) reloadWhenVisible(); else location.reload();
+        });
       };
       ws.onclose = function () {
         ws = null;
@@ -4528,6 +4774,91 @@ function bootBoard(PAYLOAD) {
       ws.onerror = function () { try { ws.close(); } catch (e) {} };
     }
     connect();
+  }
+
+  /* ---- 别处新增的 MEMO → Chrome 通知 ----------------------------------
+   * BoardStore 的 rev 广播只说「变了」，不说变了什么。所以这里重新取一次
+   * 完整数据，和上一次手里那份比 MEMO 的时间戳，多出来的就是新的。
+   *
+   * 只在页面不在眼前时弹 —— 自己在这一页上写 MEMO 也会让 rev 涨，
+   * 那种情况下再弹一个通知纯属自己吓自己。
+   * ------------------------------------------------------------------- */
+  var memoSeen = null;          // 'site:jobId|blockTs' → 那条 MEMO 的信息
+  var memoBusy = false;
+
+  function memoIndex(records) {
+    var out = {};
+    (records || []).forEach(function (r) {
+      if (!r) return;
+      var k = (r.site || 'linkedin') + ':' + (r.jobId || r.ts);
+      (r.memos || []).forEach(function (b) {
+        if (!b || !b.ts) return;
+        out[k + '|' + b.ts] = {
+          company: r.company || '—', title: r.title || '—',
+          jobId: r.jobId || '', text: String(b.text || '')
+        };
+      });
+    });
+    return out;
+  }
+
+  function fetchDoc() {
+    var h = { 'X-Write-Key': key() };
+    if (CONFIG.tgAppKey) h['X-App-Key'] = CONFIG.tgAppKey;
+    return fetch(CONFIG.tgEndpoint, {
+      method: 'POST', headers: h,
+      body: new URLSearchParams({ action: 'records_read' }),
+    }).then(function (res) { return res.json(); });
+  }
+
+  /** 发通知。返回「真的弹出来了没有」，上面那段要靠它决定重不重载。 */
+  function notifyMemos(list) {
+    if (!list.length) return false;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+    if (!document.hidden && document.hasFocus()) return false;
+    var first = list[0];
+    try {
+      var n = new Notification(
+        list.length > 1 ? ('MEMO 有 ' + list.length + ' 条新内容')
+                        : ('MEMO · ' + first.company + ' / ' + first.title),
+        {
+          body: first.text.replace(/\s+/g, ' ').trim().slice(0, 160),
+          tag: 'sgjob-memo',
+          icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="26">📝</text></svg>')
+        });
+      n.onclick = function () {
+        window.focus();
+        // 带上 #job-<id> 再重载：回来时直接定位到那一条
+        if (first.jobId) location.hash = 'job-' + first.jobId;
+        n.close();
+        location.reload();
+      };
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function checkNewMemos() {
+    // 还没拿到第一份数据（或者根本没数据源）时没有可比的基准，跳过
+    if (!memoSeen || memoBusy || !CONFIG.tgEndpoint || !key()) return Promise.resolve(false);
+    memoBusy = true;
+    return fetchDoc().then(function (data) {
+      if (!data || !data.ok) return false;
+      var next = memoIndex(data.records || []);
+      var added = Object.keys(next).filter(function (k) { return !(k in memoSeen); });
+      memoSeen = next;
+      return notifyMemos(added.map(function (k) { return next[k]; }));
+    }).catch(function () { return false; })
+      .then(function (r) { memoBusy = false; return r; });
+  }
+
+  /* 后台标签页里刚弹过通知，重载要等到人真的切回来 */
+  var reloadArmed = false;
+  function reloadWhenVisible() {
+    if (reloadArmed) return;
+    reloadArmed = true;
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) location.reload();
+    });
   }
 
   function banner() {
@@ -4576,6 +4907,8 @@ function bootBoard(PAYLOAD) {
   }).then(function (data) {
     if (!data.ok) throw new Error(data.description || 'unknown error');
     try { localStorage.setItem(REV, String(data.rev || 0)); } catch (e) {}
+    // 这一份是「新 MEMO」的比对基准：现在手里有的都不算新
+    memoSeen = memoIndex(data.records || []);
     boot({
       records: data.records || [],
       messages: data.messages || [],

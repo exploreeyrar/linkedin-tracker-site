@@ -65,6 +65,8 @@
     background: var(--card); color: var(--fg); border: 1px solid var(--line);
   }
   .navbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .navbtn:disabled { opacity: .45; cursor: default; }
+  .navbtn:disabled:hover { border-color: var(--line); color: var(--fg); }
 
   #q, #prio {
     font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 9px;
@@ -252,6 +254,24 @@
   }
   .compose button:disabled { opacity: .5; cursor: default; }
 
+  /* 置顶的那几条：钉在最上面，和下面的时间流之间用一条分界线隔开。
+     背景比普通气泡稍暖一点，扫一眼就知道「这几条是我自己钉上去的」。 */
+  .msg.pinned {
+    border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+    background: color-mix(in srgb, var(--warn) 6%, var(--bubble));
+  }
+  .msg .pin { color: var(--warn); }
+  .msg .pin.on { color: var(--warn); font-weight: 700; }
+
+  /* 键盘选中的那一条。用外圈描边而不是改背景 —— 置顶、archive、
+     搜索高亮各有各的底色，再叠一层背景就分不清哪个是哪个了。 */
+  .msg.cur { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* 头部左边那两个批量操作。做成和 .navbtn 一样的小圆角按钮，
+     但摆在标题旁边（不是最右边那排导航里）—— 它们作用于列表本身。 */
+  header .bulk { display: inline-flex; gap: 6px; }
+  header .bulk button.armed { border-color: var(--err); color: var(--err); font-weight: 700; }
+
   /* 优先级角标：颜色和「状态分布」那套一致，扫一眼就知道轻重 */
   .msg .pr {
     display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 9px;
@@ -285,7 +305,13 @@
 <body>
 
 <header>
-  <h1>🗒 要望欄</h1>
+  <h1 title="↑ ↓ 选择要望　E 编辑选中的那条　/ 回到底部输入框">🗒 要望欄</h1>
+  <span class="bulk">
+    <button class="navbtn" id="copyAll" type="button"
+            title="把当前列表里所有要望的正文按顺序复制出来（只有正文，不含时间戳、优先级这些）">⧉ 复制全部</button>
+    <button class="navbtn" id="archAll" type="button"
+            title="把当前要望流里的每一条都收进 archive。📌 置顶的那几条不动。">🗂 全部 archive</button>
+  </span>
   <span class="who" id="who"></span>
   <input id="q" type="search" placeholder="搜索要望…（含已 archive）" autocomplete="off">
   <select id="prio" title="按优先级筛选。只在当前这堆里筛（已 archive 的不算，要看它们请先进 Archived 视图）">
@@ -416,8 +442,14 @@
   var showArchived = false;
   var editing = '';            // 正在就地编辑的那条 id
   var hlId = '';               // 直达链接高亮的那条
+  var curId = '';              // 键盘（↑↓）选中的那条
+  var SHOWN = [];              // 当前画出来的那些，按屏幕上的顺序 —— ↑↓ 就是在这上面走
 
   function sortItems() { ITEMS.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); }); }
+
+  /* 固定（置顶）。和 archivedAt 一个路子：存时间戳而不是布尔值，
+     这样既是开关又记得「什么时候钉的」，置顶区就按它从新到旧排。 */
+  function isPinned(m) { return !!(m && m.pinnedAt); }
 
   /* ---------- 视图状态：刷新后原样恢复 ---------- */
   function saveView() {
@@ -477,14 +509,28 @@
     if (prio === 'none') list = list.filter(function (m) { return !m.prio; });
     else if (prio) list = list.filter(function (m) { return m.prio === prio; });
 
+    /* 置顶的那几条单独提到最前面，和下面的时间流分开画 ——
+       混在时间流里就还是按日期散落各处，等于没置顶。
+       置顶区内部按「什么时候钉的」从新到旧，刚钉上的那条在最顶上。 */
+    var pins = list.filter(isPinned).sort(function (a, b) { return (b.pinnedAt || 0) - (a.pinnedAt || 0); });
+    var flow = list.filter(function (m) { return !isPinned(m); });
+    SHOWN = pins.concat(flow);
+
     var feed = $('feed');
     feed.textContent = '';
+    if (pins.length) {
+      feed.appendChild(el('div', 'daysep', '📌 置顶（' + pins.length + '）'));
+      pins.forEach(function (m) { feed.appendChild(row(m)); });
+    }
     var lastDay = '';
-    list.forEach(function (m) {
+    flow.forEach(function (m) {
       var day = fmtDay(m.ts);
       if (day !== lastDay) { feed.appendChild(el('div', 'daysep', day)); lastDay = day; }
       feed.appendChild(row(m));
     });
+
+    // 选中的那条可能被筛掉 / 被删了，别留一个指向空气的选中态
+    if (curId && !SHOWN.some(function (m) { return m.id === curId; })) curId = '';
 
     var live = ITEMS.filter(function (m) { return !m.archivedAt; });
     var arch = ITEMS.length - live.length;
@@ -513,9 +559,21 @@
       $('archbarText').textContent = '搜索结果里有 ' + nArch + ' 条是已 archive 的（淡显那几条）';
     }
 
+    var nPin = ITEMS.filter(function (m) { return isPinned(m) && !m.archivedAt; }).length;
     $('who').textContent = ITEMS.length
-      ? ('共 ' + live.length + ' 条' + (arch ? ('（另有 ' + arch + ' 条已 archive）') : ''))
+      ? ('共 ' + live.length + ' 条'
+         + (nPin ? ('（📌 ' + nPin + '）') : '')
+         + (arch ? ('（另有 ' + arch + ' 条已 archive）') : ''))
       : '';
+
+    /* 批量按钮：复制看的是「屏幕上有什么」，所以按 SHOWN 算；
+       全部 archive 只在真有可 archive 的（未置顶、未 archive）时才能按。 */
+    $('copyAll').disabled = !SHOWN.length;
+    $('copyAll').textContent = SHOWN.length ? ('⧉ 复制全部 (' + SHOWN.length + ')') : '⧉ 复制全部';
+    var canArch = bulkArchTargets().length;
+    $('archAll').disabled = !canArch;
+    $('archAll').textContent = canArch ? ('🗂 全部 archive (' + canArch + ')') : '🗂 全部 archive';
+    if (!canArch) disarmArchAll();
 
     saveView();
   }
@@ -553,7 +611,8 @@
   }
 
   function row(m) {
-    var box = el('div', 'msg' + (m.archivedAt ? ' archived' : '') + (m.id === hlId ? ' hl' : ''));
+    var box = el('div', 'msg' + (m.archivedAt ? ' archived' : '') + (isPinned(m) ? ' pinned' : '')
+                       + (m.id === hlId ? ' hl' : '') + (m.id === curId ? ' cur' : ''));
     box.id = 'w-' + m.id;
 
     if (editing === m.id) { box.appendChild(editor(m)); return box; }
@@ -580,10 +639,23 @@
     ed.addEventListener('click', function () { editing = m.id; render(); });
     box.appendChild(ed);
 
-    var arch = el('button', 'arch', m.archivedAt ? '↩ 取回' : '🗂 archive');
-    arch.type = 'button';
-    arch.addEventListener('click', function () { setArchived(m, !m.archivedAt); });
-    box.appendChild(arch);
+    /* 固定（置顶）。钉住的那条一直待在最上面，而且 archive 不掉 ——
+       「一键 archive」也绕开它。所以钉子和 archive 按钮是互斥的：
+       钉着的时候不给 archive 按钮，免得点了没反应还以为坏了。 */
+    var pin = el('button', 'arch pin' + (isPinned(m) ? ' on' : ''), isPinned(m) ? '📌 已置顶' : '📌 置顶');
+    pin.type = 'button';
+    pin.title = isPinned(m)
+      ? '取消置顶（取消后就能 archive 了）'
+      : (m.archivedAt ? '置顶这一条（会先把它从 archive 里取回来）' : '把这一条钉在最上面，并且不再被 archive');
+    pin.addEventListener('click', function () { setPinned(m, !isPinned(m)); });
+    box.appendChild(pin);
+
+    if (!isPinned(m)) {
+      var arch = el('button', 'arch', m.archivedAt ? '↩ 取回' : '🗂 archive');
+      arch.type = 'button';
+      arch.addEventListener('click', function () { setArchived(m, !m.archivedAt); });
+      box.appendChild(arch);
+    }
 
     if (m.archivedAt) {
       // 彻底删除只在 archive 视图里给 —— 两段确认，免得手滑
@@ -676,8 +748,12 @@
     rowEl.appendChild(del);
 
     wrap.appendChild(rowEl);
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
+    /* 和上面量高度一样要等进了文档流：还没插进 DOM 的元素 focus() 是空操作，
+       所以按 E / 点「✎ 编辑」之后光标其实一直没进来。 */
+    setTimeout(function () {
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }, 0);
     ta.addEventListener('keydown', function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save.click(); }
       if (e.key === 'Escape') { e.preventDefault(); cancel.click(); }
@@ -709,7 +785,15 @@
     if (i === -1) ITEMS.push(item); else ITEMS[i] = item;
     sortItems();
     render();
-    return call({ action: 'wish_put', item: JSON.stringify(item) }).catch(function (e) {
+    return call({ action: 'wish_put', item: JSON.stringify(item) }).then(function (d) {
+      /* Worker 的 normalizeWish 是字段白名单，旧版本不认识 pinnedAt ——
+         它会把这个字段悄悄丢掉，于是「置顶了、刷新一下又没了」。
+         回执里带着服务端存下来的那份，比一比就知道，直接说清楚要重新部署。 */
+      if (item.pinnedAt && d && d.item && !d.item.pinnedAt) {
+        toast('置顶没存进服务端：Worker 还是旧版，跑一次 npx wrangler deploy');
+      }
+      return d;
+    }).catch(function (e) {
       var j = ITEMS.findIndex(function (x) { return x.id === item.id; });
       if (j !== -1) { if (prev) ITEMS[j] = prev; else ITEMS.splice(j, 1); }
       render();
@@ -730,6 +814,98 @@
     put(Object.assign({}, m, { archivedAt: on ? Date.now() : 0 }))
       .then(function () { toast(on ? '已 archive' : '已取回'); })
       .catch(function (e) { toast('操作失败：' + (e.message || e)); });
+  }
+
+  /**
+   * 固定 / 取消固定。
+   * 钉住的同时把 archivedAt 清掉 —— 「始终置顶」和「已收进 archive」是矛盾的，
+   * 与其定义一套二者共存时的规则，不如让置顶顺手把它取回来。
+   */
+  function setPinned(m, on) {
+    put(Object.assign({}, m, {
+      pinnedAt: on ? Date.now() : 0,
+      archivedAt: on ? 0 : (m.archivedAt || 0)
+    })).then(function () {
+      toast(on ? ((m.archivedAt ? '已取回并置顶' : '已置顶') + '（不会被 archive）') : '已取消置顶');
+    }).catch(function (e) { toast('操作失败：' + (e.message || e)); });
+  }
+
+  /* ---------- 头部那两个批量操作 ---------- */
+
+  /** 「全部 archive」会动到哪些：当前要望流里未置顶、且还没 archive 的那些。
+      刻意**不看**搜索 / 优先级筛选 —— 一次点掉几十条是不可逆感很强的操作，
+      范围应该是一个固定的、说得清的东西（「要望流里的所有活动条目」），
+      而不是「我现在恰好筛出来的这些」。 */
+  function bulkArchTargets() {
+    return ITEMS.filter(function (m) { return !m.archivedAt && !isPinned(m); });
+  }
+
+  var archArmed = false, archArmTimer = null;
+  function disarmArchAll() {
+    archArmed = false;
+    clearTimeout(archArmTimer);
+    var b = $('archAll');
+    b.classList.remove('armed');
+    var n = bulkArchTargets().length;
+    b.textContent = n ? ('🗂 全部 archive (' + n + ')') : '🗂 全部 archive';
+  }
+
+  $('copyAll').addEventListener('click', function () {
+    if (!SHOWN.length) { toast('列表是空的'); return; }
+    // 只要正文。条与条之间空一行分开，别加编号 / 时间戳 —— 要的是原文
+    var text = SHOWN.map(function (m) { return String(m.text || '').trim(); })
+                    .filter(Boolean).join('\n\n');
+    copy(text, '已复制 ' + SHOWN.length + ' 条正文');
+  });
+
+  $('archAll').addEventListener('click', function () {
+    var targets = bulkArchTargets();
+    if (!targets.length) { toast('没有可以 archive 的要望'); return; }
+    // 两段确认，和「彻底删除」一个手感：第一下变确认，4 秒没动作自己解除
+    if (!archArmed) {
+      archArmed = true;
+      $('archAll').classList.add('armed');
+      $('archAll').textContent = '⚠️ 再点一下 archive 这 ' + targets.length + ' 条';
+      archArmTimer = setTimeout(disarmArchAll, 4000);
+      return;
+    }
+    disarmArchAll();
+    bulkArchive(targets);
+  });
+
+  /**
+   * 批量 archive。Worker 那边一次只收一条（wish_put），所以这里是 N 个请求；
+   * 界面先整批落地，再逐条发出去，失败的那几条单独退回原状 ——
+   * 一条失败就把整批都退回去更让人困惑（明明大部分都成功了）。
+   */
+  function bulkArchive(targets) {
+    var at = Date.now();
+    var snapshot = {};
+    targets.forEach(function (m) { snapshot[m.id] = m.archivedAt || 0; });
+
+    // 先动界面：整批标成 archived，一次重画
+    targets.forEach(function (m) {
+      var i = ITEMS.findIndex(function (x) { return x.id === m.id; });
+      if (i !== -1) ITEMS[i] = Object.assign({}, ITEMS[i], { archivedAt: at });
+    });
+    render();
+    toast('正在 archive ' + targets.length + ' 条…');
+
+    var failed = 0;
+    var jobs = targets.map(function (m) {
+      var next = Object.assign({}, m, { archivedAt: at });
+      return call({ action: 'wish_put', item: JSON.stringify(next) }).catch(function () {
+        failed++;
+        var i = ITEMS.findIndex(function (x) { return x.id === m.id; });
+        if (i !== -1) ITEMS[i] = Object.assign({}, ITEMS[i], { archivedAt: snapshot[m.id] });
+      });
+    });
+    Promise.all(jobs).then(function () {
+      render();
+      toast(failed
+        ? ('已 archive ' + (targets.length - failed) + ' 条，' + failed + ' 条失败（已退回原状）')
+        : ('已 archive ' + targets.length + ' 条'));
+    });
   }
 
   function addItem() {
@@ -800,6 +976,69 @@
     showArchived = false;
     render();
     scrollToBottom();
+  });
+
+  /* ---------- 键盘 ----------
+   * ↑↓ 在列表里挑一条，E 打开它的编辑框，/ 回到底部的输入框。
+   * 所有这些在输入框里都不生效 —— 正在打字的时候 e 就是字母 e。
+   */
+  function isTyping(node) {
+    if (!node) return false;
+    if (node.isContentEditable) return true;
+    var t = (node.tagName || '').toUpperCase();
+    return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT';
+  }
+
+  /** 只换那一个 class，不整块重画 —— 按住方向键连着走的时候也不闪 */
+  function paintCur(scroll) {
+    [].forEach.call(document.querySelectorAll('.msg.cur'), function (n) { n.classList.remove('cur'); });
+    if (!curId) return;
+    var node = document.getElementById('w-' + curId);
+    if (!node) return;
+    node.classList.add('cur');
+    // 'nearest'：已经在视野里的就别滚，免得每按一下整页都跳一下
+    if (scroll) node.scrollIntoView({ block: 'nearest' });
+  }
+
+  function moveCur(delta) {
+    if (!SHOWN.length) return;
+    var i = SHOWN.findIndex(function (m) { return m.id === curId; });
+    var next;
+    // 还没选过：↓ 从最上面那条开始，↑ 从最下面那条开始
+    if (i === -1) next = delta > 0 ? 0 : SHOWN.length - 1;
+    else next = Math.min(SHOWN.length - 1, Math.max(0, i + delta));
+    curId = SHOWN[next].id;
+    paintCur(true);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isTyping(e.target)) return;
+
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveCur(1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); moveCur(-1); return; }
+
+    if (e.key === '/') {
+      // 先拦下来，否则这个 / 会被打进输入框里
+      e.preventDefault();
+      var ta = $('newText');
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+      return;
+    }
+
+    if (e.key === 'e' || e.key === 'E') {
+      if (!curId) { toast('先用 ↑ ↓ 选一条要望'); return; }
+      e.preventDefault();
+      editing = curId;
+      render();          // editor() 会自己把光标放进 textarea
+      var node = document.getElementById('w-' + curId);
+      if (node) node.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+
+    // Esc：取消选中（编辑框里的 Esc 由 editor() 自己处理，走不到这儿）
+    if (e.key === 'Escape' && curId) { curId = ''; paintCur(false); }
   });
 
   /* ---------- 启动 ---------- */

@@ -892,6 +892,9 @@ function normalizeWish(raw) {
     text: text,
     prio: WISH_PRIO.includes(raw.prio) ? raw.prio : '',
     archivedAt: Number(raw.archivedAt) || 0,
+    // 固定（置顶）。存的是钉上去的时间，0 = 没钉。置顶的那几条 wish.html
+    // 会一直摆在最上面，并且「一键 archive」会跳过它们。
+    pinnedAt: Number(raw.pinnedAt) || 0,
   };
 }
 
@@ -1571,6 +1574,28 @@ function stampStatus(next, prev) {
   return keep ? Object.assign({}, next, { statusAt: keep }) : next;
 }
 
+/**
+ * status 这一个字段不参与「整条晚的赢」。
+ *
+ * 看板（管理者模式）改状态走的是 applyBoardOps，会把 statusAt 盖成改的那一刻。
+ * 可油猴脚本手里那份记录并不知道这件事：它只要因为别的原因动过一下
+ * （重新抓了一次职位页、写了条 MEMO），updatedAt 就比仓库新，整条推上来一合并，
+ * 刚从看板改好的状态又被推回了旧值 —— 表现就是「改完过一会儿自己变回去了」。
+ *
+ * 所以这里单独比 statusAt：仓库里这一格更新，就把它连同 statusAt 一起留下，
+ * 记录的其余字段照旧按「晚的赢」取推上来那份。
+ *
+ * 必须在 stampStatus() **之前**跑：stampStatus 一看状态不一样就会把
+ * statusAt 盖成 updatedAt，盖完再比就永远是推上来那份新，这道闸等于没有。
+ * 推上来的记录没有 statusAt（老版本脚本）时算 0，也就是仓库有章就守住。
+ */
+function keepNewerStatus(next, prev) {
+  const mine = Number(next && next.statusAt) || 0;
+  const theirs = Number(prev && prev.statusAt) || 0;
+  if (!theirs || theirs <= mine) return next;
+  return Object.assign({}, next, { status: prev.status, statusAt: theirs });
+}
+
 function mergeIntoRepo(env, repo, incoming) {
   const dead = (incoming.deleted && typeof incoming.deleted === 'object') ? incoming.deleted : {};
   const stat = { recAdded: 0, recUpdated: 0, recRemoved: 0, msgAdded: 0, msgUpdated: 0, msgRemoved: 0 };
@@ -1584,7 +1609,10 @@ function mergeIntoRepo(env, repo, incoming) {
     const red = redactRecord(env, r);
     const cur = byId.get(r.id);
     if (!cur) { byId.set(r.id, stampStatus(red, null)); stat.recAdded++; return; }
-    if (recStamp(red) >= recStamp(cur)) { byId.set(r.id, stampStatus(red, cur)); stat.recUpdated++; }
+    if (recStamp(red) >= recStamp(cur)) {
+      byId.set(r.id, stampStatus(keepNewerStatus(red, cur), cur));
+      stat.recUpdated++;
+    }
   });
   Object.keys(dead).forEach((id) => { if (byId.delete(id)) stat.recRemoved++; });
   repo.records = Array.from(byId.values());

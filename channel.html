@@ -231,7 +231,7 @@
   <span class="who" id="who"></span>
   <span class="pill down sp" id="state"><i></i><span id="stateText">连接中…</span></span>
   <input id="q" type="search" placeholder="搜索消息…（含已 archive）" autocomplete="off">
-  <select id="prio" title="按消息里写的优先级筛选。只在当前这堆消息里筛（已 archive 的不算，要看它们请先进 Archived 视图）">
+  <select id="prio" title="按消息里写的优先级筛选（已 archive 的不算，要看它们请先进 Archived 视图）。搜索时这一层不生效 —— 搜索范围永远是全部消息。">
     <option value="">全部优先级</option>
     <option value="紧急">紧急</option>
     <option value="高">高</option>
@@ -240,6 +240,7 @@
     <option value="none">未标优先级</option>
   </select>
   <a class="navbtn" id="back" href="./index.html">📮 回到投递清单</a>
+  <button class="navbtn" id="bell" type="button" hidden>🔔 开启通知</button>
   <button class="navbtn" id="archFab" type="button" hidden>Archived (<b id="archN">0</b> 件)</button>
 </header>
 
@@ -540,9 +541,10 @@
     var needle = $('q').value.trim();
     var low = needle.toLowerCase();
     var prio = $('prio').value;
-    /* 搜索跨越 archive 分区 —— 找东西的时候不该因为「收起来了」就找不到。
-       优先级筛选不跨：它是在「当前这堆消息」里再缩一层，把 archive 掉的
-       混进通知流反而让人以为它们回来了。 */
+    /* 搜索的范围是**全部消息**：既跨 archive 分区，也跨优先级筛选。
+       找东西的时候筛选只会帮倒忙 —— 明明有那条消息，就因为它正文里没写
+       「优先级：高」而搜不到，是纯粹的困惑来源。筛选不清空，删掉搜索词
+       就回到原来那个视图。 */
     var filtering = !!needle;
 
     var list = filtering
@@ -553,11 +555,13 @@
         return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
       });
     }
-    // 先按当前这堆算条数，再套优先级 —— 这样每个选项括号里的数字
-    // 就是选中它以后真正会看到的条数，各项相加也正好等于「全部优先级」
+    // 括号里的数字＝选中该项后真正会看到的条数。搜索时优先级不再参与筛选，
+    // 所以那时这些数字是「这批结果里各优先级各有几条」的分布。
     renderPrioCounts(prio, list);
-    if (prio === 'none') list = list.filter(function (m) { return !prioOf(m); });
-    else if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
+    if (!filtering) {
+      if (prio === 'none') list = list.filter(function (m) { return !prioOf(m); });
+      else if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
+    }
 
     var feed = $('feed');
     feed.textContent = '';
@@ -582,8 +586,9 @@
     if (narrowed && !list.length) {
       $('empty').hidden = false;
       $('empty').textContent = '没有符合条件的消息'
-        + (needle ? ('（搜索「' + needle + '」）') : '')
-        + (prio ? ('（' + (prio === 'none' ? '未标优先级' : ('优先级 ' + prio)) + '）') : '') + '。';
+        + (needle ? ('（搜索「' + needle + '」，范围＝全部消息）') : '')
+        // 搜索时优先级不参与筛选，这时把它写进原因里只会让人白改筛选
+        + ((prio && !filtering) ? ('（' + (prio === 'none' ? '未标优先级' : ('优先级 ' + prio)) + '）') : '') + '。';
     } else if (showArchived && !list.length) {
       $('empty').hidden = false; $('empty').textContent = '还没有 archive 过任何消息。';
     } else if (!narrowed) {
@@ -599,8 +604,11 @@
     $('archbarText').textContent = '正在看已 archive 的消息（' + arch + ' 条）';
     if (filtering) {
       var nArch = list.filter(function (m) { return m.archivedAt; }).length;
-      $('archbar').hidden = !nArch;
-      $('archbarText').textContent = '搜索结果里有 ' + nArch + ' 条是已 archive 的（淡显那几条）';
+      var bits = [];
+      if (nArch) bits.push('其中 ' + nArch + ' 条是已 archive 的（淡显那几条）');
+      if (prio) bits.push('优先级筛选已跨过');
+      $('archbar').hidden = !bits.length;
+      $('archbarText').textContent = '搜索范围＝全部消息：' + bits.join('，');
     }
 
     saveView();
@@ -702,11 +710,72 @@
   $('jump').addEventListener('click', scrollToBottom);
   $('scroll').addEventListener('scroll', function () { if (atBottom()) $('jump').hidden = true; });
 
+  /* ---------- Chrome 通知 ----------
+   * 这一页多半是开着不看的（挂在后台等群里有动静），所以新消息要能推出来。
+   * 两条规矩：
+   *   · 只在页面**不在眼前**（切走了 / 没焦点）时弹 —— 人正看着还弹一下纯属噪音；
+   *   · 同一个 tag，新的顶掉旧的，不会在通知中心堆成一列。
+   * 关掉的办法用浏览器自己的站点设置，这里不再造一个开关。
+   */
+  var booted = false;          // 初次加载那一批不算「新消息」，否则一打开就弹
+  function canNotify() {
+    return ('Notification' in window) && Notification.permission === 'granted';
+  }
+  function paintBell() {
+    var b = $('bell');
+    if (!('Notification' in window)) { b.hidden = true; return; }
+    b.hidden = Notification.permission === 'granted';
+    if (Notification.permission === 'denied') {
+      b.textContent = '🔔 通知被拒绝';
+      b.title = '浏览器已拒绝这个站点的通知权限。点地址栏左边的图标 → 通知 → 允许，然后刷新。';
+    } else {
+      b.textContent = '🔔 开启通知';
+      b.title = '开启后，这一页切到后台时群里的新消息会用 Chrome 通知提醒你。';
+    }
+  }
+  $('bell').addEventListener('click', function () {
+    if (!('Notification' in window)) { toast('这个浏览器不支持通知'); return; }
+    if (Notification.permission === 'denied') {
+      toast('浏览器拒绝了通知权限，要在站点设置里改回来');
+      return;
+    }
+    try {
+      Notification.requestPermission().then(function (p) {
+        paintBell();
+        toast(p === 'granted' ? '通知已开启' : '没有拿到通知权限');
+      });
+    } catch (e) { toast('这个浏览器不支持通知'); }
+  });
+
+  function notifyNew(list) {
+    if (!booted || !list.length || !canNotify()) return;
+    // 人就在这一页上看着，没必要再弹一个系统通知
+    if (!document.hidden && document.hasFocus()) return;
+    var first = list[list.length - 1];        // 最新那条
+    var body = String(first.text || first.kind || '').replace(/\s+/g, ' ').trim();
+    try {
+      var n = new Notification(
+        list.length > 1 ? ('Telegram 频道 · ' + list.length + ' 条新消息')
+                        : ('Telegram 频道 · ' + (first.author || (first.bot ? 'Bot' : '匿名'))),
+        {
+          body: body.slice(0, 160) || '（没有正文的消息）',
+          tag: 'sgjob-channel',
+          icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="26">📡</text></svg>')
+        });
+      n.onclick = function () {
+        window.focus();
+        focusMsg(first.uid, true);
+        n.close();
+      };
+    } catch (e) { /* 弹不出来就算了，页面照常 */ }
+  }
+
   /** 收到一批消息（初次加载或增量），合并进来 */
   function ingest(items, animate) {
     if (!items || !items.length) return 0;
     var stick = atBottom();
     var fresh = {}, added = 0;
+    var brandNew = [];         // 真正新增的那些（编辑过的老消息不算）——用来发通知
     items.forEach(function (m) {
       if (!m || !m.uid) return;
       var old = BY_UID[m.uid];
@@ -723,6 +792,7 @@
         MSGS.push(m);
         fresh[m.uid] = 1;
         added++;
+        brandNew.push(m);
       }
       newest = Math.max(newest, m.editedTs || 0, m.ts || 0);
     });
@@ -730,6 +800,8 @@
     try { localStorage.setItem('sgjob_channel_seen', String(newest)); } catch (e) {}
     if (!added) return 0;
     MSGS.sort(function (a, b) { return a.ts - b.ts; });
+    brandNew.sort(function (a, b) { return a.ts - b.ts; });
+    notifyNew(brandNew);
     render(animate ? fresh : null);
     if (stick) scrollToBottom(); else $('jump').hidden = false;
     return added;
@@ -986,6 +1058,13 @@
     pendingArch = !!v.arch;
   })();
 
+  /* 通知权限：还没问过就问一次（Chrome 允许无手势调用；被「安静通知」策略
+     拦下时静默失败，头部那个 🔔 按钮就是给这种情况留的手动入口）。 */
+  paintBell();
+  if (('Notification' in window) && Notification.permission === 'default') {
+    try { Notification.requestPermission().then(paintBell); } catch (e) { /* 老式回调 API，忽略 */ }
+  }
+
   if (!ENDPOINT) {
     setState('down', '未配置中继');
     updateSetup();
@@ -998,6 +1077,8 @@
       if (targetUid()) focusMsg(targetUid(), true);
       else scrollToBottom();
       if (!live) startPolling();      // 没有 DO 就一直轮询
+      // 这一批是「已经在群里的历史消息」，不该弹通知；从这之后才算新消息
+      booted = true;
     });
     // 兜底：即使 WebSocket 说自己活着，也每分钟完整对一次账，
     // 漏推的新消息和漏掉的删除广播都在这里归位
