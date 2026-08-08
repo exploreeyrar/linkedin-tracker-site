@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T01:31:58.928Z",
+ "updatedAt": "2026-08-08T01:32:18.448Z",
  "count": 97,
  "records": [
   {
@@ -1820,6 +1820,20 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjp80aq36mb",
+   "text": "📝 MEMO 删除\nPostman / Account Development Representative\ntest",
+   "createdAt": 1786152736898,
+   "editedAt": 0,
+   "author": "看板"
+  },
+  {
+   "id": "pmsjp7znkqhih",
+   "text": "📝 MEMO 删除\nPostman / Account Development Representative\nt2",
+   "createdAt": 1786152736064,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjp7mbxud50",
    "text": "📝 MEMO 删除\nPostman / Account Development Representative\ntest",
