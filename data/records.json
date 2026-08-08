@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T13:39:23.918Z",
+ "updatedAt": "2026-08-08T13:53:06.056Z",
  "count": 96,
  "records": [
   {
@@ -2084,6 +2084,7 @@
   "三次面试通过、等对方安排下一轮",
   "二次面试通过、等对方安排下一轮",
   "一次面试通过、等対方安排下一轮",
+  "web test过了、等対方安排下一轮",
   "一次人事面谈结束、等对方联络",
   "内定",
   "人事 Offer Call",
@@ -2163,6 +2164,15 @@
    "closed": false,
    "rejected": false,
    "advanced": true,
+   "waiting": false,
+   "role": ""
+  },
+  {
+   "id": "umskfo1fbt6tz",
+   "name": "web test过了、等対方安排下一轮",
+   "closed": false,
+   "rejected": false,
+   "advanced": false,
    "waiting": false,
    "role": ""
   },
