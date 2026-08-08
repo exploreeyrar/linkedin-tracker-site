@@ -598,6 +598,41 @@
     border-radius: 12px;
   }
 
+  /* ---------- 进入前的写入密钥提示 ----------
+     盖住整页，点外面和 Esc 都关不掉 —— 只能填写或明确选「只读浏览」。 */
+  .gate {
+    position: fixed; inset: 0; z-index: 200; background: rgba(8,10,14,.9);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(3px);
+  }
+  .gate[hidden] { display: none; }
+  .gatebox {
+    width: min(520px, 100%); background: var(--card); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--pop);
+    padding: 24px 26px;
+  }
+  .gatebox h3 { margin: 0 0 8px; font-size: 17px; }
+  .gatebox .desc { color: var(--sub); font-size: 13px; line-height: 1.7; margin-bottom: 16px; }
+  .gatebox input {
+    width: 100%; font: inherit; font-size: 13px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--fg);
+  }
+  .gatebox input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .gatebox .status { font-size: 12px; margin-top: 10px; line-height: 1.6; min-height: 1em; }
+  .gatebox .status.ok { color: var(--c-offer); }
+  .gatebox .status.err { color: var(--c-rejitv); }
+  .gatebox .row { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+  .gatebox .row .sp { margin-left: auto; }
+  .gatebox button {
+    font: inherit; font-size: 13px; padding: 9px 16px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  .gatebox button.primary { background: var(--accent); color: #fff; border-color: transparent; font-weight: 600; }
+  .gatebox button.ghost { border-color: transparent; color: var(--sub); font-size: 12px; }
+  .gatebox button.ghost:hover { color: var(--fg); text-decoration: underline; }
+  .gatebox button:disabled { opacity: .5; cursor: default; }
+  .gatebox .tip { color: var(--sub); font-size: 11.5px; line-height: 1.7; margin-top: 14px; }
+
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
     background: rgba(20,20,20,.93); color: #fff; padding: 10px 18px; border-radius: 10px;
@@ -908,6 +943,27 @@
 <div class="hlbar" id="hlbar" hidden>
   <span id="hlwho">已定位到该项目</span>
   <button type="button" id="hlclear">取消高亮</button>
+</div>
+
+<!-- 未填写入密钥时的进入前提示。z-index 压过所有弹窗（含 .fumask 的 95） -->
+<div class="gate" id="gateMask" hidden>
+  <div class="gatebox">
+    <h3>🔑 先填写 Worker 写入密钥</h3>
+    <div class="desc">
+      这台设备还没配置写入密钥。填上之后，你在这个看板里写的 MEMO、跟进提醒、处理期限
+      才能写回仓库；不填的话改动只会堆在这台机器的本地队列里传不出去。
+    </div>
+    <input type="password" id="gateKey" placeholder="Worker 上 wrangler secret put WRITE_KEY 设的那个值" spellcheck="false">
+    <div class="status" id="gateState"></div>
+    <div class="row">
+      <button class="primary" id="gateGo" type="button">验证并进入</button>
+      <button class="ghost sp" id="gateSkip" type="button">暂时只读浏览</button>
+    </div>
+    <div class="tip">
+      会先向 Worker 验证一次再存，填错不会静默留下一个坏配置。<br>
+      密钥只存在这台设备的浏览器里，不会写进页面、也不会进仓库。
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1345,9 +1401,87 @@
         if (detailTarget) renderDetailMemos(detailTarget);
         return (d.applied || []).length;
       })
-      .catch(function (e) { wstate.err = e.message || String(e); refreshPending(); return 0; })
+      .catch(function (e) {
+        wstate.err = e.message || String(e);
+        // 密钥被换掉 / 服务端关了这个入口 → 清掉本机那份，重新要一次
+        if (/密钥|key|403|501/i.test(wstate.err)) {
+          try { localStorage.removeItem(WKEY); } catch (e2) {}
+          try { sessionStorage.removeItem(GATE_SKIP); } catch (e2) {}
+          showGate();
+          $('gateState').className = 'status err';
+          $('gateState').textContent = '原来的密钥已经不能用了：' + wstate.err;
+        }
+        refreshPending();
+        return 0;
+      })
       .then(function (n) { wstate.busy = false; return n; });
   }
+
+  /* ---------- 进入前先要写入密钥 ----------
+   * 说清楚这是什么：**配置提示，不是访问控制**。页面是 GitHub Pages 上的公开
+   * 静态产物，谁都能直接抓走，拦不住也不该假装拦得住。它解决的是另一个问题 ——
+   * 一台没配密钥的电脑，你在上面写的东西会静默堆在本地队列里传不出去。
+   *
+   * 「暂时只读浏览」按 sessionStorage 记，关掉标签页再来还会问。
+   */
+  var GATE_SKIP = 'sgjob_gate_skipped';
+  function gateSkipped() {
+    try { return sessionStorage.getItem(GATE_SKIP) === '1'; } catch (e) { return false; }
+  }
+  function needGate() {
+    // 连 Worker 地址都没配的话，要密钥毫无意义
+    return !!CONFIG.tgEndpoint && !writeKey() && !gateSkipped();
+  }
+
+  /** 拿一个不存在的 jobId 去探一次：能读到仓库就说明密钥对，且绝不会改动任何东西 */
+  function verifyWriteKey(k) {
+    return tgAction({
+      action: 'records_write',
+      ops: JSON.stringify([{ op: 'memo', jobId: '__probe__', site: 'linkedin',
+                             text: 'probe', ts: 1, opId: 'probe' }]),
+    }, { 'X-Write-Key': k });
+  }
+
+  function showGate() {
+    $('gateMask').hidden = false;
+    $('gateState').textContent = '';
+    $('gateState').className = 'status';
+    $('gateKey').value = '';
+    setTimeout(function () { $('gateKey').focus(); }, 60);
+  }
+
+  function submitGate() {
+    var k = $('gateKey').value.trim();
+    var st = $('gateState');
+    if (!k) { st.className = 'status err'; st.textContent = '先把密钥填上'; return; }
+    $('gateGo').disabled = true;
+    st.className = 'status';
+    st.textContent = '正在向 Worker 验证…';
+    verifyWriteKey(k).then(function () {
+      try { localStorage.setItem(WKEY, k); } catch (e) {}
+      wstate.err = '';
+      st.className = 'status ok';
+      st.textContent = '验证通过，已保存到这台设备。';
+      setTimeout(function () {
+        $('gateMask').hidden = true;
+        refreshPending();
+        flushViaWorker();          // 之前堆着的改动立刻补传
+      }, 700);
+    }).catch(function (e) {
+      st.className = 'status err';
+      st.textContent = '验证失败：' + (e.message || e);
+    }).then(function () { $('gateGo').disabled = false; });
+  }
+
+  $('gateGo').addEventListener('click', submitGate);
+  $('gateKey').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); submitGate(); }
+  });
+  $('gateSkip').addEventListener('click', function () {
+    try { sessionStorage.setItem(GATE_SKIP, '1'); } catch (e) {}
+    $('gateMask').hidden = true;
+    toast('已跳过：这台设备写的改动传不出去，直到填上密钥');
+  });
 
   function refreshPending() {
     var n = outboxRead().length;
@@ -2286,6 +2420,7 @@
     updateWriteHint();
     refreshPending();
     if (v) flushViaWorker();
+    else { try { sessionStorage.removeItem(GATE_SKIP); } catch (e) {} }
   });
 
   $('pfBoard').addEventListener('change', function () {
@@ -3743,6 +3878,8 @@
   // 例外只有一个：带着 #msg-<id> 进来，那是冲着某条留言来的。
   openMsgFromHash();
 
+  if (needGate()) showGate();     // 没配写入密钥 → 先要密钥
+
   checkFollowUps();               // 到期的跟进提醒，一进页面就弹
   setInterval(checkFollowUps, 5 * 60000);   // 页面开一整天时跨过零点也能弹
 
@@ -3771,6 +3908,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
+    if (!$('gateMask').hidden) return;      // 这个门只能填写或明确跳过
     $('remindMask').hidden = true;
     $('prefsMask').hidden = true;
     $('memoMask').hidden = true;
