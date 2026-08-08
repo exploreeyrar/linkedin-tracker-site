@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-08-08T11:06:35.619Z",
+ "updatedAt": "2026-08-08T12:10:45.073Z",
  "records": [
   {
    "id": "rmsbqx31qom94x",
@@ -1772,10 +1772,11 @@
    "status": "已投递等联络",
    "scout": false,
    "sector": "",
-   "updatedAt": 1785997725592,
+   "updatedAt": 1786191043869,
    "memos": [],
    "epMonthly": 0,
-   "epAnnual": 0
+   "epAnnual": 0,
+   "statusAt": 1786191043869
   },
   {
    "id": "rmsixcorxkocty",
