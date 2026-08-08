@@ -209,6 +209,33 @@
   .iconbtn:hover { background: var(--line); }
   td.act { text-align: center; white-space: nowrap; }
 
+  /* ---------- 管理者模式 ---------- */
+  /* 状态那格换成下拉框。字色沿用状态色，所以扫一眼的观感和标签一致 */
+  .stsel {
+    font: inherit; font-size: 12px; font-weight: 600; max-width: 100%;
+    padding: 4px 6px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: inherit; cursor: pointer;
+  }
+  .stsel:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .delbtn {
+    border: 1px solid transparent; background: transparent; color: var(--sub);
+    cursor: pointer; font-size: 14px; padding: 3px 7px; border-radius: 7px; line-height: 1;
+    font-family: inherit;
+  }
+  .delbtn:hover { border-color: var(--c-rejitv); color: var(--c-rejitv); }
+  .delbtn.armed {
+    border-color: var(--c-rejitv); color: var(--c-rejitv);
+    font-size: 11px; font-weight: 700;
+  }
+  /* 开着管理者模式时给个不刺眼但跑不掉的提示 —— 这个模式能删数据 */
+  .adminbar {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 46;
+    font-size: 11.5px; padding: 5px 13px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c-rejitv) 16%, var(--card));
+    border: 1px solid var(--c-rejitv); color: var(--c-rejitv); box-shadow: var(--shadow);
+  }
+  .adminbar[hidden] { display: none; }
+
   /* Telegram 链接跳过来时高亮那一行，直到点「取消高亮」 */
   tr.hl > td { background: #fff5c2 !important; }
   @media (prefers-color-scheme: dark) { tr.hl > td { background: #4a4218 !important; } }
@@ -893,6 +920,7 @@
     <label style="margin-top:18px">清单</label>
     <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
     <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
+    <label class="chk"><input type="checkbox" id="pfAdmin"><span>管理者模式<small>开启后清单的「状态」列变成下拉框，可直接改状态；每行末尾多一个 🗑，两次点击删除该项目。改动经 Worker 写回，其他电脑也会同步。</small></span></label>
     <label class="chk"><input type="checkbox" id="pfPushTg"><span>详情页显示「推送至 telegram」勾选框<small>默认不显示。藏起来时「📤 一键推送所有新MEMO」一律真的发到 Telegram；放出来才能选择「只标记为已推送、不发出去」</small></span></label>
 
     <label style="margin-top:18px">要望欄</label>
@@ -1011,6 +1039,7 @@
 </div>
 
 <div class="pendbar" id="pendBar" hidden></div>
+<div class="adminbar" id="adminBar" hidden>⚙ 管理者模式：清单里可直接改状态 / 删项目</div>
 
 <div class="hlbar" id="hlbar" hidden>
   <span id="hlwho">已定位到该项目</span>
@@ -1201,6 +1230,7 @@ function bootBoard(PAYLOAD) {
     { key: 'deadline',   label: '截止处理时间', sort: 'deadline' },
     { key: 'status',     label: '状态',        sort: 'status' },
     { key: 'act',        label: '留言',        sort: null,    align: 'center' },
+    { key: 'admin',      label: '',            sort: null,    align: 'center' },
     { key: 'memo',       label: 'MEMO',        sort: null },
     { key: 'company',    label: '公司',        sort: 'company' },
     { key: 'title',      label: '岗位链接',     sort: 'title' },
@@ -1214,7 +1244,9 @@ function bootBoard(PAYLOAD) {
   ];
   var COL_BY_KEY = {};
   COLUMNS.forEach(function (c) { COL_BY_KEY[c.key] = c; });
-  var DEFAULT_HIDDEN = { ts: 1, tenure: 1 };
+  var DEFAULT_HIDDEN = { ts: 1, tenure: 1, admin: 1 };
+  // 这一列不出现在「列」设置里 —— 它由「管理者模式」那个勾控制
+  var COL_NOT_CONFIGURABLE = { admin: 1 };
   // 三个 EP 列在没有任何数据时整列不出现
   var HAS_EP = RECORDS.some(function (r) { return r.sector || r.epMonthly || r.epAnnual; });
   var EP_KEYS = { sector: 1, epMonthly: 1, epAnnual: 1 };
@@ -1233,6 +1265,7 @@ function bootBoard(PAYLOAD) {
     return out;
   }
   function colHidden(key) {
+    if (key === 'admin') return !prefs.admin;      // 只有管理者模式下才有这一列
     if (EP_KEYS[key] && !HAS_EP) return true;      // 没填过就别占位置
     var h = (prefs.cols && prefs.cols.hidden) || null;
     return h ? !!h[key] : !!DEFAULT_HIDDEN[key];
@@ -1416,7 +1449,8 @@ function bootBoard(PAYLOAD) {
     showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
     // 搜索词与各个 filter 的当下状态：刷新 / 重开页面后原样恢复，
     // 免得看到一半刷新一下就被打回全量清单，还得重新点一遍
-    filters: { q: '', status: '', scout: false, follow: false, group: '' },
+    filters: { q: '', status: '', scout: false, follow: false, group: 'todo' },
+    admin: false,                  // 管理者模式：清单里直接改状态 / 删项目
     board: { x: 0, y: 0, w: 380, h: 440, placed: false, max: true }
   };
   try {
@@ -1427,7 +1461,7 @@ function bootBoard(PAYLOAD) {
       if (!prefs.followUp || typeof prefs.followUp !== 'object') prefs.followUp = {};
       if (!prefs.fuDone || typeof prefs.fuDone !== 'object') prefs.fuDone = {};
       if (!prefs.memoPushed || typeof prefs.memoPushed !== 'object') prefs.memoPushed = {};
-      prefs.filters = Object.assign({ q: '', status: '', scout: false, follow: false, group: '' },
+      prefs.filters = Object.assign({ q: '', status: '', scout: false, follow: false, group: 'todo' },
                                     prefs.filters || {});
     }
   } catch (e) { /* 用默认值 */ }
@@ -1460,6 +1494,7 @@ function bootBoard(PAYLOAD) {
       clearTimeout(flushTimer);
       flushTimer = setTimeout(flushViaWorker, 1200);
     }
+    return op;      // 调用方可能要拿 opId 撤回（见 deleteRecord 的「撤销」）
   }
   var flushTimer = null;
   /* 油猴脚本在这一页跑着没有。它每 4 秒写一次心跳；15 秒内有就算活着。
@@ -1609,7 +1644,7 @@ function bootBoard(PAYLOAD) {
       msg = wstate.err
         ? ('⚠️ ' + n + ' 项写入仓库失败：' + wstate.err)
         : ('⏳ ' + n + ' 项待写入：由 Worker 代写仓库，几秒内提交');
-      showPend(msg, !!wstate.err);
+      showPend(msg);
       return;
     }
     if (!b.alive) {
@@ -1622,15 +1657,20 @@ function bootBoard(PAYLOAD) {
     } else {
       msg = '⏳ ' + n + ' 项改动待回传：油猴脚本已连接，几秒内写回仓库。';
     }
-    showPend(msg, !b.alive || !b.ready || !!b.err);
+    showPend(msg);
   }
 
+  /* 回写受阻的提示只走灰色浮条，**绝不记进操作 log**。
+     这里和 logBoard() 之间是天然的循环依赖：logBoard 自己要往回写队列里
+     塞一条 message，队列一长这段文案就变了，于是又记一条 —— 一旦写不出去
+     （没装脚本 / 密钥不对）就会自我循环，瞬间把 200 条的队列刷满，
+     真正的改动全被挤掉。按文案去重挡不住，因为文案里带着会变的条数。
+     所以这条路径干脆不记 log；出错信息本来就在浮条和 wstate.err 里。 */
   var lastPend = '';
-  function showPend(msg, bad) {
+  function showPend(msg) {
     if (msg === lastPend) return;
     lastPend = msg;
     toastBg(msg);
-    if (bad) logBoard(msg);
   }
 
   /* ---------- 本机新增的内容 ----------
@@ -1646,6 +1686,9 @@ function bootBoard(PAYLOAD) {
      都按「recKey → 那条 MEMO 的 ts」定位。 */
   var LOCAL = { memos: {}, msgs: [], archived: {}, deadlines: {},
                 memoEdits: {}, memoDels: {},
+                // 管理者模式在这一页改过的状态 / 删掉的项目。和 MEMO 一样先落本地，
+                // 等 Worker 真的写进去、下一次取数据带回来，这层才被清掉。
+                statuses: {}, recDels: {},
                 // 已经由 Worker 写进仓库、只是还没构建进这个页面的那些 MEMO
                 memoWrote: {} };
   try {
@@ -1658,6 +1701,8 @@ function bootBoard(PAYLOAD) {
       if (lsaved.memoEdits && typeof lsaved.memoEdits === 'object') LOCAL.memoEdits = lsaved.memoEdits;
       if (lsaved.memoDels && typeof lsaved.memoDels === 'object') LOCAL.memoDels = lsaved.memoDels;
       if (lsaved.memoWrote && typeof lsaved.memoWrote === 'object') LOCAL.memoWrote = lsaved.memoWrote;
+      if (lsaved.statuses && typeof lsaved.statuses === 'object') LOCAL.statuses = lsaved.statuses;
+      if (lsaved.recDels && typeof lsaved.recDels === 'object') LOCAL.recDels = lsaved.recDels;
     }
   } catch (e) { /* 用默认值 */ }
   function saveLocal() { try { localStorage.setItem(LK, JSON.stringify(LOCAL)); } catch (e) {} }
@@ -1764,7 +1809,41 @@ function bootBoard(PAYLOAD) {
         changed = true;
       }
     });
+    // 管理者模式改的状态：取回来的那份已经是这个状态了 → 撤掉覆盖
+    Object.keys(LOCAL.statuses).forEach(function (k) {
+      var r = recByKey[k];
+      if (!r) return;
+      if (r.status === LOCAL.statuses[k].status) { delete LOCAL.statuses[k]; changed = true; }
+    });
+    // 删掉的项目：取回来的那份里已经没有它了 → 覆盖层可以撤
+    Object.keys(LOCAL.recDels).forEach(function (k) {
+      if (!recByKey[k]) { delete LOCAL.recDels[k]; changed = true; }
+    });
+
     if (changed) saveLocal();
+  }
+
+  /**
+   * 管理者模式在这一页改的状态 / 删的项目，直接盖到 RECORDS 上。
+   *
+   * 故意不做成 statusOf(r) 那样的取值函数 —— 清单、KPI、状态分布、详情页、
+   * 速报、Telegram 文案里有近三十处读 r.status，漏一处就是「界面显示改了、
+   * 发出去的消息还是旧状态」。在源头改掉，下游全部自动一致。
+   *
+   * 必须在 pruneLocal() 之后跑：pruneLocal 要拿**服务端那份原样的** status
+   * 比对，才能判断覆盖层是不是已经落地了。
+   */
+  function applyAdminOverlay() {
+    if (Object.keys(LOCAL.recDels).length) {
+      RECORDS = RECORDS.filter(function (r) { return !LOCAL.recDels[recKey(r)]; });
+    }
+    RECORDS.forEach(function (r) {
+      var l = LOCAL.statuses[recKey(r)];
+      if (!l || !l.status || l.status === r.status) return;
+      r.status = l.status;
+      r.statusAt = l.at || r.statusAt || 0;
+      r.updatedAt = Math.max(r.updatedAt || 0, l.at || 0);
+    });
   }
 
   /** 构建进来的留言 + 脚本镜像里的 + 本机还没落地的，按 id 去重，时间从新到旧 */
@@ -1778,6 +1857,71 @@ function bootBoard(PAYLOAD) {
       });
     });
     MESSAGES = out.sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  }
+
+  function paintAdmin() { $('adminBar').hidden = !prefs.admin; }
+
+  /**
+   * 管理者模式：改状态。本机立刻生效 + 排队交给 Worker 写回仓库。
+   * statusAt 也一起盖 —— 「当日速报」只认它，不盖的话从看板改的状态
+   * 永远进不了速报。
+   */
+  function setStatus(r, next) {
+    next = String(next || '').trim();
+    if (!next || next === r.status) return;
+    if (!r.jobId) { toast('这条没有 Job ID，改不了状态（回写定位不到）'); return; }
+    var prev = r.status;
+    var at = Date.now();
+    LOCAL.statuses[recKey(r)] = { status: next, at: at };
+    saveLocal();
+    r.status = next;
+    r.statusAt = at;
+    r.updatedAt = Math.max(r.updatedAt || 0, at);
+    outboxPush({ op: 'status', jobId: r.jobId, site: r.site || 'linkedin', status: next, ts: at });
+    logBoard('🛠 状态：' + (r.company || '—') + ' / ' + (r.title || '—')
+             + '　「' + prev + '」→「' + next + '」');
+    renderKPIs();
+    buildStatusPanel();
+    apply();
+    if (detailTarget && recKey(detailTarget) === recKey(r)) openDetail(r);
+    toastBg('状态已改为「' + next + '」');
+  }
+
+  /**
+   * 管理者模式：删掉整条。给 2 秒的「撤销」——
+   * 队列里那条 op 还没飞出去就能撤回来，飞出去了就只能靠油猴脚本那份重推。
+   */
+  function deleteRecord(r) {
+    if (!r.jobId) { toast('这条没有 Job ID，删不掉（回写定位不到）'); return; }
+    var k = recKey(r);
+    var at = Date.now();
+    LOCAL.recDels[k] = at;
+    saveLocal();
+    RECORDS = RECORDS.filter(function (x) { return recKey(x) !== k; });
+    var op = outboxPush({ op: 'recDelete', jobId: r.jobId, site: r.site || 'linkedin', ts: at });
+    logBoard('🗑 删除：' + (r.company || '—') + ' / ' + (r.title || '—') + '（' + r.status + '）');
+    if (detailTarget && recKey(detailTarget) === recKey(r)) $('detailMask').hidden = true;
+    renderKPIs();
+    buildStatusPanel();
+    apply();
+    toast('已删除「' + (r.company || '—') + '」', '撤销', function () {
+      delete LOCAL.recDels[k];
+      saveLocal();
+      outboxDrop(op && op.opId);
+      RECORDS.push(r);
+      renderKPIs();
+      buildStatusPanel();
+      apply();
+      toastBg('已撤销删除');
+    });
+  }
+
+  /** 从回写队列里撤掉某一条（「撤销」用；已经交给 Worker 的撤不回来） */
+  function outboxDrop(opId) {
+    if (!opId) return;
+    var list = outboxRead().filter(function (x) { return x && x.opId !== opId; });
+    try { localStorage.setItem(OUTBOX, JSON.stringify(list)); } catch (e) {}
+    refreshPending();
   }
 
   /** 给某条项目追加一条 MEMO（本机立刻可见 + 排队回传） */
@@ -1948,6 +2092,7 @@ function bootBoard(PAYLOAD) {
 
   // 先合并好再往下走：未读判定、Chrome 通知都要看合并后的结果
   pruneLocal();
+  applyAdminOverlay();     // 顺序要紧：pruneLocal 先拿服务端原样的状态比对
   mergeMessages();
 
   // 之前版本默认不勾，做一次性迁移并立刻落盘；之后仍然尊重用户自己的选择
@@ -2195,9 +2340,35 @@ function bootBoard(PAYLOAD) {
     },
     status: function (r) {
       var td = document.createElement('td');
-      var b = el('span', 'badge', r.status || '—');
-      b.style.color = statusColor(r.status);
-      td.appendChild(b);
+      if (prefs.admin) {
+        /* 管理者模式：状态标签换成下拉框，改完立刻回写。
+           点它不该顺带把详情页弹出来，所以 click 也要拦。 */
+        var sel = document.createElement('select');
+        sel.className = 'stsel';
+        sel.style.color = statusColor(r.status);
+        STATUS_ORDER.forEach(function (name) {
+          var o = document.createElement('option');
+          o.value = name; o.textContent = name;
+          sel.appendChild(o);
+        });
+        if (STATUS_ORDER.indexOf(r.status) === -1) {   // 清单里没有的旧状态也得能显示
+          var o0 = document.createElement('option');
+          o0.value = r.status; o0.textContent = r.status || '—';
+          sel.appendChild(o0);
+        }
+        sel.value = r.status || '';
+        sel.title = '改这条的状态（管理者模式）';
+        sel.addEventListener('click', function (e) { e.stopPropagation(); });
+        sel.addEventListener('change', function (e) {
+          e.stopPropagation();
+          setStatus(r, this.value);
+        });
+        td.appendChild(sel);
+      } else {
+        var b = el('span', 'badge', r.status || '—');
+        b.style.color = statusColor(r.status);
+        td.appendChild(b);
+      }
       if (r.scout) {
         var st = el('span', 'star', '🌟');
         st.title = '人事主动 scout 的';
@@ -2228,6 +2399,31 @@ function bootBoard(PAYLOAD) {
       pen.title = '给这条留言 / 请求更新状态（发 Telegram，并记进 MEMO）';
       pen.addEventListener('click', function (e) { e.stopPropagation(); openRemind(r); });
       td.appendChild(pen);
+      return td;
+    },
+    admin: function (r) {
+      /* 管理者模式的删除。两段确认（点一下变「再点一下」，4 秒后自己解除）——
+         删掉是要同步出去的，一次点击就没了太危险；但也不想弹确认框。 */
+      var td = el('td', 'act');
+      var b = el('button', 'delbtn', '🗑');
+      b.type = 'button';
+      b.title = '删除这条投递（管理者模式）';
+      var armed = false, timer = null;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!armed) {
+          armed = true;
+          b.textContent = '确认?';
+          b.classList.add('armed');
+          timer = setTimeout(function () {
+            armed = false; b.textContent = '🗑'; b.classList.remove('armed');
+          }, 4000);
+          return;
+        }
+        clearTimeout(timer);
+        deleteRecord(r);
+      });
+      td.appendChild(b);
       return td;
     },
     memo: function (r) {
@@ -2588,6 +2784,7 @@ function bootBoard(PAYLOAD) {
     $('pfPick').checked = !!prefs.pickMode;
     $('pfFoot').checked = !!prefs.showFoot;
     $('pfPushTg').checked = !!prefs.showPushTg;
+    $('pfAdmin').checked = !!prefs.admin;
     $('pfWriteKey').value = writeKey();
     updateWriteHint();
     $('pfDot').checked = !!prefs.showDot;
@@ -2637,6 +2834,14 @@ function bootBoard(PAYLOAD) {
     else { try { sessionStorage.removeItem(GATE_SKIP); } catch (e) {} }
   });
 
+  $('pfAdmin').addEventListener('change', function () {
+    prefs.admin = this.checked;
+    savePrefs();
+    paintAdmin();
+    renderColList();     // 「列」设置里不列这一列，但顺序会变
+    apply();             // 整表重画：状态格换形态、多出 / 收掉一列
+  });
+
   $('pfPushTg').addEventListener('change', function () {
     prefs.showPushTg = this.checked;
     savePrefs();
@@ -2683,6 +2888,7 @@ function bootBoard(PAYLOAD) {
     var order = colOrder();
     order.forEach(function (key) {
       if (EP_KEYS[key] && !HAS_EP) return;
+      if (COL_NOT_CONFIGURABLE[key]) return;
       var c = COL_BY_KEY[key];
       var item = el('div', 'colitem');
       item.draggable = true;
@@ -2935,7 +3141,7 @@ function bootBoard(PAYLOAD) {
             + (wstate.at ? ('，最近 ' + fmtDT(wstate.at)) : '') + '）'
             + (wstate.skipped ? ('　跳过 ' + wstate.skipped + ' 项') : '');
       }
-      showPipe(cls, txt);
+      showPipe(txt);
       return;
     }
     if (!bst.alive) {
@@ -2957,19 +3163,18 @@ function bootBoard(PAYLOAD) {
       cls += ' ok';
       txt = '✅ 已全部回传' + (bst.lastSync ? ('（最近 ' + fmtDT(bst.lastSync) + '）') : '');
     }
-    showPipe(cls, txt);
+    showPipe(txt);
   }
 
   /* 后台管道的状态不再占着详情页顶部一整条 —— 只在状态真的变了的时候
      弹一次灰色小浮条。出错的那种同时记进操作 log，事后查得到。 */
   var lastPipe = '';
-  function showPipe(cls, txt) {
+  function showPipe(txt) {
     var box = $('dtPipe');
     if (box) box.hidden = true;            // 常驻横幅取消
     if (txt === lastPipe) return;
     lastPipe = txt;
-    toastBg(txt);
-    if (/bad/.test(cls)) logBoard(txt);
+    toastBg(txt);                          // 同上：不记 log，会自我循环
   }
 
   /* 状态是「实时」的：队列被脚本取走、推送成功、报错，都要当场反映出来。
@@ -4197,6 +4402,7 @@ function bootBoard(PAYLOAD) {
   $('footnote').hidden = !prefs.showFoot;
   paintMemoTg();
   paintPushTgVisible();
+  paintAdmin();
   restoreFilters();     // 先把上次的搜索词 / filter 摆回去，再画 KPI 和清单
   renderKPIs();
   renderColList();

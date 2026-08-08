@@ -702,20 +702,50 @@ export class BoardStore {
   /** 油猴脚本的整份同步。合并语义原样沿用 mergeIntoRepo，只是换了个存储 */
   async merge(incoming) {
     const doc = await this.doc();
-    const stat = mergeIntoRepo(this.env, doc, incoming);
+    // 服务端的墓碑和这台机器自己的墓碑并在一起：任何一边删过就算删了
+    const tombs = await this.tombMap();
+    const merged = Object.assign({}, incoming, {
+      deleted: Object.assign({}, incoming.deleted || {}, tombs),
+    });
+    const stat = mergeIntoRepo(this.env, doc, merged);
     doc.updatedAt = new Date().toISOString();
     const rev = await this.putDoc(doc);
     return { stat: stat, rev: rev, counts: { records: doc.records.length, messages: doc.messages.length } };
   }
 
-  /** 看板上的零散改动（memo / followUp / deadline） */
+  /** 看板上的零散改动（memo / followUp / deadline / status / recDelete） */
   async ops(list) {
     const doc = await this.doc();
     const res = applyBoardOps(this.env, doc, list);
     if (!res.applied.length) return { applied: res.applied, skipped: res.skipped, rev: (await this.meta()).rev || 0 };
+    // 删除留下的墓碑：下一次整份同步靠它拦住「又被推回来」
+    if (res.tombs && res.tombs.length) await this.tombAdd(res.tombs);
     doc.updatedAt = new Date().toISOString();
     const rev = await this.putDoc(doc);
-    return { applied: res.applied, skipped: res.skipped, rev: rev };
+    return { applied: res.applied, skipped: res.skipped, rev: rev, deleted: (res.tombs || []).length };
+  }
+
+  /* ---- 删除墓碑 ----------------------------------------------------------
+   * 从看板删掉一条之后，油猴脚本手里那份还有它，下一次整份同步就会把它
+   * 复活。所以删除必须留痕，并在每次 merge 时一起交给 mergeIntoRepo。 */
+
+  async tombAdd(ids) {
+    const now = Date.now();
+    const put = {};
+    ids.forEach((id) => { put['tomb:' + id] = now; });
+    const keys = Object.keys(put);
+    for (let i = 0; i < keys.length; i += 128) {
+      const slice = {};
+      keys.slice(i, i + 128).forEach((k) => { slice[k] = put[k]; });
+      await this.state.storage.put(slice);
+    }
+  }
+
+  async tombMap() {
+    const all = await this.state.storage.list({ prefix: 'tomb:' });
+    const out = {};
+    for (const [k, v] of all) out[k.slice(5)] = v || 1;
+    return out;
   }
 
   /** 首次启动时从 GitHub 把现有数据搬进来，只会成功一次 */
@@ -1391,7 +1421,7 @@ function setMemos(rec, blocks) {
  */
 function applyBoardOps(env, data, ops) {
   const recs = data.records || [];
-  const applied = [], skipped = [];
+  const applied = [], skipped = [], tombs = [];
   for (const op of ops) {
     if (!op || !op.op || !op.jobId) { skipped.push({ opId: op && op.opId, why: '操作不完整' }); continue; }
     const rec = recs.find((r) => String(r.jobId) === String(op.jobId)
@@ -1440,11 +1470,44 @@ function applyBoardOps(env, data, ops) {
       rec.updatedAt = Math.max(rec.updatedAt || 0, now);
       applied.push(op.opId);
 
+    } else if (op.op === 'status') {
+      /* 管理者模式：直接从看板改状态。
+         只认清单里已有的状态名 —— 页面是公开静态页，别让一个笔误
+         凭空造出一种新状态，油猴脚本那边的顺位和颜色都会跟着乱。 */
+      const want = redactText(env, String(op.status || '')).trim();
+      if (!want) { skipped.push({ opId: op.opId, why: '状态名是空的' }); continue; }
+      const known = knownStatuses(data);
+      if (known.length && known.indexOf(want) === -1) {
+        skipped.push({ opId: op.opId, why: '不认识的状态：' + want });
+        continue;
+      }
+      if (rec.status !== want) {
+        rec.status = want;
+        rec.statusAt = now;        // 当日速报只看这个章
+      }
+      rec.updatedAt = Math.max(rec.updatedAt || 0, now);
+      applied.push(op.opId);
+
+    } else if (op.op === 'recDelete') {
+      /* 管理者模式：删掉整条。除了从库里移走，还要留一块墓碑 ——
+         不然油猴脚本下一次整份同步会把它原样推回来。 */
+      const i = recs.indexOf(rec);
+      if (i !== -1) recs.splice(i, 1);
+      if (rec.id) tombs.push(String(rec.id));
+      applied.push(op.opId);
+
     } else {
       skipped.push({ opId: op.opId, why: '不认识的操作：' + op.op });
     }
   }
-  return { applied, skipped };
+  return { applied, skipped, tombs };
+}
+
+/** 清单里现有的状态名。statusDefs 是权威的，没有就退到 statusOrder */
+function knownStatuses(data) {
+  const defs = ((data && data.statusDefs) || []).map((d) => d && d.name).filter(Boolean);
+  if (defs.length) return defs;
+  return ((data && data.statusOrder) || []).filter(Boolean);
 }
 
 /* ==========================================================================
