@@ -708,6 +708,29 @@
   .gatebox button:disabled { opacity: .5; cursor: default; }
   .gatebox .tip { color: var(--sub); font-size: 11.5px; line-height: 1.7; margin-top: 14px; }
 
+  /* ---------- 右键副菜单 ----------
+     行上右键、设置按钮上右键都用这一个。z-index 压过弹窗遮罩（90），
+     否则在详情页里右键会被盖住。 */
+  .ctxmenu {
+    position: fixed; z-index: 120; min-width: 180px; padding: 5px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 10px 34px rgba(0,0,0,.28);
+  }
+  .ctxmenu[hidden] { display: none; }
+  .ctxmenu .ttl {
+    font-size: 11px; color: var(--sub); padding: 4px 10px 6px;
+    max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ctxmenu button {
+    display: block; width: 100%; text-align: left; font: inherit; font-size: 13px;
+    padding: 7px 10px; border: 0; border-radius: 7px; background: transparent;
+    color: var(--fg); cursor: pointer; white-space: nowrap;
+  }
+  .ctxmenu button:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .ctxmenu button small { display: block; font-size: 11px; color: var(--sub); margin-top: 1px; }
+  .ctxmenu button:hover small { color: inherit; opacity: .8; }
+  .ctxmenu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+
   /* ---------- Gmail 投送规则 ---------- */
   .mrule {
     border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
@@ -728,10 +751,28 @@
   .mrule .del {
     border: 1px solid transparent; background: transparent; color: var(--sub);
     cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 999px; font-family: inherit;
+    white-space: nowrap; flex: 0 0 auto;
   }
+  /* 清单里的分组标题（「绑定到某条投递的…」）。.mrule .opttl 只管卡片内部，
+     这些标题在卡片外面，得自己有一份，否则会掉回对话框的默认大字号 */
+  #mailList .grpttl {
+    font-size: 12px; color: var(--sub); margin: 16px 0 2px; font-weight: 600;
+  }
+  #mailList .grpttl:first-child { margin-top: 6px; }
   .mrule .del:hover { border-color: var(--c-rejitv); color: var(--c-rejitv); }
   .mrule .del.armed { border-color: var(--c-rejitv); color: var(--c-rejitv); font-weight: 700; }
   .mrule .qhint { font-size: 11.5px; color: var(--sub); line-height: 1.6; margin-top: 4px; }
+
+  /* 清单里绑了投递的那种：一行摘要 + 状态角标 */
+  .mrule .msum { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .mrule .msum b { font-size: 13.5px; }
+  .mbadge {
+    font-size: 11px; font-weight: 700; padding: 1px 9px; border-radius: 999px;
+    border: 1px solid currentColor; white-space: nowrap;
+  }
+  .mbadge.live   { color: var(--c-offer); }
+  .mbadge.paused { color: var(--sub); }
+  .mbadge.dead   { color: var(--c-rejitv); }
 
   /* 顶上那排（总开关 / 回看范围）在窄屏里会被挤到把「回看范围」四个字
      竖着排下来 —— 允许换行，标签本身不许断字 */
@@ -1029,13 +1070,38 @@
   </div>
 </div>
 
-<!-- Gmail 投送规则 -->
+<!-- 右键副菜单（行 / ⚙ 设置 共用） -->
+<div class="ctxmenu" id="ctxMenu" hidden></div>
+
+<!-- 单条投递的 Gmail 投送规则 -->
+<div class="mask" id="mailOneMask" hidden>
+  <div class="dlg">
+    <h3>✉️ 这条投递的 Gmail 投送规则</h3>
+    <div class="desc" id="mailOneWho"></div>
+    <div class="mrule" id="mailOneBox"></div>
+    <div class="tip">
+      规则和这条投递绑在一起：它一旦变成<b>结束类状态</b>（面试落了 / 书类落了 /
+      对方招到人了 / 无消息疑似书类落了），这条规则就自动失效，不用回来手动关。
+      状态又改回去的话它会自己恢复。
+    </div>
+    <div class="status" id="mailOneState"></div>
+    <div class="row">
+      <button class="primary" id="mailOneSave" type="button">保存</button>
+      <button id="mailOneDel" type="button" hidden>🗑 删掉这条规则</button>
+      <button class="sp" id="mailOneClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gmail 投送规则总览 -->
 <div class="mask" id="mailMask" hidden>
   <div class="dlg max">
-    <h3>✉️ Gmail 自动投送规则</h3>
+    <h3>✉️ Gmail 自动投送规则清单</h3>
     <div class="desc">
-      Gmail 那边有个每几分钟跑一次的脚本，按这里的规则挑邮件，命中的整封正文推到
-      Telegram 和频道页。<b>规则存在 Worker 上</b>，在这里改完就生效，不用再去动 Apps Script。
+      到目前为止设过的<b>全部</b>规则，包括已经失效的。绑了投递的那些，
+      在项目走到结束类状态后会自动失效（这里仍然列出来，标成灰的）。
+      规则存在 Worker 上，改完就生效，不用去动 Apps Script。
+      给某条投递单独设规则：在清单里<b>右键那一行</b>。
     </div>
 
     <div class="row mailtop" style="margin-top:4px">
@@ -1057,7 +1123,7 @@
     <div id="mailList"></div>
 
     <div class="row" style="margin-top:10px">
-      <button id="mailAdd" type="button">＋ 加一条规则</button>
+      <button id="mailAdd" type="button">＋ 加一条不绑投递的规则</button>
       <span class="status" id="mailState" style="margin:0"></span>
     </div>
 
@@ -2807,10 +2873,20 @@ function bootBoard(PAYLOAD) {
       refreshPickBar();
     });
 
-    // 右键：直接设置这一条的跟进提醒
+    /* 右键：这一行的副菜单。
+       以前右键是直接弹「跟进提醒」，现在这里挂着不止一件事，所以先给菜单。
+       （ctxMenu / MailRules 都在这个文件后面才赋值，但取值发生在用户右键的
+        那一刻，那时整段脚本早就跑完了。） */
     tr.addEventListener('contextmenu', function (e) {
       e.preventDefault();
-      openFollowUp(r);
+      ctxMenu.open(e.clientX, e.clientY, (r.company || '—') + ' / ' + (r.title || '—'), [
+        { label: '🕐 设置跟进提醒', sub: '到日子在看板上顶出来',
+          run: function () { openFollowUp(r); } },
+        { label: '✉️ Gmail 自动投送规则', sub: '命中关键字的邮件推到 Telegram / 频道页',
+          run: function () { MailRules.openForRecord(r); } },
+        '-',
+        { label: '📄 打开详情', run: function () { openDetail(r); } }
+      ]);
     });
 
     // 上次访问之后才出现的记录
@@ -3043,11 +3119,15 @@ function bootBoard(PAYLOAD) {
     $('pfNotifyHint').textContent = hint;
   }
   $('openPrefs').addEventListener('click', function () { syncPrefsUI(); $('prefsMask').hidden = false; });
-  /* 右键这颗按钮 → 「要望欄」（即将新增的功能的 TODO LIST）。
-     藏在右键里是故意的：这页是给自己记事的，不该占工具栏的位置。 */
+  /* 右键这颗按钮 → 副菜单。里面那几项都是「自己用的、不该占工具栏位置」的东西。 */
   $('openPrefs').addEventListener('contextmenu', function (e) {
     e.preventDefault();
-    location.href = './wish.html';
+    ctxMenu.open(e.clientX, e.clientY, '', [
+      { label: '🗒 要望欄', sub: '即将新增的功能的 TODO LIST',
+        run: function () { location.href = './wish.html'; } },
+      { label: '✉️ Gmail 自动投送规则清单', sub: '所有规则，含已经失效的',
+        run: function () { MailRules.openList(); } }
+    ]);
   });
   $('pfClose').addEventListener('click', function () { $('prefsMask').hidden = true; });
   $('prefsMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
@@ -4534,6 +4614,48 @@ function bootBoard(PAYLOAD) {
     mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   })();
 
+  /* ---------- 右键副菜单 ----------
+   * 清单每一行、以及「⚙ 设置」按钮共用这一个。原来这两处右键都是**直接**触发
+   * 一件事（设跟进提醒 / 跳去要望欄），现在各自要挂两件以上，只能先摆出个菜单。
+   */
+  var ctxMenu = (function () {
+    var box = $('ctxMenu');
+
+    function close() {
+      if (box.hidden) return;
+      box.hidden = true;
+      box.textContent = '';
+    }
+
+    function open(x, y, title, items) {
+      box.textContent = '';
+      if (title) box.appendChild(el('div', 'ttl', title));
+      items.forEach(function (it) {
+        if (it === '-') { box.appendChild(document.createElement('hr')); return; }
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.appendChild(document.createTextNode(it.label));
+        if (it.sub) b.appendChild(el('small', null, it.sub));
+        b.addEventListener('click', function () { close(); it.run(); });
+        box.appendChild(b);
+      });
+      // 先放出来再量尺寸：贴着右边 / 下边缘弹出时要往回收，否则菜单跑到视口外
+      box.style.left = '0px';
+      box.style.top = '0px';
+      box.hidden = false;
+      var w = box.offsetWidth, h = box.offsetHeight;
+      box.style.left = Math.max(6, Math.min(x, window.innerWidth - w - 6)) + 'px';
+      box.style.top = Math.max(6, Math.min(y, window.innerHeight - h - 6)) + 'px';
+    }
+
+    document.addEventListener('click', function (e) { if (!box.contains(e.target)) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    // 页面一动菜单就对不上目标了，直接收起来（滚动要捕获，表格是内层滚动的）
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return { open: open, close: close };
+  })();
+
   /* ---------- ✉️ Gmail 自动投送规则 ----------
    * 规则本体存在 Worker 的 BoardStore 里，这一页只是它的编辑器 ——
    * 所以换台电脑改也是同一份，Gmail 那边的 Apps Script 每次跑之前来取一次。
@@ -4542,7 +4664,7 @@ function bootBoard(PAYLOAD) {
    * 把标点当分隔，所以搜索只负责把范围缩小，真正的判定在脚本里用 indexOf 做。
    * 这一点必须在界面上说清楚，否则「为什么搜 abc 把 ABC 也投过来了」永远说不明白。
    */
-  (function () {
+  var MailRules = (function () {
     var mask = $('mailMask');
     var DOC = { on: true, lookbackMin: 60, rules: [] };
     var loaded = false;
@@ -4607,7 +4729,13 @@ function bootBoard(PAYLOAD) {
       $('mailState').textContent = text || '';
     }
 
-    function ruleNode(r) {
+    /**
+     * 一条规则的完整编辑器。
+     * opts.hideName   绑定了投递的规则不用起名（名字就是公司 / 岗位）
+     * opts.hideDelete 单条弹窗里删除在底部那一排，头部就别再来一个
+     */
+    function ruleNode(r, opts) {
+      opts = opts || {};
       var box = el('div', 'mrule' + (r.on ? '' : ' off'));
 
       var hd = el('div', 'mhd');
@@ -4624,32 +4752,41 @@ function bootBoard(PAYLOAD) {
       onWrap.appendChild(el('span', null, '启用'));
       hd.appendChild(onWrap);
 
-      var name = document.createElement('input');
-      name.type = 'text';
-      name.placeholder = '给这条规则起个名（只是备注，比如「面试邀请」）';
-      name.value = r.name || '';
-      name.addEventListener('input', function () { r.name = this.value; });
-      hd.appendChild(name);
+      if (!opts.hideName) {
+        var name = document.createElement('input');
+        name.type = 'text';
+        name.placeholder = '给这条规则起个名（只是备注，比如「面试邀请」）';
+        name.value = r.name || '';
+        name.addEventListener('input', function () { r.name = this.value; });
+        hd.appendChild(name);
+      } else {
+        // 占位，让「启用」不至于孤零零贴在左边
+        var sp = el('span', null, '');
+        sp.style.flex = '1 1 auto';
+        hd.appendChild(sp);
+      }
 
-      // 删除做成两段确认，和清单里的 🗑 一个手感
-      var del = el('button', 'del', '🗑 删除');
-      del.type = 'button';
-      var armed = false, timer = null;
-      del.addEventListener('click', function () {
-        if (!armed) {
-          armed = true;
-          del.textContent = '再点一下确认';
-          del.classList.add('armed');
-          timer = setTimeout(function () {
-            armed = false; del.textContent = '🗑 删除'; del.classList.remove('armed');
-          }, 4000);
-          return;
-        }
-        clearTimeout(timer);
-        DOC.rules = DOC.rules.filter(function (x) { return x !== r; });
-        renderRules();
-      });
-      hd.appendChild(del);
+      if (!opts.hideDelete) {
+        // 删除做成两段确认，和清单里的 🗑 一个手感
+        var del = el('button', 'del', '🗑 删除');
+        del.type = 'button';
+        var armed = false, timer = null;
+        del.addEventListener('click', function () {
+          if (!armed) {
+            armed = true;
+            del.textContent = '再点一下确认';
+            del.classList.add('armed');
+            timer = setTimeout(function () {
+              armed = false; del.textContent = '🗑 删除'; del.classList.remove('armed');
+            }, 4000);
+            return;
+          }
+          clearTimeout(timer);
+          DOC.rules = DOC.rules.filter(function (x) { return x !== r; });
+          renderRules();
+        });
+        hd.appendChild(del);
+      }
       box.appendChild(hd);
 
       box.appendChild(el('label', null, '关键字（完全一致，一行一个；任意一条命中即算命中）'));
@@ -4759,16 +4896,76 @@ function bootBoard(PAYLOAD) {
       return box;
     }
 
+    /**
+     * 清单里绑了投递的那种：只给一行摘要 + 「编辑」，不把整个编辑器摊开。
+     * 这些规则一条一条摊开的话，清单会长到没法看 —— 而清单要回答的问题是
+     * 「我到底给哪些项目设过、现在还有几条作数」，不是「逐字改某一条」。
+     */
+    function summaryNode(r) {
+      var dead = !!r.dead;
+      var box = el('div', 'mrule' + ((dead || r.on === false) ? ' off' : ''));
+
+      var hd = el('div', 'mhd');
+      var ttl = el('div', 'msum');
+      ttl.appendChild(el('b', null, r.jobLabel || r.name || '（没有名字的规则）'));
+      var badge = el('span', 'mbadge ' + (dead ? 'dead' : (r.on === false ? 'paused' : 'live')),
+                     dead ? ('已失效 · ' + (r.deadWhy || '')) : (r.on === false ? '已停用' : '有效'));
+      ttl.appendChild(badge);
+      hd.appendChild(ttl);
+
+      var edit = el('button', 'del', '✎ 编辑');
+      edit.type = 'button';
+      edit.addEventListener('click', function () { openOne(r, r.jobLabel || r.name || ''); });
+      hd.appendChild(edit);
+      box.appendChild(hd);
+
+      var bits = [];
+      if ((r.phrases || []).length) bits.push('关键字：' + r.phrases.join(' / '));
+      if (r.query) bits.push('条件：' + r.query);
+      bits.push('找：' + (r.scope === 'subject' ? '标题' : (r.scope === 'body' ? '正文' : '标题+正文')));
+      var to = [];
+      if (r.tg !== false) to.push('Telegram');
+      if (r.inbox !== false) to.push('频道页');
+      bits.push('投向：' + (to.join('、') || '（哪儿都不投）'));
+      box.appendChild(el('div', 'qhint', bits.join('　·　')));
+      if (dead) {
+        box.appendChild(el('div', 'qhint',
+          '这条投递已经结束，规则自动停了。状态改回进行中的话它会自己恢复 —— 不用手动开。'));
+      }
+      return box;
+    }
+
     function renderRules() {
       var host = $('mailList');
       host.textContent = '';
       if (!DOC.rules.length) {
-        var empty = el('div', 'tip', '还没有规则。加一条：比如关键字填「面接のご案内」，'
-          + '搜索条件留空 —— 那就是「任何邮件的标题或正文里逐字出现这句话就推过来」。');
-        host.appendChild(empty);
+        var tip = el('div', 'tip');
+        tip.appendChild(document.createTextNode('还没有任何规则。两种加法：在投递清单里'));
+        tip.appendChild(el('b', null, '右键某一行'));
+        tip.appendChild(document.createTextNode('，给那条投递单独设一条（项目结束后会自动失效）；'
+          + '或者按下面的按钮加一条不绑投递、一直有效的。'));
+        host.appendChild(tip);
         return;
       }
-      DOC.rules.forEach(function (r) { host.appendChild(ruleNode(r)); });
+      /* 绑了投递的排前面（那是这份清单的主角），组内有效的在上、失效的沉底；
+         不绑投递的全局规则摆最后，仍然是可以直接展开改的完整编辑器。 */
+      var bound = DOC.rules.filter(function (r) { return r.jobKey; });
+      var free = DOC.rules.filter(function (r) { return !r.jobKey; });
+      bound.sort(function (a, b) {
+        var da = (a.dead ? 1 : 0) - (b.dead ? 1 : 0);
+        return da !== 0 ? da : ((b.createdAt || 0) - (a.createdAt || 0));
+      });
+
+      if (bound.length) {
+        var nLive = bound.filter(function (r) { return !r.dead && r.on !== false; }).length;
+        host.appendChild(el('div', 'grpttl',
+          '绑定到某条投递的（' + bound.length + ' 条，其中 ' + nLive + ' 条还作数）'));
+        bound.forEach(function (r) { host.appendChild(summaryNode(r)); });
+      }
+      if (free.length) {
+        host.appendChild(el('div', 'grpttl', '不绑投递、一直有效的（' + free.length + ' 条）'));
+        free.forEach(function (r) { host.appendChild(ruleNode(r)); });
+      }
     }
 
     function paintTip(ingestReady) {
@@ -4798,20 +4995,36 @@ function bootBoard(PAYLOAD) {
           loaded = true;
           setState('', '');
         })
-        .catch(function (e) { setState('err', '读取失败：' + (e.message || e)); });
+        .catch(function (e) {
+          setState('err', '读取失败：' + (e.message || e));
+          throw e;          // 右键那条路要靠它知道「没读到，别往下走」
+        });
+    }
+
+    /** 右键设规则时得先有 DOC 才知道这条投递有没有旧规则 */
+    function ensure() { return loaded ? Promise.resolve() : load(); }
+
+    /** 整份交上去。服务端会重新 normalize 并算一遍失效状态，以回来那份为准。 */
+    function save() {
+      DOC.on = $('mailOn').checked;
+      DOC.lookbackMin = Math.min(1440, Math.max(5, Number($('mailLookback').value) || 60));
+      return tgAction({ action: 'mail_rules_put', doc: JSON.stringify(DOC) },
+                      { 'X-Write-Key': writeKey() })
+        .then(function () {
+          // put 的回执没算 dead（那要读整份看板），所以重新拉一次拿标注过的
+          return load();
+        });
     }
 
     $('pfOpenMail').addEventListener('click', function () {
       mask.hidden = false;
-      if (!loaded) load();
+      load();
     });
     $('mailAdd').addEventListener('click', function () {
       DOC.rules.push(newRule());
       renderRules();
     });
     $('mailSave').addEventListener('click', function () {
-      DOC.on = $('mailOn').checked;
-      DOC.lookbackMin = Math.min(1440, Math.max(5, Number($('mailLookback').value) || 60));
       // 规则本身在各个输入框的事件里已经跟着改了，这里直接整份交上去
       var bad = DOC.rules.filter(function (r) { return !r.query && !(r.phrases || []).length; });
       if (bad.length) {
@@ -4819,20 +5032,116 @@ function bootBoard(PAYLOAD) {
       }
       $('mailSave').disabled = true;
       setState('', '保存中…');
-      tgAction({ action: 'mail_rules_put', doc: JSON.stringify(DOC) }, { 'X-Write-Key': writeKey() })
-        .then(function (d) {
-          DOC = d.doc || DOC;
-          renderRules();
-          $('mailOn').checked = DOC.on !== false;
-          $('mailLookback').value = DOC.lookbackMin;
-          setState('ok', '已保存（' + DOC.rules.length + ' 条规则）');
-          toastBg('邮件投送规则已保存');
-        })
+      save()
+        .then(function () { setState('ok', '已保存（' + DOC.rules.length + ' 条规则）'); toastBg('邮件投送规则已保存'); })
         .catch(function (e) { setState('err', '保存失败：' + (e.message || e)); })
         .then(function () { $('mailSave').disabled = false; });
     });
     $('mailClose').addEventListener('click', function () { mask.hidden = true; });
     mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+
+    /* ---------- 单条规则的编辑弹窗 ----------
+     * 从清单里点「✎ 编辑」、或者在投递清单里右键某一行，都到这儿。
+     * 复用 ruleNode() 那个编辑器，只是套在自己的弹窗里。
+     */
+    var oneMask = $('mailOneMask');
+    var editing = null;          // 正在编辑的那条（可能还没进 DOC.rules）
+    var editingIsNew = false;
+
+    function oneState(cls, text) {
+      $('mailOneState').className = 'status' + (cls ? (' ' + cls) : '');
+      $('mailOneState').textContent = text || '';
+    }
+
+    function openOne(rule, who) {
+      editing = rule;
+      editingIsNew = DOC.rules.indexOf(rule) === -1;
+      $('mailOneWho').textContent = who
+        ? (who + (rule.status ? ('　当前状态：' + rule.status) : ''))
+        : '这条规则不绑定任何投递，一直有效。';
+      var host = $('mailOneBox');
+      host.textContent = '';
+      // ruleNode 自带一个 .mrule 外壳，这里把内容搬进来，别套两层框
+      var node = ruleNode(rule, { hideName: !!rule.jobKey, hideDelete: true });
+      while (node.firstChild) host.appendChild(node.firstChild);
+      host.className = 'mrule' + (rule.dead ? ' off' : '');
+      $('mailOneDel').hidden = editingIsNew;
+      oneState('', rule.dead ? ('这条规则现在是失效状态（' + (rule.deadWhy || '') + '）') : '');
+      oneMask.hidden = false;
+    }
+
+    $('mailOneSave').addEventListener('click', function () {
+      if (!editing) return;
+      if (!editing.query && !(editing.phrases || []).length) {
+        oneState('err', '关键字和搜索条件至少要填一个 —— 两个都空会把所有邮件都投过来');
+        return;
+      }
+      if (editingIsNew) DOC.rules.push(editing);
+      $('mailOneSave').disabled = true;
+      oneState('', '保存中…');
+      save().then(function () {
+        oneState('ok', '已保存');
+        toastBg('这条投递的邮件规则已保存');
+        setTimeout(function () { oneMask.hidden = true; }, 700);
+      }).catch(function (e) {
+        if (editingIsNew) DOC.rules = DOC.rules.filter(function (x) { return x !== editing; });
+        oneState('err', '保存失败：' + (e.message || e));
+      }).then(function () { $('mailOneSave').disabled = false; });
+    });
+
+    // 删除：两段确认，和别处的删除一个手感
+    (function () {
+      var btn = $('mailOneDel'), armed = false, timer = null;
+      function disarm() { armed = false; btn.textContent = '🗑 删掉这条规则'; clearTimeout(timer); }
+      btn.addEventListener('click', function () {
+        if (!armed) {
+          armed = true;
+          btn.textContent = '⚠️ 再点一下确认';
+          timer = setTimeout(disarm, 4000);
+          return;
+        }
+        disarm();
+        var keep = DOC.rules.slice();
+        DOC.rules = DOC.rules.filter(function (x) { return x !== editing; });
+        oneState('', '删除中…');
+        save().then(function () {
+          toastBg('规则已删除');
+          oneMask.hidden = true;
+        }).catch(function (e) {
+          DOC.rules = keep;
+          oneState('err', '删除失败：' + (e.message || e));
+        });
+      });
+      oneMask.addEventListener('click', function (e) { if (e.target === this) { disarm(); this.hidden = true; } });
+      $('mailOneClose').addEventListener('click', function () { disarm(); oneMask.hidden = true; });
+    })();
+
+    return {
+      /** 设置里的「规则清单」：所有规则，含已失效的 */
+      openList: function () {
+        mask.hidden = false;
+        load();          // 每次都重读：别处改过、或者状态变了导致失效，要看到最新的
+      },
+      /** 在投递清单里右键某一行 → 给这条投递设规则 */
+      openForRecord: function (r) {
+        var key = recKey(r);
+        var label = (r.company || '—') + ' / ' + (r.title || '—');
+        ensure().then(function () {
+          var hit = DOC.rules.filter(function (x) { return x.jobKey === key; })[0];
+          if (!hit) {
+            hit = newRule();
+            hit.jobKey = key;
+            hit.jobLabel = label;
+            hit.name = label;
+            // 默认只搜收件箱：自己发出去的那些不该反过来提醒自己
+            hit.query = 'in:inbox';
+          } else {
+            hit.jobLabel = label;      // 公司 / 岗位可能改过名，顺手刷新
+          }
+          openOne(hit, label);
+        }).catch(function (e) { toast('读取规则失败：' + (e.message || e)); });
+      }
+    };
   })();
 
   /* ---------- 📣 勾选项目的速报 ---------- */

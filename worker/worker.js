@@ -934,6 +934,44 @@ function normalizeWish(raw) {
 
 const MAIL_SCOPES = ['both', 'subject', 'body'];
 
+/* 规则可以绑在某条投递上（jobKey = site:jobId）。绑定之后，那条投递一旦走到
+ * 「结束」类状态，这条规则就自动失效 —— 已经落选的岗位再往手机上推邮件纯属打扰。
+ *
+ * 判据用 statusDefs 里的 closed 标记，不是写死名字：改名、加一种新的结束状态都
+ * 自动跟上。statusDefs 缺失时才退回这四个名字（就是当前 closed 的那四个）。 */
+const MAIL_DEAD_FALLBACK = ['面试落了', '书类落了', '对方招到人了', '无消息疑似书类落了'];
+
+function closedStatusNames(boardDoc) {
+  const named = ((boardDoc && boardDoc.statusDefs) || [])
+    .filter((d) => d && d.closed).map((d) => d.name).filter(Boolean);
+  return named.length ? named : MAIL_DEAD_FALLBACK;
+}
+
+/**
+ * 给每条规则算出「现在还作不作数」。
+ * dead 是**算出来的**，不入库 —— 状态随时会变，存一份下来只会变成过期快照。
+ */
+function annotateMailRules(rules, boardDoc) {
+  const closed = closedStatusNames(boardDoc);
+  const byKey = new Map();
+  ((boardDoc && boardDoc.records) || []).forEach((r) => {
+    if (r && r.jobId) byKey.set((r.site || 'linkedin') + ':' + r.jobId, r);
+  });
+  return (rules || []).map((r) => {
+    if (!r.jobKey) return Object.assign({}, r, { dead: false, deadWhy: '', status: '' });
+    const rec = byKey.get(r.jobKey);
+    if (!rec) {
+      return Object.assign({}, r, { dead: true, deadWhy: '这条投递已经不在清单里', status: '' });
+    }
+    const dead = closed.indexOf(rec.status) !== -1;
+    return Object.assign({}, r, {
+      dead: dead,
+      deadWhy: dead ? ('已结束：' + rec.status) : '',
+      status: rec.status,
+    });
+  });
+}
+
 function normalizeMailRules(raw) {
   const src = (raw && typeof raw === 'object') ? raw : {};
   const list = Array.isArray(src.rules) ? src.rules.slice(0, 50) : [];
@@ -956,6 +994,11 @@ function normalizeMailRules(raw) {
         scope: MAIL_SCOPES.indexOf(o.scope) !== -1 ? o.scope : 'both',
         tg: o.tg !== false,
         inbox: o.inbox !== false,
+        // 绑定到某条投递：site:jobId。空＝不绑，一直有效
+        jobKey: nstr(o.jobKey, 60),
+        // 公司 / 岗位的快照，纯为了列表上能看懂是哪条（记录删了也还认得出）
+        jobLabel: nstr(o.jobLabel, 160),
+        createdAt: Number(o.createdAt) || Date.now(),
       };
     // 一条什么都没写的规则会匹配到所有邮件，直接丢掉
     }).filter((r) => r.query || r.phrases.length),
@@ -1986,7 +2029,11 @@ export default {
 
       if (action === 'mail_rules_get') {
         const r = await board(env, '/mail/get');
-        return json({ ok: true, doc: r.doc, ingestReady: !!env.INGEST_KEY }, 200, headers);
+        const doc = normalizeMailRules(r.doc);
+        // 清单要连「已失效」一起显示，所以这里不过滤，只把失效原因标出来
+        const bd = doc.rules.some((x) => x.jobKey) ? await board(env, '/doc') : null;
+        doc.rules = annotateMailRules(doc.rules, bd);
+        return json({ ok: true, doc: doc, ingestReady: !!env.INGEST_KEY }, 200, headers);
       }
       let raw;
       try { raw = JSON.parse(String(body.doc || '{}')); }
@@ -2005,7 +2052,18 @@ export default {
       }
       if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
       const r = await board(env, '/mail/get');
-      return json({ ok: true, doc: normalizeMailRules(r.doc) }, 200, headers);
+      const doc = normalizeMailRules(r.doc);
+      /* 绑了投递的规则要看那条投递现在什么状态 —— 已经结束的就别再投了。
+         这一层放在服务端而不是脚本里：判断依据（状态）本来就在这边，
+         而且不管哪台电脑开没开着看板，失效都立刻生效。
+         没有任何规则绑投递时就不必去读整份看板了。 */
+      if (doc.rules.some((x) => x.jobKey)) {
+        const bd = await board(env, '/doc');
+        doc.rules = annotateMailRules(doc.rules, bd).filter((x) => !x.dead);
+      }
+      // 脚本只要还作数的那些，停用的也在这里滤掉
+      doc.rules = doc.rules.filter((x) => x.on !== false);
+      return json({ ok: true, doc: doc }, 200, headers);
     }
 
     if (action === 'records_read') {
