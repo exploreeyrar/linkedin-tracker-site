@@ -398,6 +398,11 @@
   .dlg.max { width: 100%; max-width: none; height: 100%; max-height: none; display: flex; flex-direction: column; }
   .dlg.max .dtscroll { flex: 1 1 auto; overflow: auto; min-height: 0; }
   .dlg .row.dtrow { flex-wrap: wrap; }
+  .dtchk {
+    display: inline-flex; align-items: center; gap: 6px; margin: 0;
+    font-size: 12.5px; font-weight: 600; color: var(--sub); cursor: pointer; white-space: nowrap;
+  }
+  .dtchk input { width: 15px; height: 15px; margin: 0; }
   .dlg .row.dtrow [hidden] { display: none; }
 
   .empty { padding: 44px 16px; text-align: center; color: var(--sub); }
@@ -663,7 +668,7 @@
 </div>
 
 <!-- 通知板 -->
-<button class="fab" id="boardFab" type="button">
+<button class="fab" id="boardFab" type="button" hidden>
   <span>💬 通知板</span>
   <span class="dot" id="boardDot" hidden></span>
 </button>
@@ -700,9 +705,9 @@
 
     <label for="rmWho">谁需要处理这个提醒？</label>
     <select id="rmWho">
-      <option value="胖 ball" selected>胖 ball</option>
+      <option value="胖 ball">胖 ball</option>
       <option value="己 ball">己 ball</option>
-      <option value="通知">通知</option>
+      <option value="通知" selected>通知</option>
     </select>
 
     <label for="rmPriority">优先级</label>
@@ -794,6 +799,7 @@
     <label style="margin-top:18px">清单</label>
     <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
     <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
+    <label class="chk"><input type="checkbox" id="pfBoard"><span>显示「💬 通知板」按钮<small>默认不显示；关掉之后带 #msg-… 的直达链接仍然能打开它</small></span></label>
 
     <label style="margin-top:18px">通知</label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
@@ -831,6 +837,9 @@
     <div class="row dtrow">
       <button id="dtCopy" type="button">⧉ 复制全部</button>
       <button id="dtPushNew" type="button">📤 一键推送所有新MEMO</button>
+      <label class="dtchk" title="勾上＝真的发到 Telegram 群（也会出现在 Telegram 频道页）；不勾＝只把这些 MEMO 标记为已推送，不发出去">
+        <input type="checkbox" id="dtPushTg" checked><span>推送至 telegram</span>
+      </label>
       <button class="primary" id="dtRemind" type="button" hidden>📢 请求更新状态</button>
       <button id="dtFollow" type="button" hidden>🕐 跟进提醒</button>
       <a class="dtlink" id="dtOpen" target="_blank" rel="noopener" hidden>在 LinkedIn 打开</a>
@@ -932,38 +941,58 @@
     '对方招到人了': '--c-taken',
     '无消息疑似书类落了': '--c-dead'
   };
-  /* MEMO 的时间轴：新脚本推 memos 数组；老数据只有一整段 memo，当成一条。
-     再叠上本机刚写、还没回到 records.json 里的那几条（见 LOCAL）。 */
-  function baseMemoBlocks(r) {
-    if (r.memos && r.memos.length) return r.memos.slice();
-    return r.memo ? [{ ts: r.updatedAt || r.ts, text: r.memo }] : [];
-  }
+  /* 三个来源合并成一条时间轴：
+   *   base   = 构建进这个页面的那份（records.json → build.py）
+   *   mirror = 油猴脚本手里那份（还没构建进来）
+   *   local  = 本页面刚写、还排在回传队列里的
+   *
+   * **按 ts 去重，不能按 ts|text。** 同一条 MEMO 在两侧的文本本来就不一样：
+   *   · build.py 会截断（memo → 1000 字、memos[].text → 2000 字）
+   *   · s() 去掉制表符等控制字符、CRLF→LF、trim
+   *   · 推送前还过了一遍脱敏（OKUMA → O …）
+   * 用 ts|text 当 key 的话，这些差异全都会变成「两条一样的 MEMO」——
+   * 之前 Postman 那条就是：base 是 mirror 的 1000 字前缀，于是显示成两张便签。
+   * ts 在一条记录里是写入时的 Date.now()，实际唯一。
+   */
   function memoBlocks(r) {
-    var out = baseMemoBlocks(r);
-    var have = {};
-    out.forEach(function (b) { have[b.ts + '|' + b.text] = 1; });
-    var take = function (list, local) {
-      (list || []).forEach(function (b) {
-        if (!b || !b.text) return;
-        var k = b.ts + '|' + b.text;
-        if (have[k]) return;
-        have[k] = 1;
-        out.push({ ts: b.ts, text: b.text, local: local });
-      });
+    var rk = recKey(r);
+    var mirror = (MIRROR && MIRROR.memos && MIRROR.memos[rk]) || [];
+    var local  = (LOCAL && LOCAL.memos && LOCAL.memos[rk]) || [];
+
+    /* 扁平的 memo 只是那些分块拼出来的一整段，不是独立的一条。
+       只有在一个分块都拿不到时才用它兜底，否则会和分块重复。 */
+    var base = (r.memos && r.memos.length) ? r.memos.slice()
+      : ((!mirror.length && !local.length && r.memo)
+          ? [{ ts: r.updatedAt || r.ts, text: r.memo }] : []);
+
+    var byTs = {}, order = [];
+    var put = function (b, src) {
+      if (!b || !b.text) return;
+      var prev = byTs[b.ts];
+      if (!prev) {
+        byTs[b.ts] = { ts: b.ts, text: b.text, local: src === 'local', base: src === 'base' };
+        order.push(b.ts);
+        return;
+      }
+      // 同一条：出现在 base / mirror 里就不算「只在本机」
+      if (src !== 'local') prev.local = false;
+      if (src === 'base') prev.base = true;
+      // 文本取更完整的那份 —— base 可能是被截断 / 脱敏过的版本
+      if (String(b.text).length > String(prev.text).length) prev.text = b.text;
     };
-    // 脚本镜像（在 LinkedIn 上刚写的，构建还没跑完）
-    take(MIRROR && MIRROR.memos && MIRROR.memos[recKey(r)], false);
-    // 本页面刚写的，还排在回传队列里
-    take(LOCAL && LOCAL.memos && LOCAL.memos[recKey(r)], true);
+    base.forEach(function (b) { put(b, 'base'); });
+    mirror.forEach(function (b) { put(b, 'mirror'); });
+    local.forEach(function (b) { put(b, 'local'); });
+    var out = order.map(function (ts) { return byTs[ts]; });
 
     // 本页面改过 / 删过的，覆盖在最后一层
-    var k = recKey(r);
+    var k = rk;
     var edits = (LOCAL && LOCAL.memoEdits && LOCAL.memoEdits[k]) || {};
     var dels  = (LOCAL && LOCAL.memoDels  && LOCAL.memoDels[k])  || {};
     out = out.filter(function (b) { return !dels[b.ts]; });
     out = out.map(function (b) {
       if (!(b.ts in edits)) return b;
-      return { ts: b.ts, text: edits[b.ts], local: true, edited: true };
+      return { ts: b.ts, text: edits[b.ts], local: true, edited: true, base: false };
     });
     return out.sort(function (a, b) { return b.ts - a.ts; });
   }
@@ -1206,6 +1235,7 @@
     fuDone: {},                    // 已经弹过并被手动关掉的：'<key>@<日期>' → 关掉时间
     pickMode: false,               // 多选：默认关，在设置里开
     showFoot: false,               // 底部那段构建说明：默认不显示
+    showBoard: false,              // 右下角「💬 通知板」按钮：默认不显示
     memoAsc: true,                 // 详情页 MEMO 排列：true = 旧 → 新
     memoPushed: {},                // recKey → 最后一次推到 Telegram 的 MEMO 时间
     showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
@@ -1338,39 +1368,50 @@
     var kept = LOCAL.msgs.filter(function (m) { return m && m.id && !seen[m.id]; });
     if (kept.length !== LOCAL.msgs.length) { LOCAL.msgs = kept; changed = true; }
 
+    /* 一律按 ts 判断「落地了没有」，不能按 ts|text ——
+       两边的文本本来就不一样（截断 / 归一 / 脱敏），比文本永远比不上，
+       覆盖层会一直堆着不清。 */
     var byKey = {};
     RECORDS.forEach(function (r) {
       var have = {};
-      baseMemoBlocks(r).forEach(function (b) { have[b.ts + '|' + b.text] = 1; });
+      (r.memos && r.memos.length ? r.memos : []).forEach(function (b) { have[b.ts] = 1; });
       byKey[recKey(r)] = have;
     });
+    // 脚本镜像里那份是**未经加工**的原文，所以拿它比文本是精确的
+    var mirrorOf = function (k) {
+      var m = {};
+      ((MIRROR && MIRROR.memos && MIRROR.memos[k]) || []).forEach(function (b) { m[b.ts] = b.text; });
+      return m;
+    };
     Object.keys(LOCAL.memos).forEach(function (k) {
       var have = byKey[k];
       if (!have) return;                       // 这条记录还没出现在看板上，先留着
-      var list = (LOCAL.memos[k] || []).filter(function (b) { return !have[b.ts + '|' + b.text]; });
+      var mir = mirrorOf(k);
+      var list = (LOCAL.memos[k] || []).filter(function (b) {
+        return !have[b.ts] && !(b.ts in mir);  // base 或脚本已经有了 → 本地副本可以扔
+      });
       if (list.length !== (LOCAL.memos[k] || []).length) changed = true;
       if (list.length) LOCAL.memos[k] = list; else delete LOCAL.memos[k];
     });
 
     // MEMO 的改 / 删覆盖：records.json 已经是这个样子了就撤掉覆盖
+    // 改：脚本镜像里那条的文本已经等于我们改成的样子 → 落地了
     Object.keys(LOCAL.memoEdits).forEach(function (k) {
-      var have = byKey[k];
-      if (!have) return;
+      var mir = mirrorOf(k);
+      if (!Object.keys(mir).length) return;     // 没有镜像可比，先留着
       var m = LOCAL.memoEdits[k];
       Object.keys(m).forEach(function (ts) {
-        if (have[ts + '|' + m[ts]]) { delete m[ts]; changed = true; }   // 新文本已就位
+        if (mir[ts] === m[ts]) { delete m[ts]; changed = true; }
       });
       if (!Object.keys(m).length) delete LOCAL.memoEdits[k];
     });
+    // 删：脚本镜像里已经没有这个 ts → 落地了
     Object.keys(LOCAL.memoDels).forEach(function (k) {
-      var r = null;
-      RECORDS.forEach(function (x) { if (recKey(x) === k) r = x; });
-      if (!r) return;
-      var live = {};
-      baseMemoBlocks(r).forEach(function (b) { live[b.ts] = 1; });
+      var mir = mirrorOf(k);
+      if (!Object.keys(mir).length) return;
       var m = LOCAL.memoDels[k];
       Object.keys(m).forEach(function (ts) {
-        if (!live[ts]) { delete m[ts]; changed = true; }                // 那条真的没了
+        if (!(ts in mir)) { delete m[ts]; changed = true; }
       });
       if (!Object.keys(m).length) delete LOCAL.memoDels[k];
     });
@@ -1427,30 +1468,53 @@
     }
   }
 
-  /** 改掉某一条 MEMO（本机立刻可见 + 排队回传） */
+  /** 这条 MEMO 除了本机队列，别处（脚本镜像 / 已构建进来的那份）也有吗 */
+  function memoElsewhere(r, blockTs) {
+    var k = recKey(r);
+    var inMirror = ((MIRROR && MIRROR.memos && MIRROR.memos[k]) || [])
+      .some(function (b) { return b.ts === blockTs; });
+    var inBase = ((r.memos || [])).some(function (b) { return b.ts === blockTs; });
+    return inMirror || inBase;
+  }
+
+  /** 把队列里针对这条 MEMO 的 memo（新增）操作改掉或摘掉 */
+  function patchQueuedMemo(r, blockTs, newText) {
+    var list = outboxRead().map(function (o) {
+      if (!(o && o.op === 'memo' && String(o.jobId) === String(r.jobId) && o.ts === blockTs)) return o;
+      return newText ? Object.assign({}, o, { text: newText }) : null;
+    }).filter(Boolean);
+    try { localStorage.setItem(OUTBOX, JSON.stringify(list)); } catch (e) {}
+    refreshPending();
+  }
+
+  /**
+   * 改掉某一条 MEMO（本机立刻可见 + 排队回传）。
+   *
+   * 分两种情况，混起来会出错：
+   *   · 只在本机队列里（脚本还没取走）→ 直接改队列里那条「新增」，别再多发一条「编辑」
+   *   · 脚本 / 仓库那边已经有了       → 记一层覆盖 + 发一条 memoEdit
+   * 之前只处理了第一种，结果「本机有、镜像也有」的那条改完之后
+   * 会被镜像里的原文盖回去（合并时取更长的那份）。
+   */
   function editMemo(r, blockTs, oldText, newText) {
     var k = recKey(r);
     var t = String(newText || '').trim();
-    // 是本页面刚加、还没回传的那种：直接改 LOCAL.memos，不用生成 memoEdit
-    var pending = (LOCAL.memos[k] || []).filter(function (b) { return b.ts === blockTs; });
-    if (pending.length) {
-      if (t) pending.forEach(function (b) { b.text = t; });
-      else LOCAL.memos[k] = LOCAL.memos[k].filter(function (b) { return b.ts !== blockTs; });
+
+    if (!memoElsewhere(r, blockTs)) {
+      if (t) (LOCAL.memos[k] || []).forEach(function (b) { if (b.ts === blockTs) b.text = t; });
+      else LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
       saveLocal();
-      // 队列里那条 memo op 也要跟着改，否则回传的还是旧文本
-      var list = outboxRead().map(function (o) {
-        if (o && o.op === 'memo' && String(o.jobId) === String(r.jobId) && o.ts === blockTs) {
-          return t ? Object.assign({}, o, { text: t }) : null;
-        }
-        return o;
-      }).filter(Boolean);
-      try { localStorage.setItem(OUTBOX, JSON.stringify(list)); } catch (e) {}
-      refreshPending();
+      patchQueuedMemo(r, blockTs, t);
       return;
     }
+
+    // 别处也有 → 覆盖层说了算（它在合并的最后一步套用，压得住镜像）
+    LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
+    patchQueuedMemo(r, blockTs, '');
     (LOCAL.memoEdits[k] = LOCAL.memoEdits[k] || {});
-    if (t) LOCAL.memoEdits[k][blockTs] = t;
-    else { delete LOCAL.memoEdits[k][blockTs]; (LOCAL.memoDels[k] = LOCAL.memoDels[k] || {})[blockTs] = Date.now(); }
+    (LOCAL.memoDels[k] = LOCAL.memoDels[k] || {});
+    if (t) { LOCAL.memoEdits[k][blockTs] = t; delete LOCAL.memoDels[k][blockTs]; }
+    else { delete LOCAL.memoEdits[k][blockTs]; LOCAL.memoDels[k][blockTs] = Date.now(); }
     saveLocal();
     if (r.jobId) {
       outboxPush({ op: t ? 'memoEdit' : 'memoDelete', jobId: String(r.jobId),
@@ -1462,17 +1526,16 @@
   /** 删掉某一条 MEMO。返回一个「撤销」函数 —— 不弹确认框，但要留退路 */
   function deleteMemo(r, blockTs, oldText) {
     var k = recKey(r);
-    var pending = (LOCAL.memos[k] || []).filter(function (b) { return b.ts === blockTs; });
-    if (pending.length) {
+
+    if (!memoElsewhere(r, blockTs)) {
       LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
       saveLocal();
-      var kept = outboxRead().filter(function (o) {
-        return !(o && o.op === 'memo' && String(o.jobId) === String(r.jobId) && o.ts === blockTs);
-      });
-      try { localStorage.setItem(OUTBOX, JSON.stringify(kept)); } catch (e) {}
-      refreshPending();
+      patchQueuedMemo(r, blockTs, '');
       return function undo() { appendMemo(r, oldText, blockTs); };
     }
+
+    LOCAL.memos[k] = (LOCAL.memos[k] || []).filter(function (b) { return b.ts !== blockTs; });
+    patchQueuedMemo(r, blockTs, '');
     (LOCAL.memoDels[k] = LOCAL.memoDels[k] || {})[blockTs] = Date.now();
     if (LOCAL.memoEdits[k]) delete LOCAL.memoEdits[k][blockTs];
     saveLocal();
@@ -1483,9 +1546,9 @@
     return function undo() {
       delete LOCAL.memoDels[k][blockTs];
       saveLocal();
-      // 把刚排进去的那条 memoDelete 撤掉
       var kept = outboxRead().filter(function (o) {
-        return !(o && o.op === 'memoDelete' && String(o.jobId) === String(r.jobId) && o.blockTs === blockTs);
+        return !(o && o.op === 'memoDelete' && String(o.jobId) === String(r.jobId)
+                 && o.blockTs === blockTs);
       });
       try { localStorage.setItem(OUTBOX, JSON.stringify(kept)); } catch (e) {}
       refreshPending();
@@ -2099,6 +2162,7 @@
   function syncPrefsUI() {
     $('pfPick').checked = !!prefs.pickMode;
     $('pfFoot').checked = !!prefs.showFoot;
+    $('pfBoard').checked = !!prefs.showBoard;
     $('pfDot').checked = !!prefs.showDot;
     $('pfNotify').checked = !!prefs.notify;
     var hint = '';
@@ -2121,6 +2185,12 @@
     prefs.showFoot = this.checked;
     savePrefs();
     $('footnote').hidden = !prefs.showFoot;
+  });
+  $('pfBoard').addEventListener('change', function () {
+    prefs.showBoard = this.checked;
+    savePrefs();
+    if (!prefs.showBoard) $('board').hidden = true;
+    refreshUnread();
   });
   $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
   $('pfNotify').addEventListener('change', function () {
@@ -2235,8 +2305,6 @@
       return;
     }
     var pushed = prefs.memoPushed[recKey(r)] || 0;
-    var inBase = {};
-    baseMemoBlocks(r).forEach(function (x) { inBase[x.ts + '|' + x.text] = 1; });
 
     bs.forEach(function (b, i) {
       if (i) wrap.appendChild(el('div', 'stickyar', '→'));
@@ -2249,7 +2317,7 @@
       // 回传到哪一步了 —— 这一格每秒重算，见 tickMemoStatus
       var st = el('em', 'mst');
       st.dataset.ts = String(b.ts);
-      st.dataset.landed = inBase[b.ts + '|' + b.text] ? '1' : '';
+      st.dataset.landed = b.base ? '1' : '';
       paintMemoStatus(st, b, pushed);
       hd.appendChild(st);
       note.appendChild(hd);
@@ -2531,13 +2599,28 @@
     var text = lines.join('\n');
     if (text.length > TG_LIMIT) text = text.slice(0, TG_LIMIT - 12) + '\n…（已截断）';
 
-    var btn = this;
-    btn.disabled = true;
-    tgSend(text).then(function () {
+    var markPushed = function () {
       prefs.memoPushed[recKey(r)] = fresh[fresh.length - 1].ts;
       savePrefs();
       renderDetailMemos(r);
-      toast('已推送 ' + fresh.length + ' 条新 MEMO');
+    };
+
+    /* 不勾「推送至 telegram」时只标记为已推送，不真发 ——
+       用来把「未推送」角标清掉而不去打扰群里。 */
+    if (!$('dtPushTg').checked) {
+      markPushed();
+      toast('已把 ' + fresh.length + ' 条标记为已推送（没有发到 Telegram）');
+      return;
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    /* tgSend 走 Worker，Worker 那边发成功后会把这条一并写进频道页的收件箱
+       （见 worker.js 的 recordOwnMessage）—— 所以不用额外做什么就会出现在
+       channel.html 上。注意那个修复要 wrangler deploy 之后才生效。 */
+    tgSend(text).then(function () {
+      markPushed();
+      toast('已推送 ' + fresh.length + ' 条新 MEMO（Telegram + 频道页）');
     }).catch(function (e) {
       toast('推送失败：' + (e.message || e));
     }).then(function () { btn.disabled = false; });
@@ -2823,6 +2906,15 @@
       '链接：' + (r.jobUrl || '—'),
       '当前状态：' + r.status
     );
+    // 有处理期限就一并说明。倒计时的终点是设定日前一天的 21:00 JST
+    var dl = deadlineOf(r);
+    if (dl.at) {
+      var due = dl.at - DEADLINE_LEAD_MS;
+      var left = due - Date.now();
+      lines.push('⏳ 截止处理时间：' + fmtJst(due)
+        + (dl.done ? '（已标记为已处理）'
+                   : (left > 0 ? ('　剩 ' + fmtLeft(left)) : '　已超时')));
+    }
     if ($('rmLink').checked && r.jobId) {
       lines.push('看板：' + location.origin + location.pathname + '#job-' + r.jobId);
     }
@@ -2849,7 +2941,7 @@
   function openRemind(r) {
     clearTimeout(remindCloseTimer);   // 上一次发送成功后的延时关闭，别把新开的窗关掉
     remindTarget = r;
-    $('rmWho').value = '胖 ball';
+    $('rmWho').value = '通知';
     $('rmPriority').value = '无';
     $('rmMemo').value = '';
     $('rmWith').checked = false;
@@ -3054,6 +3146,8 @@
   function openMsgFromHash() {
     var id = targetMsgId();
     if (!id) return;
+    // 冲着某条留言来的，按钮藏不藏都得让板子开
+    if (!prefs.showBoard) { prefs.showBoard = true; savePrefs(); refreshUnread(); }
     maximizeBoard();
     openBoard({ keepUnread: true });
     setTimeout(function () {
@@ -3065,6 +3159,8 @@
 
   function refreshUnread() {
     var n = unreadList().length;
+    // 通知板默认整块藏起来（含右下角那颗按钮），在设置里可以放出来
+    $('boardFab').hidden = !prefs.showBoard;
     $('boardDot').hidden = !(n > 0 && prefs.showDot);
     $('boardFab').title = n > 0 ? (n + ' 条未读留言') : '通知板';
   }
