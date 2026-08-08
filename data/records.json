@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T05:18:01.597Z",
+ "updatedAt": "2026-08-08T05:25:47.411Z",
  "count": 97,
  "records": [
   {
@@ -1806,15 +1806,15 @@
    ],
    "ts": 1785652440000,
    "tenure": "3.7 years",
-   "memo": "[2026-08-06 15:30] 26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち",
+   "memo": "[2026-08-06 15:30] 26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち\n\n8.13 再度状況確認予定。",
    "status": "一次人事面谈结束、等对方联络",
    "scout": true,
    "priority": 3,
-   "updatedAt": 1786153534961,
+   "updatedAt": 1786166745636,
    "memos": [
     {
      "ts": 1785997806909,
-     "text": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち"
+     "text": "26.7.22 人事 linkedin msg scout\n26.7.29 人事一面\n26.8.2 msg CV 发出 →8.3 已经接收\n先方連絡待ち\n\n8.13 再度状況確認予定。"
     }
    ],
    "followUpAt": 1786546800000,
@@ -1824,6 +1824,13 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjxk9id8785",
+   "text": "📝 MEMO 修改\nUnity / Lead Sales Development Representative, APAC\n26.7.22 人事 linkedin msg scout 26.7.29 人事一面 26.8.2 msg CV 发出 →8.3 已经接收 先方連絡待ち 8.13 再度状況確認予定。",
+   "createdAt": 1786166745637,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjxabankxxf",
    "text": "📝 MEMO 删除\nPostman / Account Development Representative\ntest",
