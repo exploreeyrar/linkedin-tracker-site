@@ -708,6 +708,36 @@
   .gatebox button:disabled { opacity: .5; cursor: default; }
   .gatebox .tip { color: var(--sub); font-size: 11.5px; line-height: 1.7; margin-top: 14px; }
 
+  /* ---------- Gmail 投送规则 ---------- */
+  .mrule {
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+    margin-top: 10px; background: var(--bg);
+  }
+  .mrule.off { opacity: .55; }
+  .mrule .mhd { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .mrule .mhd input[type=text] { flex: 1 1 auto; min-width: 0; }
+  .mrule label { display: block; font-size: 12px; color: var(--sub); margin: 8px 0 4px; }
+  .mrule input[type=text], .mrule textarea, .mrule select {
+    font: inherit; font-size: 13px; width: 100%; padding: 7px 10px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); color: var(--fg);
+  }
+  .mrule textarea { resize: vertical; min-height: 62px; line-height: 1.6; }
+  .mrule .mrow { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .mrule .mrow .chk { margin: 0; }
+  .mrule .del {
+    border: 1px solid transparent; background: transparent; color: var(--sub);
+    cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 999px; font-family: inherit;
+  }
+  .mrule .del:hover { border-color: var(--c-rejitv); color: var(--c-rejitv); }
+  .mrule .del.armed { border-color: var(--c-rejitv); color: var(--c-rejitv); font-weight: 700; }
+  .mrule .qhint { font-size: 11.5px; color: var(--sub); line-height: 1.6; margin-top: 4px; }
+  .mrule code {
+    background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+    padding: 0 5px; font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
   /* 「请开启通知」那一条。排在页面流里（header 下面），不是悬浮层 ——
      它要等用户做决定，不该盖住任何东西，也不该 2 秒就自己走。 */
   .askbar {
@@ -962,11 +992,50 @@
       <span class="status" id="pfLogHint" style="margin:0"></span>
     </div>
 
+    <label style="margin-top:18px">Gmail 自动投送</label>
+    <div class="row" style="margin-top:8px">
+      <button id="pfOpenMail" type="button">✉️ 邮件投送规则</button>
+      <span class="status" id="pfMailHint" style="margin:0">命中关键字的邮件自动推到 Telegram / 频道页。规则存在 Worker 上，改完即时生效。</span>
+    </div>
+
     <label style="margin-top:18px">通知</label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>操作 log 有未读时，在上面那个按钮上标出条数</span></label>
     <label class="chk"><input type="checkbox" id="pfNotify"><span>有新留言时弹 Chrome 通知<small id="pfNotifyHint"></small></span></label>
 
     <div class="row"><button class="primary sp" id="pfClose" type="button">完成</button></div>
+  </div>
+</div>
+
+<!-- Gmail 投送规则 -->
+<div class="mask" id="mailMask" hidden>
+  <div class="dlg max">
+    <h3>✉️ Gmail 自动投送规则</h3>
+    <div class="desc">
+      Gmail 那边有个每几分钟跑一次的脚本，按这里的规则挑邮件，命中的整封正文推到
+      Telegram 和频道页。<b>规则存在 Worker 上</b>，在这里改完就生效，不用再去动 Apps Script。
+    </div>
+
+    <div class="row" style="margin-top:4px">
+      <label class="chk" style="margin:0"><input type="checkbox" id="mailOn"><span>总开关<small>关掉之后脚本照跑，但一封都不投</small></span></label>
+      <span class="sp"></span>
+      <label for="mailLookback" style="margin:0 8px 0 0">回看范围</label>
+      <input type="number" id="mailLookback" min="5" max="1440" step="5" style="width:90px">
+      <span class="status" style="margin:0">分钟（要比脚本的运行间隔大一些，否则会漏）</span>
+    </div>
+
+    <div id="mailList"></div>
+
+    <div class="row" style="margin-top:10px">
+      <button id="mailAdd" type="button">＋ 加一条规则</button>
+      <span class="status" id="mailState" style="margin:0"></span>
+    </div>
+
+    <div class="tip" id="mailTip"></div>
+
+    <div class="row">
+      <button class="primary" id="mailSave" type="button">保存</button>
+      <button class="sp" id="mailClose" type="button">关闭</button>
+    </div>
   </div>
 </div>
 
@@ -1085,7 +1154,6 @@
     <div class="status" id="gateState"></div>
     <div class="row">
       <button class="primary" id="gateGo" type="button">验证并载入</button>
-      <button class="ghost sp" id="gateSkip" type="button">先不填（空看板）</button>
     </div>
     <div class="tip">
       会先向 Worker 验证一次再存，填错不会静默留下一个坏配置。<br>
@@ -1698,7 +1766,6 @@ function bootBoard(PAYLOAD) {
         // 密钥被换掉 / 服务端关了这个入口 → 清掉本机那份，重新要一次
         if (/密钥|key|403|501/i.test(wstate.err)) {
           try { localStorage.removeItem(WKEY); } catch (e2) {}
-          try { sessionStorage.removeItem(GATE_SKIP); } catch (e2) {}
           showGate();
           $('gateState').className = 'status err';
           $('gateState').textContent = '原来的密钥已经不能用了：' + wstate.err;
@@ -1714,15 +1781,12 @@ function bootBoard(PAYLOAD) {
    * 静态产物，谁都能直接抓走，拦不住也不该假装拦得住。它解决的是另一个问题 ——
    * 一台没配密钥的电脑，你在上面写的东西会静默堆在本地队列里传不出去。
    *
-   * 「暂时只读浏览」按 sessionStorage 记，关掉标签页再来还会问。
+   * 没有「先不填」这条路：跳过之后看到的是一个空看板，除了让人以为
+   * 「数据没了」之外没有任何用处 —— 这一页离开密钥就什么也做不了。
    */
-  var GATE_SKIP = 'sgjob_gate_skipped';
-  function gateSkipped() {
-    try { return sessionStorage.getItem(GATE_SKIP) === '1'; } catch (e) { return false; }
-  }
   function needGate() {
     // 连 Worker 地址都没配的话，要密钥毫无意义
-    return !!CONFIG.tgEndpoint && !writeKey() && !gateSkipped();
+    return !!CONFIG.tgEndpoint && !writeKey();
   }
 
   /** 拿一个不存在的 jobId 去探一次：能读到仓库就说明密钥对，且绝不会改动任何东西 */
@@ -1767,12 +1831,6 @@ function bootBoard(PAYLOAD) {
   $('gateKey').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); submitGate(); }
   });
-  $('gateSkip').addEventListener('click', function () {
-    try { sessionStorage.setItem(GATE_SKIP, '1'); } catch (e) {}
-    $('gateMask').hidden = true;
-    toastBg('已跳过：这一页是空的，填上密钥并刷新才会有数据');
-  });
-
   function refreshPending() {
     var n = outboxRead().length;
     var bar = $('pendBar');
@@ -2990,7 +3048,6 @@ function bootBoard(PAYLOAD) {
     refreshPending();
     // 刚填上密钥：把共享队列里还没走掉的接管过来，这台机器从此自己写
     if (v) { outboxAdopt(); flushViaWorker(); }
-    else { try { sessionStorage.removeItem(GATE_SKIP); } catch (e) {} }
   });
 
   /* 管理者模式 ↔ 普通浏览模式。设置里的勾和 ⌘/Ctrl+⇧+E 都走这里，
@@ -4446,6 +4503,223 @@ function bootBoard(PAYLOAD) {
     mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   })();
 
+  /* ---------- ✉️ Gmail 自动投送规则 ----------
+   * 规则本体存在 Worker 的 BoardStore 里，这一页只是它的编辑器 ——
+   * 所以换台电脑改也是同一份，Gmail 那边的 Apps Script 每次跑之前来取一次。
+   *
+   * 关键字是**逐字完全匹配**：Gmail 自己的搜索即使加引号也会忽略大小写、
+   * 把标点当分隔，所以搜索只负责把范围缩小，真正的判定在脚本里用 indexOf 做。
+   * 这一点必须在界面上说清楚，否则「为什么搜 abc 把 ABC 也投过来了」永远说不明白。
+   */
+  (function () {
+    var mask = $('mailMask');
+    var DOC = { on: true, lookbackMin: 60, rules: [] };
+    var loaded = false;
+
+    function newRule() {
+      return {
+        id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        on: true, name: '', query: '', phrases: [], scope: 'both', tg: true, inbox: true
+      };
+    }
+
+    function setState(cls, text) {
+      $('mailState').className = 'status' + (cls ? (' ' + cls) : '');
+      $('mailState').style.margin = '0';
+      $('mailState').textContent = text || '';
+    }
+
+    function ruleNode(r) {
+      var box = el('div', 'mrule' + (r.on ? '' : ' off'));
+
+      var hd = el('div', 'mhd');
+      var onWrap = el('label', 'chk');
+      onWrap.style.margin = '0';
+      var onBox = document.createElement('input');
+      onBox.type = 'checkbox';
+      onBox.checked = !!r.on;
+      onBox.addEventListener('change', function () {
+        r.on = this.checked;
+        box.classList.toggle('off', !r.on);
+      });
+      onWrap.appendChild(onBox);
+      onWrap.appendChild(el('span', null, '启用'));
+      hd.appendChild(onWrap);
+
+      var name = document.createElement('input');
+      name.type = 'text';
+      name.placeholder = '给这条规则起个名（只是备注，比如「面试邀请」）';
+      name.value = r.name || '';
+      name.addEventListener('input', function () { r.name = this.value; });
+      hd.appendChild(name);
+
+      // 删除做成两段确认，和清单里的 🗑 一个手感
+      var del = el('button', 'del', '🗑 删除');
+      del.type = 'button';
+      var armed = false, timer = null;
+      del.addEventListener('click', function () {
+        if (!armed) {
+          armed = true;
+          del.textContent = '再点一下确认';
+          del.classList.add('armed');
+          timer = setTimeout(function () {
+            armed = false; del.textContent = '🗑 删除'; del.classList.remove('armed');
+          }, 4000);
+          return;
+        }
+        clearTimeout(timer);
+        DOC.rules = DOC.rules.filter(function (x) { return x !== r; });
+        renderRules();
+      });
+      hd.appendChild(del);
+      box.appendChild(hd);
+
+      box.appendChild(el('label', null, '关键字（完全一致，一行一个；任意一条命中即算命中）'));
+      var ph = document.createElement('textarea');
+      ph.placeholder = '面接のご案内\nInterview Invitation';
+      ph.value = (r.phrases || []).join('\n');
+      ph.addEventListener('input', function () {
+        r.phrases = this.value.split('\n').map(function (s) { return s.replace(/\s+$/, ''); })
+                        .filter(function (s) { return s.trim(); });
+      });
+      box.appendChild(ph);
+      var phHint = el('div', 'qhint');
+      phHint.appendChild(document.createTextNode('判定是「这串字逐字出现过」：区分大小写、空格和标点，不做任何模糊匹配。'
+        + '注意它比的是子串 —— 关键字 '));
+      phHint.appendChild(el('code', null, 'Interview'));
+      phHint.appendChild(document.createTextNode(' 在 “Interviews” 里算命中，但 '));
+      phHint.appendChild(el('code', null, 'interview'));
+      phHint.appendChild(document.createTextNode(' 不会命中 “Interview”（大小写不同）。留空＝只按下面的搜索条件筛。'));
+      box.appendChild(phHint);
+
+      box.appendChild(el('label', null, 'Gmail 搜索条件（可选，原样交给 Gmail）'));
+      var q = document.createElement('input');
+      q.type = 'text';
+      q.placeholder = 'from:noreply@google.com';
+      q.value = r.query || '';
+      q.addEventListener('input', function () { r.query = this.value; });
+      box.appendChild(q);
+      var hint = el('div', 'qhint');
+      hint.appendChild(document.createTextNode('Gmail 搜索语法都能用：'));
+      hint.appendChild(el('code', null, 'from:noreply@google.com'));
+      hint.appendChild(document.createTextNode('　'));
+      hint.appendChild(el('code', null, 'to:me'));
+      hint.appendChild(document.createTextNode('　'));
+      hint.appendChild(el('code', null, 'subject:面接'));
+      hint.appendChild(document.createTextNode('　'));
+      hint.appendChild(el('code', null, 'has:attachment'));
+      hint.appendChild(document.createTextNode('　'));
+      hint.appendChild(el('code', null, '-from:me'));
+      hint.appendChild(document.createTextNode('。多个条件用空格＝而且，用 OR 表示或者。'));
+      box.appendChild(hint);
+
+      var row = el('div', 'mrow');
+      var scopeWrap = el('span', null, '关键字找哪儿：');
+      scopeWrap.style.fontSize = '12px';
+      scopeWrap.style.color = 'var(--sub)';
+      row.appendChild(scopeWrap);
+      var scope = document.createElement('select');
+      scope.style.width = 'auto';
+      [['both', '标题 + 正文'], ['subject', '只看标题'], ['body', '只看正文']].forEach(function (p) {
+        var o = document.createElement('option');
+        o.value = p[0]; o.textContent = p[1];
+        scope.appendChild(o);
+      });
+      scope.value = r.scope || 'both';
+      scope.addEventListener('change', function () { r.scope = this.value; });
+      row.appendChild(scope);
+
+      [['tg', '发 Telegram'], ['inbox', '写进频道页']].forEach(function (p) {
+        var w = el('label', 'chk');
+        w.style.margin = '0';
+        var c = document.createElement('input');
+        c.type = 'checkbox';
+        c.checked = r[p[0]] !== false;
+        c.addEventListener('change', function () { r[p[0]] = this.checked; });
+        w.appendChild(c);
+        w.appendChild(el('span', null, p[1]));
+        row.appendChild(w);
+      });
+      box.appendChild(row);
+      return box;
+    }
+
+    function renderRules() {
+      var host = $('mailList');
+      host.textContent = '';
+      if (!DOC.rules.length) {
+        var empty = el('div', 'tip', '还没有规则。加一条：比如关键字填「面接のご案内」，'
+          + '搜索条件留空 —— 那就是「任何邮件的标题或正文里逐字出现这句话就推过来」。');
+        host.appendChild(empty);
+        return;
+      }
+      DOC.rules.forEach(function (r) { host.appendChild(ruleNode(r)); });
+    }
+
+    function paintTip(ingestReady) {
+      var t = $('mailTip');
+      t.textContent = '';
+      if (ingestReady === false) {
+        t.appendChild(document.createTextNode('⚠️ Worker 上还没设 INGEST_KEY，Gmail 那个脚本连不进来。先跑 '));
+        t.appendChild(el('code', null, 'npx wrangler secret put INGEST_KEY'));
+        t.appendChild(document.createTextNode('。'));
+        return;
+      }
+      t.textContent = '规则改完点保存即可，Gmail 那边下一次跑（几分钟内）就按新规则走，不用碰 Apps Script。'
+        + '同一封邮件只会投一次：脚本按消息 ID 记账，改规则不会把之前投过的重投一遍'
+        + '（真想重投，在 Apps Script 里跑一次 resetSeen）。';
+    }
+
+    function load() {
+      setState('', '正在读取…');
+      return tgAction({ action: 'mail_rules_get' }, { 'X-Write-Key': writeKey() })
+        .then(function (d) {
+          DOC = d.doc || DOC;
+          if (!Array.isArray(DOC.rules)) DOC.rules = [];
+          $('mailOn').checked = DOC.on !== false;
+          $('mailLookback').value = DOC.lookbackMin || 60;
+          renderRules();
+          paintTip(d.ingestReady);
+          loaded = true;
+          setState('', '');
+        })
+        .catch(function (e) { setState('err', '读取失败：' + (e.message || e)); });
+    }
+
+    $('pfOpenMail').addEventListener('click', function () {
+      mask.hidden = false;
+      if (!loaded) load();
+    });
+    $('mailAdd').addEventListener('click', function () {
+      DOC.rules.push(newRule());
+      renderRules();
+    });
+    $('mailSave').addEventListener('click', function () {
+      DOC.on = $('mailOn').checked;
+      DOC.lookbackMin = Math.min(1440, Math.max(5, Number($('mailLookback').value) || 60));
+      // 规则本身在各个输入框的事件里已经跟着改了，这里直接整份交上去
+      var bad = DOC.rules.filter(function (r) { return !r.query && !(r.phrases || []).length; });
+      if (bad.length) {
+        setState('err', '有 ' + bad.length + ' 条规则既没关键字也没搜索条件 —— 那会把所有邮件都投过来，保存时会被丢掉');
+      }
+      $('mailSave').disabled = true;
+      setState('', '保存中…');
+      tgAction({ action: 'mail_rules_put', doc: JSON.stringify(DOC) }, { 'X-Write-Key': writeKey() })
+        .then(function (d) {
+          DOC = d.doc || DOC;
+          renderRules();
+          $('mailOn').checked = DOC.on !== false;
+          $('mailLookback').value = DOC.lookbackMin;
+          setState('ok', '已保存（' + DOC.rules.length + ' 条规则）');
+          toastBg('邮件投送规则已保存');
+        })
+        .catch(function (e) { setState('err', '保存失败：' + (e.message || e)); })
+        .then(function () { $('mailSave').disabled = false; });
+    });
+    $('mailClose').addEventListener('click', function () { mask.hidden = true; });
+    mask.addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+  })();
+
   /* ---------- 📣 勾选项目的速报 ---------- */
   (function () {
     var mask = $('pickMask'), state = $('pickState'), send = $('pickSend');
@@ -4698,6 +4972,7 @@ function bootBoard(PAYLOAD) {
     $('pickMask').hidden = true;
     $('detailMask').hidden = true;
     $('archMask').hidden = true;
+    $('mailMask').hidden = true;
   });
 }
 </script>

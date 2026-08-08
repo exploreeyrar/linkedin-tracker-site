@@ -828,6 +828,19 @@ export class BoardStore {
     return true;
   }
 
+  /* ---- Gmail 投送规则 ----------------------------------------------------
+   * 「哪些邮件要推过来」的规则存在这里，网页上改、Apps Script 每次跑之前来取。
+   * 放在服务端而不是脚本里，是为了让改规则这件事不必再打开 Apps Script 编辑器。 */
+
+  async mailRules() {
+    return (await this.state.storage.get('mail:rules')) || { on: true, lookbackMin: 60, rules: [], updatedAt: 0 };
+  }
+
+  async mailRulesPut(doc) {
+    await this.state.storage.put('mail:rules', doc);
+    return doc;
+  }
+
   /* ---- 速报标记 ---------------------------------------------------------- */
 
   async repGet(key) { return (await this.state.storage.get('rep:' + key)) || null; }
@@ -860,6 +873,9 @@ export class BoardStore {
     if (p === '/wish/list') return reply({ items: await this.wishList() });
     if (p === '/wish/put')  return reply({ item: await this.wishPut(body.item) });
     if (p === '/wish/del')  return reply({ ok: await this.wishDel(String(body.id || '')) });
+
+    if (p === '/mail/get')  return reply({ doc: await this.mailRules() });
+    if (p === '/mail/put')  return reply({ doc: await this.mailRulesPut(body.doc) });
 
     if (p === '/rep/get')   return reply({ val: await this.repGet(String(body.key || '')) });
     if (p === '/rep/put')   { await this.repPut(String(body.key || ''), body.val); return reply({ ok: true }); }
@@ -895,6 +911,55 @@ function normalizeWish(raw) {
     // 固定（置顶）。存的是钉上去的时间，0 = 没钉。置顶的那几条 wish.html
     // 会一直摆在最上面，并且「一键 archive」会跳过它们。
     pinnedAt: Number(raw.pinnedAt) || 0,
+  };
+}
+
+/* ==========================================================================
+ * Gmail 投送规则
+ *
+ * 形状钉死在这里，网页和 Apps Script 两边都以这份为准：
+ *   on          总开关
+ *   lookbackMin 每次回看多少分钟的邮件（要比触发器间隔大一些，别漏）
+ *   rules[]     一条规则：
+ *     query     原样拼进 Gmail 搜索的片段，如 from:noreply@google.com
+ *     phrases[] 关键字，**逐字完全匹配**（大小写、空格、标点都算）
+ *     scope     在哪儿找关键字：subject / body / both
+ *     tg        命中后发不发 Telegram
+ *     inbox     命中后写不写进频道页的收件箱
+ *
+ * 关键字为什么要在脚本里再核一遍：Gmail 的搜索即使加了引号也是「近似」的
+ * —— 它会忽略大小写、把标点当分隔、还会做词形归并。所以搜索只用来把范围
+ * 缩小，真正的判定是脚本里的 indexOf 逐字比对。
+ * ========================================================================== */
+
+const MAIL_SCOPES = ['both', 'subject', 'body'];
+
+function normalizeMailRules(raw) {
+  const src = (raw && typeof raw === 'object') ? raw : {};
+  const list = Array.isArray(src.rules) ? src.rules.slice(0, 50) : [];
+  return {
+    on: src.on !== false,
+    // 5 分钟到一天之间。太短会漏（触发器最快也就 1 分钟一次），太长纯属浪费配额
+    lookbackMin: Math.min(1440, Math.max(5, Number(src.lookbackMin) || 60)),
+    rules: list.map((r, i) => {
+      const o = (r && typeof r === 'object') ? r : {};
+      const phrases = (Array.isArray(o.phrases) ? o.phrases : [])
+        .map((x) => String(x == null ? '' : x).slice(0, 200))
+        .filter((x) => x.trim())
+        .slice(0, 30);
+      return {
+        id: nstr(o.id, 40) || ('m' + i + Date.now().toString(36)),
+        on: o.on !== false,
+        name: nstr(o.name, 60),
+        query: nstr(o.query, 400),
+        phrases: phrases,
+        scope: MAIL_SCOPES.indexOf(o.scope) !== -1 ? o.scope : 'both',
+        tg: o.tg !== false,
+        inbox: o.inbox !== false,
+      };
+    // 一条什么都没写的规则会匹配到所有邮件，直接丢掉
+    }).filter((r) => r.query || r.phrases.length),
+    updatedAt: Date.now(),
   };
 }
 
@@ -1902,6 +1967,45 @@ export default {
       if (!item) return json({ ok: false, description: 'item 缺 id 或正文是空的' }, 400, headers);
       await board(env, '/wish/put', { item: item });
       return json({ ok: true, item: item }, 200, headers);
+    }
+
+    /* ---- Gmail 投送规则 ----
+     * 两把钥匙两条路：
+     *   · 网页（index.html 的设置）用 WRITE_KEY 读写规则；
+     *   · Apps Script 用 INGEST_KEY 只读规则 —— 它本来就要拿这把钥匙
+     *     调 inbox_push，不必再多发一把出去，更不能给它 WRITE_KEY
+     *     （那把能读写整份投递记录）。 */
+    if (action === 'mail_rules_get' || action === 'mail_rules_put') {
+      if (!env.WRITE_KEY) {
+        return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
+        return json({ ok: false, description: '写入密钥不对' }, 403, headers);
+      }
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
+
+      if (action === 'mail_rules_get') {
+        const r = await board(env, '/mail/get');
+        return json({ ok: true, doc: r.doc, ingestReady: !!env.INGEST_KEY }, 200, headers);
+      }
+      let raw;
+      try { raw = JSON.parse(String(body.doc || '{}')); }
+      catch (e) { return json({ ok: false, description: 'doc 不是合法 JSON' }, 400, headers); }
+      const r = await board(env, '/mail/put', { doc: normalizeMailRules(raw) });
+      return json({ ok: true, doc: r.doc }, 200, headers);
+    }
+
+    /* Apps Script 每次跑之前来取一次规则。只读，且只认 INGEST_KEY。 */
+    if (action === 'mail_rules') {
+      if (!env.INGEST_KEY) {
+        return json({ ok: false, description: 'INGEST_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Ingest-Key') !== env.INGEST_KEY) {
+        return json({ ok: false, description: 'bad ingest key' }, 403, headers);
+      }
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
+      const r = await board(env, '/mail/get');
+      return json({ ok: true, doc: normalizeMailRules(r.doc) }, 200, headers);
     }
 
     if (action === 'records_read') {

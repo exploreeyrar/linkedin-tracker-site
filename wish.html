@@ -305,10 +305,10 @@
 <body>
 
 <header>
-  <h1 title="↑ ↓ 选择要望　E 编辑选中的那条　/ 回到底部输入框">🗒 要望欄</h1>
+  <h1 title="↑ ↓ 选择要望　E 编辑　A archive（置顶的除外）　Esc 退出编辑 / 取消选中　/ 回到底部输入框">🗒 要望欄</h1>
   <span class="bulk">
     <button class="navbtn" id="copyAll" type="button"
-            title="把当前列表里所有要望的正文按顺序复制出来（只有正文，不含时间戳、优先级这些）">⧉ 复制全部</button>
+            title="把当前列表里所有要望的正文按顺序复制出来（只有正文，不含时间戳、优先级这些）。📌 置顶的那几条不复制。">⧉ 复制全部</button>
     <button class="navbtn" id="archAll" type="button"
             title="把当前要望流里的每一条都收进 archive。📌 置顶的那几条不动。">🗂 全部 archive</button>
   </span>
@@ -568,8 +568,9 @@
 
     /* 批量按钮：复制看的是「屏幕上有什么」，所以按 SHOWN 算；
        全部 archive 只在真有可 archive 的（未置顶、未 archive）时才能按。 */
-    $('copyAll').disabled = !SHOWN.length;
-    $('copyAll').textContent = SHOWN.length ? ('⧉ 复制全部 (' + SHOWN.length + ')') : '⧉ 复制全部';
+    var nCopy = bulkCopyTargets().length;
+    $('copyAll').disabled = !nCopy;
+    $('copyAll').textContent = nCopy ? ('⧉ 复制全部 (' + nCopy + ')') : '⧉ 复制全部';
     var canArch = bulkArchTargets().length;
     $('archAll').disabled = !canArch;
     $('archAll').textContent = canArch ? ('🗂 全部 archive (' + canArch + ')') : '🗂 全部 archive';
@@ -754,9 +755,15 @@
       ta.focus();
       ta.setSelectionRange(ta.value.length, ta.value.length);
     }, 0);
-    ta.addEventListener('keydown', function (e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save.click(); }
-      if (e.key === 'Escape') { e.preventDefault(); cancel.click(); }
+    /* 绑在整个编辑块上而不是 textarea 上：焦点跑到优先级下拉或几个按钮上时，
+       Esc 一样要能退出来 —— 不然「按 Esc 退出编辑」就是看焦点在哪儿碰运气。 */
+    wrap.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save.click(); return; }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();      // 别让它再冒到 document 上把选中态也清掉
+        cancel.click();
+      }
     });
     return wrap;
   }
@@ -850,12 +857,20 @@
     b.textContent = n ? ('🗂 全部 archive (' + n + ')') : '🗂 全部 archive';
   }
 
+  /** 「复制全部」要复制哪些：屏幕上这些，但**跳过置顶的**。
+      钉在上面的多半是长期挂着的提醒 / 规矩，不是这一轮要拿出去的内容。 */
+  function bulkCopyTargets() {
+    return SHOWN.filter(function (m) { return !isPinned(m); });
+  }
+
   $('copyAll').addEventListener('click', function () {
-    if (!SHOWN.length) { toast('列表是空的'); return; }
+    var list = bulkCopyTargets();
+    if (!list.length) { toast(SHOWN.length ? '这里只有置顶的要望（不复制）' : '列表是空的'); return; }
     // 只要正文。条与条之间空一行分开，别加编号 / 时间戳 —— 要的是原文
-    var text = SHOWN.map(function (m) { return String(m.text || '').trim(); })
-                    .filter(Boolean).join('\n\n');
-    copy(text, '已复制 ' + SHOWN.length + ' 条正文');
+    var text = list.map(function (m) { return String(m.text || '').trim(); })
+                   .filter(Boolean).join('\n\n');
+    var nPin = SHOWN.length - list.length;
+    copy(text, '已复制 ' + list.length + ' 条正文' + (nPin ? ('（跳过 ' + nPin + ' 条置顶）') : ''));
   });
 
   $('archAll').addEventListener('click', function () {
@@ -1034,6 +1049,22 @@
       render();          // editor() 会自己把光标放进 textarea
       var node = document.getElementById('w-' + curId);
       if (node) node.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+
+    if (e.key === 'a' || e.key === 'A') {
+      if (!curId) { toast('先用 ↑ ↓ 选一条要望'); return; }
+      var m = SHOWN.filter(function (x) { return x.id === curId; })[0];
+      if (!m) return;
+      e.preventDefault();
+      // 置顶的那几条本来就 archive 不掉，按了也该说清楚为什么
+      if (isPinned(m)) { toast('这一条是 📌 置顶的，不会被 archive'); return; }
+      /* 光标顺势移到下一条：连着 archive 好几条时不用每次重新按 ↓。
+         列表里没有下一条了就退回上一条。 */
+      var i = SHOWN.indexOf(m);
+      var nextItem = SHOWN[i + 1] || SHOWN[i - 1] || null;
+      curId = nextItem ? nextItem.id : '';
+      setArchived(m, !m.archivedAt);
       return;
     }
 
