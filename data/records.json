@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T01:31:46.932Z",
+ "updatedAt": "2026-08-08T01:31:58.460Z",
  "count": 97,
  "records": [
   {
@@ -809,19 +809,15 @@
    ],
    "ts": 1785817749585,
    "tenure": "2.3 years",
-   "memo": "[2026-08-08 10:31] t2\n\n[2026-08-08 10:29] test\n\n[2026-08-07 21:43] [2026-08-05 13:08] Postman 拿到一面机会了。 ADR。\n\n0\nLinkedin of Michael Lee \nhttps://sg.linkedin.com/in/michelleleemh\n\n1\nYou are scheduled!\nA calendar invitation has been sent to your email address.\n\nOpen Invitation\n30 Minute Meeting with Michelle\nMichelle Lee\n14:30 - 15:00, Thursday, August 13, 2026\nChina, Singapore, Perth\n\n\n2\nREF:\n\nHi O 🌟 \n\nThank you for applying to the Account Development Representative role at Postman! 🎉\n\nI've reviewed your application and CV and would love to schedule some time to learn more about you! I'd also like to take the opportunity to share more about Postman and the Account Development Representative position you applied for. \n\nOur conversation should take about 30-minutes, so please provide me your availability for the next week so I can get this time scheduled for us as soon as possible! You can provide your availability directly through this link: https://calendly.com/michelle-lee-postman/30min\n\nThere's no preparation needed for this conversation, but I would recommend that you take some time to review the job description for the role. I've also attached Postman's company career page so you can learn more about Postman's company values, as well as our company perks & benefits! \nI'm excited to chat with you soon!\nBest regards,\n\n3\nEvent Name\n30 Minute Meeting with Michelle\nLocation: This is a Zoom web conference.\n\nYou can join this meeting from your computer, tablet, or smartphone.\nhttps://postman.zoom.us/j/85297830597?pwd=RJhbMZ1TxPQBDWqs2C6lPbJiIYA9P8.1\n\nPassword: A2Xq?K\n\nOne tap mobile:\n+1 312 626 6799,,85297830597#\n+1 646 876 9923,,85297830597#\n\nYou can also dial in using your phone.\nUS: +1 312 626 6799, +1 646 876 9923, +1 646 931 3860, +1 301 715 8592, +1 305 224 1968, +1 309 205 3325, +1 360 209 5623, +1 386 347 5053, +1 408 638 0968, +1 507 473 4847, +1 564 217 2000, +1 669 444 9171, +1 669 900 6833, +16892781000, +1 719 359 4580, +1 253 205 0468, +1 253 215 8782, +1 346 248 7799\nMeeting ID: 852-978-30597\n\nJoin from a video system or application\nsip:85297830597@zoomcrc.com\nYou can also dial and enter your meeting ID 852-978-30597",
+   "memo": "[2026-08-08 10:29] test\n\n[2026-08-07 21:43] [2026-08-05 13:08] Postman 拿到一面机会了。 ADR。\n\n0\nLinkedin of Michael Lee \nhttps://sg.linkedin.com/in/michelleleemh\n\n1\nYou are scheduled!\nA calendar invitation has been sent to your email address.\n\nOpen Invitation\n30 Minute Meeting with Michelle\nMichelle Lee\n14:30 - 15:00, Thursday, August 13, 2026\nChina, Singapore, Perth\n\n\n2\nREF:\n\nHi O 🌟 \n\nThank you for applying to the Account Development Representative role at Postman! 🎉\n\nI've reviewed your application and CV and would love to schedule some time to learn more about you! I'd also like to take the opportunity to share more about Postman and the Account Development Representative position you applied for. \n\nOur conversation should take about 30-minutes, so please provide me your availability for the next week so I can get this time scheduled for us as soon as possible! You can provide your availability directly through this link: https://calendly.com/michelle-lee-postman/30min\n\nThere's no preparation needed for this conversation, but I would recommend that you take some time to review the job description for the role. I've also attached Postman's company career page so you can learn more about Postman's company values, as well as our company perks & benefits! \nI'm excited to chat with you soon!\nBest regards,\n\n3\nEvent Name\n30 Minute Meeting with Michelle\nLocation: This is a Zoom web conference.\n\nYou can join this meeting from your computer, tablet, or smartphone.\nhttps://postman.zoom.us/j/85297830597?pwd=RJhbMZ1TxPQBDWqs2C6lPbJiIYA9P8.1\n\nPassword: A2Xq?K\n\nOne tap mobile:\n+1 312 626 6799,,85297830597#\n+1 646 876 9923,,85297830597#\n\nYou can also dial in using your phone.\nUS: +1 312 626 6799, +1 646 876 9923, +1 646 931 3860, +1 301 715 8592, +1 305 224 1968, +1 309 205 3325, +1 360 209 5623, +1 386 347 5053, +1 408 638 0968, +1 507 473 4847, +1 564 217 2000, +1 669 444 9171, +1 669 900 6833, +16892781000, +1 719 359 4580, +1 253 205 0468, +1 253 215 8782, +1 346 248 7799\nMeeting ID: 852-978-30597\n\nJoin from a video system or application\nsip:85297830597@zoomcrc.com\nYou can also dial and enter your meeting ID 852-978-30597",
    "status": "已安排面试、面试准备中",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786152704428,
+   "updatedAt": 1786152716312,
    "priority": 3,
    "deadlineAt": 1786546800000,
    "deadlineDone": false,
    "memos": [
-    {
-     "ts": 1786152704428,
-     "text": "t2"
-    },
     {
      "ts": 1786152591605,
      "text": "test"
