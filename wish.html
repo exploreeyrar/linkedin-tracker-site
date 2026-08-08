@@ -229,12 +229,16 @@
   .compose {
     flex: 0 0 auto; background: var(--card); border-top: 1px solid var(--line);
     padding: 12px 18px; display: flex; gap: 10px; align-items: flex-start;
+    /* 写得很长时输入条会一路长高 —— 但不能把上面的列表整个挤没了 */
+    max-height: 60vh; overflow-y: auto;
   }
   .compose .inner { max-width: 900px; margin: 0 auto; width: 100%; display: flex; gap: 10px; align-items: flex-start; }
+  /* 高度由 autosize() 按行数算，所以不设 max-height、不出滚动条、
+     也不给手动拖拽的把手（拖了下一次输入就被算回去，反而像坏了）。 */
   .compose textarea {
-    flex: 1 1 auto; min-height: 46px; max-height: 180px; font: inherit; font-size: 14px;
+    flex: 1 1 auto; min-height: 46px; font: inherit; font-size: 14px;
     padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
-    background: var(--bg); color: var(--fg); resize: vertical; line-height: 1.6;
+    background: var(--bg); color: var(--fg); resize: none; overflow-y: hidden; line-height: 1.6;
   }
   .compose textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .compose .col { display: flex; flex-direction: column; gap: 8px; }
@@ -261,9 +265,9 @@
   /* 就地编辑：不弹框，textarea 直接长在那条上面 */
   .msg .edit { width: 100%; }
   .msg .edit textarea {
-    width: 100%; min-height: 90px; font: inherit; font-size: 14.5px; line-height: 1.7;
+    width: 100%; min-height: 52px; font: inherit; font-size: 14.5px; line-height: 1.7;
     padding: 9px 11px; border: 1px solid var(--accent); border-radius: 9px;
-    background: var(--bg); color: var(--fg); resize: vertical;
+    background: var(--bg); color: var(--fg); resize: none; overflow-y: hidden;
   }
   .msg .editrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
   .msg .editrow select {
@@ -361,6 +365,26 @@
     return n;
   };
   function key() { try { return localStorage.getItem(WKEY) || ''; } catch (e) { return ''; } }
+
+  /**
+   * 让 textarea 的高度跟着行数走，不出滚动条。
+   * 先把 height 清成 auto 再读 scrollHeight —— 不清的话它永远只会长不会缩。
+   * border-box 下 scrollHeight 不含边框，所以要把上下边框补回去。
+   */
+  function autosize(ta) {
+    if (!ta) return;
+    ta.style.height = 'auto';
+    var cs = getComputedStyle(ta);
+    var extra = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+    ta.style.height = (ta.scrollHeight + extra) + 'px';
+  }
+  /** 绑一次：输入、粘贴、撤销都要重算；宽度变了文字会重新折行，也得重算 */
+  function bindAutosize(ta) {
+    ['input', 'change', 'cut', 'paste', 'drop'].forEach(function (ev) {
+      ta.addEventListener(ev, function () { setTimeout(function () { autosize(ta); }, 0); });
+    });
+    autosize(ta);
+  }
 
   var toastTimer = null;
   function toast(m) {
@@ -603,6 +627,9 @@
     var ta = document.createElement('textarea');
     ta.value = m.text || '';
     wrap.appendChild(ta);
+    // 先入 DOM 再量：没进文档流的元素 scrollHeight 是 0，撑不出高度
+    setTimeout(function () { autosize(ta); }, 0);
+    bindAutosize(ta);
 
     var rowEl = el('div', 'editrow');
     var sel = document.createElement('select');
@@ -714,12 +741,14 @@
       ts: now, updatedAt: now, text: t, prio: $('newPrio').value, archivedAt: 0
     };
     $('newText').value = '';
+    autosize($('newText'));
     // 新的一条在最下面，加完滚过去
     put(item).then(function () {
       scrollToBottom();
       toast('已追加');
     }).catch(function (e) {
       $('newText').value = t;
+      autosize($('newText'));
       toast('追加失败：' + (e.message || e));
     });
   }
@@ -750,7 +779,15 @@
   $('prio').addEventListener('change', function () { render(); });
   $('add').addEventListener('click', addItem);
   $('newText').addEventListener('keydown', function (e) {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); addItem(); }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); addItem(); return; }
+    // Esc 退出输入状态。稿子留着 —— 一按 Esc 就把写了半天的东西清掉太狠了
+    if (e.key === 'Escape') { e.preventDefault(); this.blur(); }
+  });
+  bindAutosize($('newText'));
+  // 窗口宽度变了文字会重新折行，所有还开着的输入框都得重算
+  window.addEventListener('resize', function () {
+    autosize($('newText'));
+    [].forEach.call(document.querySelectorAll('.msg .edit textarea'), autosize);
   });
   $('hlClear').addEventListener('click', clearHighlight);
   window.addEventListener('hashchange', function () { focusItem(targetId(), true); });
