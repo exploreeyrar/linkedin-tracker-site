@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T05:39:51.349Z",
+ "updatedAt": "2026-08-08T05:39:53.332Z",
  "count": 97,
  "records": [
   {
@@ -368,18 +368,14 @@
    "hirers": [],
    "ts": 1785821808541,
    "tenure": "2.7 years",
-   "memo": "[2026-08-08 14:39] t\n\n[2026-08-08 14:37] test\n\n[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
+   "memo": "[2026-08-08 14:37] test\n\n[2026-08-08 13:37] 胖已解决。\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
    "status": "等己方处理(胖 ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786167589640,
+   "updatedAt": 1786167468648,
    "deadlineAt": 1786892400000,
    "deadlineDone": false,
    "memos": [
-    {
-     "ts": 1786167589640,
-     "text": "t"
-    },
     {
      "ts": 1786167468648,
      "text": "test"
@@ -1832,6 +1828,13 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjy2dv08oz5",
+   "text": "📤 已发送到 Telegram\n\n#SGJOB MEMO 追加\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\n当前状态：等己方处理(胖 ball)\nhttps://www.linkedin.com/jobs/view/4423636831/\n\nt\n\n看板：https://exploreeyrar.github.io/linkedin-tracker-site/index.html#memo-4423636831@1786167589640",
+   "createdAt": 1786167591084,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjxzre00pmg",
    "text": "📝 MEMO 新增\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\ntest",
