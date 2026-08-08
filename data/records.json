@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-08-08T07:09:41.293Z",
+ "updatedAt": "2026-08-08T07:09:48.163Z",
  "records": [
   {
    "id": "rmsbqx31qom94x",
@@ -1427,14 +1427,18 @@
    "hirers": [],
    "ts": 1785821808541,
    "tenure": "2.7 years",
-   "memo": "[2026-08-08 13:37] 胖已解决。\n\n[2026-08-08 13:13] 找到了\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
+   "memo": "[2026-08-08 16:09] ## Q1: Why are you interested in working for CrowdStrike?\n\nI'm currently an SDR at CO working in data resilience and ransomware recovery, and honestly, the more customer conversations I have, the more I want to move closer to where the actual threat is — which is why CrowdStrike caught my attention. It's a step deeper into the same world I'm already in.\n\nI also joined CO's Japan team when it was brand new — no playbook, no existing process, just figuring it out with the local stakeholders as we went. I liked that more than I expected to. CrowdStrike's culture around ownership and moving fast with AI tools sounds like the same kind of environment, just at a bigger scale, and I want to test myself in that.\n\n## Q2: What about Cybersecurity interests you?\n\nWhat got me is that it never sits still. In my current role, I talk to customers who are genuinely worried — ransomware isn't a hypothetical for them, it's something that happened to a company down the street, or almost happened to them. That changes how you sell. You stop pitching features and start actually listening to what keeps someone up at night.\n\nI want more of that, honestly, but on the offense-defense side of security rather than recovery — where I'm having conversations before something goes wrong, not after.\n\n## Q3: What do you consider the most unique aspect of CrowdStrike and why?\n\nThe thing that stands out to me is that CrowdStrike built its platform around AI from day one, instead of bolting AI onto something older. I don't have deep technical background, but even from the outside, that's a different story to tell a customer — and a more convincing one.\n\nThe other thing is smaller but it stuck with me: the job posting mentions using AI to speed up how the team itself works, not just what gets sold. After spending months building a market from zero with no playbook, I care a lot about teams that actually operate the way they talk — fast, and willing to figure things out as they go.\n\n[2026-08-08 13:37] 胖已解决。\n\n[2026-08-08 13:13] 找到了\n\n[2026-08-07 11:01] Please complete the questions below as part of the Sales Development Representative job application process.\n\n\nWhy are you interested in working for CrowdStrike?*\nWhat about Cybersecurity interests you?*\nWhat do you consider the most unique aspect of CrowdStrike and why?*",
    "status": "等己方处理(胖 ball)",
    "scout": false,
    "sector": "",
-   "updatedAt": 1786170525789,
+   "updatedAt": 1786172986288,
    "deadlineAt": 1786892400000,
    "deadlineDone": false,
    "memos": [
+    {
+     "ts": 1786172986288,
+     "text": "## Q1: Why are you interested in working for CrowdStrike?\n\nI'm currently an SDR at CO working in data resilience and ransomware recovery, and honestly, the more customer conversations I have, the more I want to move closer to where the actual threat is — which is why CrowdStrike caught my attention. It's a step deeper into the same world I'm already in.\n\nI also joined CO's Japan team when it was brand new — no playbook, no existing process, just figuring it out with the local stakeholders as we went. I liked that more than I expected to. CrowdStrike's culture around ownership and moving fast with AI tools sounds like the same kind of environment, just at a bigger scale, and I want to test myself in that.\n\n## Q2: What about Cybersecurity interests you?\n\nWhat got me is that it never sits still. In my current role, I talk to customers who are genuinely worried — ransomware isn't a hypothetical for them, it's something that happened to a company down the street, or almost happened to them. That changes how you sell. You stop pitching features and start actually listening to what keeps someone up at night.\n\nI want more of that, honestly, but on the offense-defense side of security rather than recovery — where I'm having conversations before something goes wrong, not after.\n\n## Q3: What do you consider the most unique aspect of CrowdStrike and why?\n\nThe thing that stands out to me is that CrowdStrike built its platform around AI from day one, instead of bolting AI onto something older. I don't have deep technical background, but even from the outside, that's a different story to tell a customer — and a more convincing one.\n\nThe other thing is smaller but it stuck with me: the job posting mentions using AI to speed up how the team itself works, not just what gets sold. After spending months building a market from zero with no playbook, I care a lot about teams that actually operate the way they talk — fast, and willing to figure things out as they go."
+    },
     {
      "ts": 1786163871406,
      "text": "胖已解决。"
