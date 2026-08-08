@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T01:31:45.964Z",
+ "updatedAt": "2026-08-08T01:31:46.932Z",
  "count": 97,
  "records": [
   {
@@ -1828,6 +1828,13 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjp7b8sutja",
+   "text": "📝 MEMO 新增\nPostman / Account Development Representative\nt2",
+   "createdAt": 1786152704428,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjp4w6ttkmy",
    "text": "📝 MEMO 新增\nPostman / Account Development Representative\ntest",
