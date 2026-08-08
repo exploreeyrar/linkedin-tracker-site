@@ -43,6 +43,9 @@ CONFIG = os.path.join(HERE, "imessage-bridge.config.json")
 STATE = os.path.join(HERE, ".imessage-bridge.state.json")
 CHAT_DB = os.path.expanduser("~/Library/Messages/chat.db")
 
+# Cloudflare 会按浏览器签名拦掉 urllib 的默认 UA（见 push() 里的说明）
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) sgjob-imessage-bridge"
+
 # Apple 的纪元是 2001-01-01 UTC
 APPLE_EPOCH = 978307200
 
@@ -283,7 +286,12 @@ def push(cfg, item, dry=False):
     req = urllib.request.Request(
         cfg["endpoint"], data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded",
-                 "X-Ingest-Key": cfg["ingestKey"]},
+                 "X-Ingest-Key": cfg["ingestKey"],
+                 # 必须盖掉 urllib 默认的 "Python-urllib/3.x"：Cloudflare 的
+                 # Browser Integrity Check 认得这个签名，会在请求到达 Worker
+                 # 之前就回一个 403（页面是 "error code: 1010"，不是我们的 JSON）。
+                 # 症状是每条推送都失败，而且看起来像密钥不对 —— 其实根本没进 Worker。
+                 "User-Agent": USER_AGENT},
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as res:
