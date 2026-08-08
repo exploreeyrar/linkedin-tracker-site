@@ -59,6 +59,11 @@ new_sqlite_classes = ["ChannelInbox"]
 
 # 予約送信のキュー。先に KV namespace を作って id を貼ること：
 #   npx wrangler kv namespace create SCHEDULE
+#
+# キューは `sch:index` という**単一キー**に JSON 配列で入っている（以前は 1 件 1 キー）。
+# 無料枠の list は 1,000 回/日しかなく、5 分ごとの Cron だけで 288 回（28.8%）を
+# 食い潰していたため。今は Cron が空振りする回＝KV read 1 回だけ、list は 0。
+# 旧形式のキーは初回アクセス時に自動で index へ取り込まれ、そのあと削除される。
 [[kv_namespaces]]
 binding = "SCHEDULE"
 id = "5618df7bf92b4f4886a45644efeefb29"

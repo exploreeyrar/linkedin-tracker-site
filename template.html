@@ -3539,8 +3539,7 @@
       if (sched) logSent(text, '定时 ' + fmtDT(at));
 
       if (sched) {
-        // KV 的 list 要等最多 60 秒才看得到，先本地补一条让行立刻变深蓝，
-        // 之后 loadScheduled() 拉到真数据会覆盖掉。
+        // 先本地补一条让行立刻变深蓝，之后 loadScheduled() 拉到真数据会覆盖掉。
         var jid = r.jobId || '';
         if (jid) {
           (SCHEDULED[jid] = SCHEDULED[jid] || []).push({
@@ -3549,7 +3548,9 @@
           });
           apply();
         }
-        setTimeout(loadScheduled, 65000);   // 等 KV 传播开再对一次账
+        // 队列改成单 key 之后，刚写完就能在同一个 colo 读到新值，
+        // 不用再等 list 那 60 秒的传播窗口。留 3 秒只是给写入落地一点余量。
+        setTimeout(loadScheduled, 3000);
       }
       remindCloseTimer = setTimeout(function () { $('remindMask').hidden = true; }, 900);
     }).catch(function (e) {

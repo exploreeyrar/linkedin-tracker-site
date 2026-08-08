@@ -1066,9 +1066,12 @@ async function readQueue(env) {
   }
 
   let dirty = false;
+  let legacy = [];
   if (!items) {
-    items = await migrateLegacyQueue(env);
-    dirty = true;                              // 整个生命周期里只会发生一次
+    const got = await migrateLegacyQueue(env);  // 整个生命周期里只会发生一次
+    items = got.items;
+    legacy = got.keys;
+    dirty = true;
   }
 
   const cutoff = Date.now() - QUEUE_KEEP_MS;
@@ -1083,37 +1086,43 @@ async function readQueue(env) {
   }
   if (alive.length !== items.length) dirty = true;
   alive.sort((a, b) => a.at - b.at);
-  return { items: alive, dirty: dirty };
-}
-
-async function writeQueue(env, items) {
-  if (!env.SCHEDULE) return;
-  await env.SCHEDULE.put(QUEUE_KEY, JSON.stringify(items));
+  return { items: alive, dirty: dirty, legacy: legacy };
 }
 
 /**
- * 一次性：把旧的 sch:<ts>:<id> 收进索引。
- * 只读不删 —— 先把索引安全写下来才是要紧事，旧 key 各自带着 expirationTtl，
- * 到期 KV 自己会清掉，白留几天也不碍事。要是这里边删边读中途挂了，
- * 反而会把还没发的预约弄丢。
+ * 写回队列。第三个参数是 readQueue 的返回值：如果这一次是从旧格式迁移来的，
+ * 等索引确实落地之后再把旧 key 删掉 —— 顺序反过来的话，中途失败就会把
+ * 还没发出去的预约弄丢。
  */
+async function writeQueue(env, items, q) {
+  if (!env.SCHEDULE) return;
+  await env.SCHEDULE.put(QUEUE_KEY, JSON.stringify(items));
+  if (q && q.legacy && q.legacy.length) {
+    for (const name of q.legacy) await env.SCHEDULE.delete(name);
+    q.legacy = [];
+  }
+}
+
+/** 一次性：把旧的 sch:<ts>:<id> 收进索引，同时记下它们的 key 等着被清掉 */
 async function migrateLegacyQueue(env) {
-  const out = [];
+  const items = [];
+  const keys = [];
   let cursor;
   do {
     const page = await env.SCHEDULE.list({ prefix: LEGACY_PREFIX, limit: 1000, cursor: cursor });
     for (const k of page.keys) {
       if (k.name === QUEUE_KEY) continue;
+      keys.push(k.name);
       const raw = await env.SCHEDULE.get(k.name);
       if (!raw) continue;
       try {
         const item = JSON.parse(raw);
-        if (item && item.id) out.push(item);
+        if (item && item.id) items.push(item);
       } catch (e) { /* 坏数据直接跳过 */ }
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
-  return out;
+  return { items: items, keys: keys };
 }
 
 export default {
@@ -1509,9 +1518,10 @@ export default {
     // ---- 查询待发队列 ----
     if (action === 'list') {
       if (!env.SCHEDULE) return json({ ok: false, description: 'KV 未绑定，定时功能不可用' }, 501, headers);
-      const items = await listQueue(env, MAX_QUEUE);
-      items.sort((a, b) => a.at - b.at);
-      return json({ ok: true, items: items.map(i => ({ id: i.id, at: i.at, text: i.text, meta: i.meta || {} })) }, 200, headers);
+      const q = await readQueue(env);
+      // 只有首次迁移和剪掉陈年条目这两种情况会写回，平时就是一次纯读
+      if (q.dirty) await writeQueue(env, q.items, q);
+      return json({ ok: true, items: q.items.map(i => ({ id: i.id, at: i.at, text: i.text, meta: i.meta || {} })) }, 200, headers);
     }
 
     // ---- 取消 / 立刻发送 ----
@@ -1520,27 +1530,19 @@ export default {
       const id = String(body.id || '');
       if (!id) return json({ ok: false, description: 'missing id' }, 400, headers);
 
-      // KV 的 list 有最多 60 秒延迟，刚入队的条目扫不到。
-      // 客户端手上有 at，就能直接拼出 key 精确读取，不必依赖 list。
-      const at = Number(body.at || 0);
-      let key = null, item = null;
-      if (at) {
-        key = queueKey(at, id);
-        const raw = await env.SCHEDULE.get(key);
-        if (raw) { try { item = JSON.parse(raw); } catch (e) { item = null; } }
-      }
-      if (!item) {                       // 回退：扫一遍队列
-        const items = await listQueue(env, MAX_QUEUE);
-        const hit = items.find(i => i.id === id);
-        if (hit) { item = hit; key = hit.key; }
-      }
-      if (!item || !key) return json({ ok: false, description: 'not found' }, 404, headers);
+      // 单 key 之后不用再靠客户端传 at 来绕开 list 的 60 秒延迟：
+      // 刚写过这个 key 的浏览器下一次读打的是同一个 colo，拿到的就是新值。
+      const q = await readQueue(env);
+      const idx = q.items.findIndex((i) => i.id === id);
+      if (idx === -1) return json({ ok: false, description: 'not found' }, 404, headers);
+      const item = q.items[idx];
 
       if (action === 'sendnow') {
         const data = await tgSend(env, item.text);
         if (!data.ok) return json(data, 502, headers);
       }
-      await env.SCHEDULE.delete(key);
+      q.items.splice(idx, 1);
+      await writeQueue(env, q.items, q);
       return json({ ok: true }, 200, headers);
     }
 
@@ -1561,17 +1563,17 @@ export default {
       if (at > Date.now() + MAX_AHEAD_MS) {
         return json({ ok: false, description: '排得太远了（最多 180 天）' }, 400, headers);
       }
-      const existing = await listQueue(env, MAX_QUEUE + 1);
-      if (existing.length >= MAX_QUEUE) {
+      const q = await readQueue(env);
+      if (q.items.length >= MAX_QUEUE) {
         return json({ ok: false, description: '队列已满（上限 ' + MAX_QUEUE + ' 条）' }, 429, headers);
       }
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       let meta = {};
       try { meta = body.meta ? JSON.parse(body.meta) : {}; } catch (e) { meta = {}; }
       const item = { id: id, at: at, text: text, createdAt: Date.now(), meta: meta };
-      // 到点后再留 7 天过期，避免 Cron 万一漏掉就永久堆积
-      await env.SCHEDULE.put(queueKey(at, id), JSON.stringify(item),
-        { expirationTtl: Math.max(120, Math.floor((at - Date.now()) / 1000) + 7 * 86400) });
+      q.items.push(item);
+      q.items.sort((a, b) => a.at - b.at);   // Cron 只看头一条，所以顺序要维持住
+      await writeQueue(env, q.items, q);
       return json({ ok: true, id: id, at: at }, 200, headers);
     }
 
@@ -1608,14 +1610,28 @@ export default {
       }
     }
 
-    const items = await listQueue(env, MAX_QUEUE);
-    for (const item of items) {
-      if (item.at > now) continue;              // key 按时间排序，但保险起见逐条判断
+    /* ---- 待发队列 ----
+     * 绝大多数轮次是没事干的，所以这一段的常态开销必须是「一次读」：
+     * 队列已经按时间排好序，头一条都没到点就整批没到点，直接收工。
+     * 一天 288 轮 = 288 次 read（免费额度的 0.3%），0 次 list、0 次 write。 */
+    const q = await readQueue(env);
+    if (!q.items.length || (q.items[0].at > now && !q.dirty)) {
+      if (q.dirty) await writeQueue(env, q.items, q);
+      return;
+    }
+
+    const keep = [];
+    let changed = q.dirty;
+    for (const item of q.items) {
+      if (item.at > now) { keep.push(item); continue; }
       const data = await tgSend(env, item.text);
       // 发送失败就留着，下一轮再试；Telegram 明确拒绝（4xx）的才丢弃
       if (data.ok || (data.error_code && data.error_code >= 400 && data.error_code < 500)) {
-        await env.SCHEDULE.delete(item.key);
+        changed = true;
+      } else {
+        keep.push(item);
       }
     }
+    if (changed) await writeQueue(env, keep, q);
   }
 };
