@@ -86,6 +86,8 @@
     font-family: inherit; color: var(--fg); cursor: pointer; text-align: left;
   }
   .srow:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  /* 被隐藏掉那几种状态的条数说明，语气要弱 */
+  .shid { font-size: 11px; color: var(--sub); opacity: .72; padding: 6px 6px 0; line-height: 1.5; }
   .srow.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .srow .dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 9px; }
   .srow .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -131,6 +133,10 @@
   a:hover { text-decoration: underline; }
   .co { font-weight: 600; }
   .role { color: var(--sub); font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
+  /* Hiring team 那格里的人名：能点，但不摆成蓝色链接的样子 ——
+     和「更新时间」一样是行里的普通文字，鼠标移上去才显出可点。 */
+  .hname { color: var(--sub); text-decoration: none; }
+  .hname:hover { color: var(--accent); text-decoration: underline; }
   .memo { white-space: pre-wrap; word-break: break-word; min-width: 150px; }
   .memo:empty::before { content: '—'; color: var(--sub); }
   /* MEMO 太长时只露前 8 行，其余收进弹窗 */
@@ -295,13 +301,14 @@
      所以做成显眼的实心按钮，而不是以前藏在底部按钮堆里的一条文字链。 */
   .dthead { display: flex; align-items: flex-start; gap: 12px; }
   .dthead h3 { flex: 1 1 auto; min-width: 0; }
+  /* 深色底 + 一圈亮蓝紫描边的圆角方块（不是实心药丸），比周围一圈按钮都显眼 */
   .joblink {
     flex: 0 0 auto; text-decoration: none; white-space: nowrap;
-    font-size: 12.5px; font-weight: 700; padding: 8px 14px; border-radius: 999px;
-    background: var(--accent); color: #fff; border: 1px solid transparent;
-    box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 35%, transparent);
+    font-size: 13px; font-weight: 700; padding: 9px 16px; border-radius: 12px;
+    background: #232b46; color: #e8ecff; border: 2px solid #5b6cff;
+    box-shadow: 0 1px 6px rgba(91,108,255,.28);
   }
-  .joblink:hover { filter: brightness(1.08); }
+  .joblink:hover { background: #2c3557; border-color: #7c89ff; }
   .joblink[hidden] { display: none; }
 
   /* 灰色、不显眼的次要按钮（详情页的「显示其余项目信息」用它） */
@@ -681,6 +688,12 @@
     max-width: calc(100vw - 32px); text-align: center;
   }
   .toast.show { opacity: 1; }
+  /* 后台运作类的提示（写仓库、发 Telegram、同步…）：灰、小、2 秒就走。
+     这类信息不是用户要做的决定，只是「系统在动」的确认，不该占视线。 */
+  .toast.bg {
+    background: rgba(90,96,104,.82); color: #e9ecef; font-size: 11.5px;
+    padding: 6px 13px; border-radius: 999px; bottom: 16px; font-weight: 500;
+  }
   /* 带「撤销」的 toast 要能点，所以这一种不能 pointer-events:none */
   .toast.act { pointer-events: auto; display: inline-flex; align-items: center; gap: 12px; }
   .toast button {
@@ -743,15 +756,10 @@
   <button class="hiddenmore" id="showHidden" type="button">已隐藏状态的其他项目</button>
 </div>
 
-<!-- 通知板 -->
-<button class="fab" id="boardFab" type="button" hidden>
-  <span>💬 通知板</span>
-  <span class="dot" id="boardDot" hidden></span>
-</button>
-
+<!-- 通知板（操作 log）—— 没有悬浮按钮了，入口在「⚙ 设置」里 -->
 <div class="board" id="board" hidden>
   <div class="bhdr" id="boardHdr">
-    <span class="t" id="boardTitle" title="双击可在小窗 / 满屏之间切换">💬 通知板 <em id="boardCount">(0)</em></span>
+    <span class="t" id="boardTitle" title="双击可在小窗 / 满屏之间切换">🧾 操作 log <em id="boardCount">(0)</em></span>
     <button type="button" id="boardArchiveAll">🗂 一键 archive 全部消息</button>
     <button type="button" id="boardArchived">已 archive 的消息</button>
     <button type="button" id="boardClose">收起 ✕</button>
@@ -764,7 +772,7 @@
 <div class="mask" id="archMask" hidden>
   <div class="dlg">
     <h3>🗂 已 archive 的消息</h3>
-    <div class="desc">archive 只发生在这台设备上，不会影响别处看到的通知板。</div>
+    <div class="desc">archive 只发生在这台设备上，不会影响别处看到的操作 log。</div>
     <div class="blist" id="archList" style="max-height:min(60vh,460px);overflow:auto;padding:0"></div>
     <div class="row">
       <button id="archRestoreAll" type="button">全部取回</button>
@@ -879,11 +887,16 @@
     <label style="margin-top:18px">清单</label>
     <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
     <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
-    <label class="chk"><input type="checkbox" id="pfBoard"><span>显示「💬 通知板」按钮<small>默认不显示；关掉之后带 #msg-… 的直达链接仍然能打开它</small></span></label>
     <label class="chk"><input type="checkbox" id="pfPushTg"><span>详情页显示「推送至 telegram」勾选框<small>默认不显示。藏起来时「📤 一键推送所有新MEMO」一律真的发到 Telegram；放出来才能选择「只标记为已推送、不发出去」</small></span></label>
 
+    <label style="margin-top:18px">操作 log</label>
+    <div class="row" style="margin-top:8px">
+      <button id="pfOpenLog" type="button">🧾 打开操作 log</button>
+      <span class="status" id="pfLogHint" style="margin:0"></span>
+    </div>
+
     <label style="margin-top:18px">通知</label>
-    <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
+    <label class="chk"><input type="checkbox" id="pfDot"><span>操作 log 有未读时，在上面那个按钮上标出条数</span></label>
     <label class="chk"><input type="checkbox" id="pfNotify"><span>有新留言时弹 Chrome 通知<small id="pfNotifyHint"></small></span></label>
 
     <div class="row"><button class="primary sp" id="pfClose" type="button">完成</button></div>
@@ -901,7 +914,7 @@
   <div class="dlg max">
     <div class="dthead">
       <h3 id="dtTitle">项目详情</h3>
-      <a class="joblink" id="dtOpen" target="_blank" rel="noopener">🔗 本岗位链接</a>
+      <a class="joblink" id="dtOpen" target="_blank" rel="noopener">本岗位链接</a>
     </div>
     <div class="desc" id="dtSub"></div>
     <div class="dtscroll">
@@ -1322,7 +1335,8 @@
     clearTimeout(toastTimer);
     clearInterval(toastTick);
     t.textContent = msg;
-    t.classList.remove('act');
+    t.classList.remove('act', 'bg');
+    lastBgToast = '';
     var ms = 2600;
     if (actionLabel && onAction) {
       ms = TOAST_ACTION_SEC * 1000;
@@ -1351,6 +1365,24 @@
     }, ms);
   }
 
+  /* 后台运作的提示走这里：灰色小浮条，2 秒消失，同一句话不重复弹。
+     出错的那种额外记进「操作 log」，这样即使浮条错过了也查得到。 */
+  var lastBgToast = '';
+  function toastBg(msg) {
+    if (!msg || msg === lastBgToast) return;
+    lastBgToast = msg;
+    var t = $('toast');
+    clearTimeout(toastTimer);
+    clearInterval(toastTick);
+    t.textContent = msg;
+    t.classList.remove('act');
+    t.classList.add('bg', 'show');
+    toastTimer = setTimeout(function () {
+      t.classList.remove('show');
+      lastBgToast = '';
+    }, 2000);
+  }
+
   /* ---------- 本地偏好 ---------- */
   var PK = 'sgjob_prefs_v1';
   var prefs = {
@@ -1363,7 +1395,6 @@
     fuDone: {},                    // 已经弹过并被手动关掉的：'<key>@<日期>' → 关掉时间
     pickMode: false,               // 多选：默认关，在设置里开
     showFoot: false,               // 底部那段构建说明：默认不显示
-    showBoard: false,              // 右下角「💬 通知板」按钮：默认不显示
     memoAsc: true,                 // 详情页 MEMO 排列：true = 旧 → 新
     memoTg: true,                  // 详情页「✈ 通知 Telegram」开关：默认开
     showPushTg: false,             // 一键推送旁那个「推送至 telegram」勾：默认藏起来
@@ -1545,15 +1576,15 @@
   $('gateSkip').addEventListener('click', function () {
     try { sessionStorage.setItem(GATE_SKIP, '1'); } catch (e) {}
     $('gateMask').hidden = true;
-    toast('已跳过：这台设备写的改动传不出去，直到填上密钥');
+    toastBg('已跳过：这台设备写的改动传不出去，直到填上密钥');
   });
 
   function refreshPending() {
     var n = outboxRead().length;
     var bar = $('pendBar');
     if (!bar) return;
-    bar.hidden = !n;
-    if (!n) { bar.textContent = ''; bar.classList.remove('warn'); return; }
+    bar.hidden = true;                     // 常驻横幅取消，改走灰色浮条
+    if (!n) { lastPend = ''; return; }
 
     var b = bridgeState();
     var msg;
@@ -1561,8 +1592,7 @@
       msg = wstate.err
         ? ('⚠️ ' + n + ' 项写入仓库失败：' + wstate.err)
         : ('⏳ ' + n + ' 项待写入：由 Worker 代写仓库，几秒内提交');
-      bar.textContent = msg;
-      bar.classList.toggle('warn', !!wstate.err);
+      showPend(msg, !!wstate.err);
       return;
     }
     if (!b.alive) {
@@ -1575,8 +1605,15 @@
     } else {
       msg = '⏳ ' + n + ' 项改动待回传：油猴脚本已连接，几秒内写回仓库。';
     }
-    bar.textContent = msg;
-    bar.classList.toggle('warn', !b.alive || !b.ready || !!b.err);
+    showPend(msg, !b.alive || !b.ready || !!b.err);
+  }
+
+  var lastPend = '';
+  function showPend(msg, bad) {
+    if (msg === lastPend) return;
+    lastPend = msg;
+    toastBg(msg);
+    if (bad) logBoard(msg);
   }
 
   /* ---------- 本机新增的内容 ----------
@@ -1927,11 +1964,8 @@
     '已安排面试、面试准备中',
     '対方来联络了'
   ]);
-  var isHiddenStatus = statusSet([
-    '已投递等联络',
-    '书类落了',
-    '无消息疑似书类落了'
-  ]);
+  var STATUS_HIDDEN = ['已投递等联络', '书类落了', '无消息疑似书类落了'];
+  var isHiddenStatus = statusSet(STATUS_HIDDEN);
   // 「待处理」KPI 被点亮时生效；和下拉框的单状态筛选是两回事
   var groupFilter = '';
 
@@ -1979,8 +2013,14 @@
 
   /* ---------- 状态分布（点击即筛选） ---------- */
   function buildStatusPanel() {
-    var counts = {}, total = RECORDS.length;
-    RECORDS.forEach(function (r) { counts[r.status] = (counts[r.status] || 0) + 1; });
+    /* 和清单一样：默认不显示「已投递等联络 / 书类落了 / 无消息疑似书类落了」。
+       这三种占的量最大，摆在这里会把真正要盯的那几种压成一条细线。
+       底部那个「已隐藏状态的其他项目」按下去，这里也一并放出来。 */
+    var pool = prefs.showHidden
+      ? RECORDS
+      : RECORDS.filter(function (r) { return !isHiddenStatus(r.status); });
+    var counts = {}, total = pool.length;
+    pool.forEach(function (r) { counts[r.status] = (counts[r.status] || 0) + 1; });
     var order = STATUS_ORDER.slice();
     Object.keys(counts).forEach(function (s) { if (order.indexOf(s) === -1) order.push(s); });
 
@@ -2013,6 +2053,13 @@
       list.appendChild(row);
     });
     if (!total) list.appendChild(el('div', 'srow', '暂无数据'));
+
+    // 别让人以为这就是全部：明说少算了多少条
+    var nh = RECORDS.length - total;
+    if (nh > 0) {
+      var note = el('div', 'shid', '另有 ' + nh + ' 条属于已隐藏的状态（' + STATUS_HIDDEN.join('、') + '）');
+      list.appendChild(note);
+    }
   }
 
   /* ---------- 近 5 日趋势（一天一根） ---------- */
@@ -2209,7 +2256,7 @@
         r.hirers.forEach(function (h) {
           var name = h.name || h.url || '(未知)';
           if (h.url) {
-            var la = el('a', null, name);
+            var la = el('a', 'hname', name);
             la.href = h.url; la.target = '_blank'; la.rel = 'noopener';
             if (h.role) la.title = h.role;
             la.addEventListener('click', function (e) { e.stopPropagation(); });
@@ -2466,6 +2513,7 @@
   $('showHidden').addEventListener('click', function () {
     prefs.showHidden = !prefs.showHidden;
     savePrefs();
+    buildStatusPanel();     // 「状态分布」跟着一起放出来 / 收回去
     apply();
   });
   $('fscout').addEventListener('click', function () {
@@ -2479,7 +2527,6 @@
   function syncPrefsUI() {
     $('pfPick').checked = !!prefs.pickMode;
     $('pfFoot').checked = !!prefs.showFoot;
-    $('pfBoard').checked = !!prefs.showBoard;
     $('pfPushTg').checked = !!prefs.showPushTg;
     $('pfWriteKey').value = writeKey();
     updateWriteHint();
@@ -2530,12 +2577,6 @@
     paintPushTgVisible();
   });
 
-  $('pfBoard').addEventListener('change', function () {
-    prefs.showBoard = this.checked;
-    savePrefs();
-    if (!prefs.showBoard) $('board').hidden = true;
-    refreshUnread();
-  });
   $('pfDot').addEventListener('change', function () { prefs.showDot = this.checked; savePrefs(); refreshUnread(); });
   $('pfNotify').addEventListener('change', function () {
     var want = this.checked;
@@ -2828,8 +2869,7 @@
             + (wstate.at ? ('，最近 ' + fmtDT(wstate.at)) : '') + '）'
             + (wstate.skipped ? ('　跳过 ' + wstate.skipped + ' 项') : '');
       }
-      box.className = cls;
-      box.textContent = txt;
+      showPipe(cls, txt);
       return;
     }
     if (!bst.alive) {
@@ -2851,8 +2891,19 @@
       cls += ' ok';
       txt = '✅ 已全部回传' + (bst.lastSync ? ('（最近 ' + fmtDT(bst.lastSync) + '）') : '');
     }
-    box.className = cls;
-    box.textContent = txt;
+    showPipe(cls, txt);
+  }
+
+  /* 后台管道的状态不再占着详情页顶部一整条 —— 只在状态真的变了的时候
+     弹一次灰色小浮条。出错的那种同时记进操作 log，事后查得到。 */
+  var lastPipe = '';
+  function showPipe(cls, txt) {
+    var box = $('dtPipe');
+    if (box) box.hidden = true;            // 常驻横幅取消
+    if (txt === lastPipe) return;
+    lastPipe = txt;
+    toastBg(txt);
+    if (/bad/.test(cls)) logBoard(txt);
   }
 
   /* 状态是「实时」的：队列被脚本取走、推送成功、报错，都要当场反映出来。
@@ -2929,7 +2980,7 @@
     open.hidden = !r.jobUrl;
     if (r.jobUrl) {
       open.href = r.jobUrl;
-      open.textContent = '🔗 ' + (r.site === 'jobstreet' ? 'Jobstreet' : r.site === 'jora' ? 'Jora' : 'LinkedIn') + '　本岗位链接';
+      open.textContent = '本岗位链接（' + (r.site === 'jobstreet' ? 'Jobstreet' : r.site === 'jora' ? 'Jora' : 'LinkedIn') + '）';
     }
     $('detailMask').hidden = false;
     $('dtMemoInput').focus();
@@ -3004,13 +3055,13 @@
     var text = lines.join('\n');
     if (text.length > TG_LIMIT) text = text.slice(0, TG_LIMIT - 12) + '\n…（已截断）';
 
-    toast('已追加，正在通知 Telegram…');
+    toastBg('已追加，正在通知 Telegram…');
     tgSend(text).then(function () {
       // 已经发过了，别让它再算成「未推送」被一键推送重发一遍
       prefs.memoPushed[recKey(r)] = Math.max(prefs.memoPushed[recKey(r)] || 0, at);
       savePrefs();
       renderDetailMemos(r);
-      toast('已追加并通知 Telegram');
+      toastBg('已追加并通知 Telegram');
     }).catch(function (e) {
       toast('已追加，但通知 Telegram 失败：' + (e.message || e));
     });
@@ -3064,7 +3115,7 @@
     // 这个勾藏起来的时候一律照发 —— 不然「上次取消勾选 + 后来在设置里隐藏」会变成静默不发
     if (prefs.showPushTg && !$('dtPushTg').checked) {
       markPushed();
-      toast('已把 ' + fresh.length + ' 条标记为已推送（没有发到 Telegram）');
+      toastBg('已把 ' + fresh.length + ' 条标记为已推送（没有发到 Telegram）');
       return;
     }
 
@@ -3075,7 +3126,7 @@
        channel.html 上。注意那个修复要 wrangler deploy 之后才生效。 */
     tgSend(text).then(function () {
       markPushed();
-      toast('已推送 ' + fresh.length + ' 条 MEMO（Telegram + 频道页）');
+      toastBg('已推送 ' + fresh.length + ' 条 MEMO（Telegram + 频道页）');
     }).catch(function (e) {
       toast('推送失败：' + (e.message || e));
     }).then(function () { btn.disabled = false; });
@@ -3331,14 +3382,14 @@
         e.stopPropagation();
         now.disabled = true;
         tgAction({ action: 'sendnow', id: it.id, at: String(it.at) })
-          .then(function () { toast('已发送'); logSent(it.text, '定时改为立刻'); return loadScheduled(); })
+          .then(function () { toastBg('已发送'); logSent(it.text, '定时改为立刻'); return loadScheduled(); })
           .catch(function (err) { toast('发送失败：' + err.message); now.disabled = false; });
       });
       cancel.addEventListener('click', function (e) {
         e.stopPropagation();
         cancel.disabled = true;
         tgAction({ action: 'cancel', id: it.id, at: String(it.at) })
-          .then(function () { toast('已取消预约'); return loadScheduled(); })
+          .then(function () { toastBg('已取消预约'); return loadScheduled(); })
           .catch(function (err) { toast('取消失败：' + err.message); cancel.disabled = false; });
       });
       row.appendChild(now); row.appendChild(cancel);
@@ -3574,7 +3625,7 @@
     if (!live.length) {
       list.appendChild(el('div', 'empty', nArch
         ? '这里空了 —— 全部消息都已 archive。'
-        : '还没有留言。在 LinkedIn 页面的通知板里写一条并同步后，这里就会出现。'));
+        : '还没有记录。页面上的每一次 MEMO 改动、每一条发出去的 Telegram 消息都会记到这里。'));
       return;
     }
     live.forEach(function (m) { list.appendChild(msgNode(m, false)); });
@@ -3609,22 +3660,25 @@
     var id = targetMsgId();
     if (!id) return;
     // 冲着某条留言来的，按钮藏不藏都得让板子开
-    if (!prefs.showBoard) { prefs.showBoard = true; savePrefs(); refreshUnread(); }
     maximizeBoard();
     openBoard({ keepUnread: true });
     setTimeout(function () {
       var node = document.getElementById('msg-' + id);
       if (node) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      else toast('链接指向的留言不在当前通知板里');
+      else toast('链接指向的留言不在当前操作 log 里');
     }, 60);
   }
 
   function refreshUnread() {
     var n = unreadList().length;
-    // 通知板默认整块藏起来（含右下角那颗按钮），在设置里可以放出来
-    $('boardFab').hidden = !prefs.showBoard;
-    $('boardDot').hidden = !(n > 0 && prefs.showDot);
-    $('boardFab').title = n > 0 ? (n + ' 条未读留言') : '通知板';
+    // 右下角那颗悬浮按钮已经彻底去掉了 —— 入口只在「⚙ 设置 → 操作 log」
+    var b = $('pfOpenLog');
+    if (b) {
+      b.textContent = '🧾 打开操作 log' + (n > 0 && prefs.showDot ? ('（' + n + ' 条未读）') : '');
+      b.classList.toggle('primary', n > 0 && prefs.showDot);
+    }
+    var h = $('pfLogHint');
+    if (h) h.textContent = MESSAGES.length ? (MESSAGES.length + ' 条记录') : '还没有记录';
   }
 
   function markAllRead() {
@@ -3692,9 +3746,9 @@
     if (!(opts && opts.keepUnread)) setTimeout(markAllRead, 1200);
   }
 
-  $('boardFab').addEventListener('click', function () {
-    if ($('board').hidden) openBoard();
-    else $('board').hidden = true;
+  $('pfOpenLog').addEventListener('click', function () {
+    $('prefsMask').hidden = true;      // 设置窗让位，log 铺开
+    openBoard();
   });
   $('boardClose').addEventListener('click', function () { $('board').hidden = true; });
 
@@ -3714,7 +3768,7 @@
     markAllRead();
     renderBoard();
     refreshUnread();
-    toast('已 archive ' + live.length + ' 条消息');
+    toastBg('已 archive ' + live.length + ' 条消息');
     $('board').hidden = true;
   });
 
@@ -3730,7 +3784,7 @@
     renderArchived();
     renderBoard();
     refreshUnread();
-    toast('已全部取回');
+    toastBg('已全部取回');
   });
 
   // 拖拽 + 缩放
@@ -3968,7 +4022,7 @@
       tgSend(currentText).then(function () {
         state.className = 'status ok';
         state.textContent = '已发送到 Telegram 群';
-        toast('速报已发送');
+        toastBg('速报已发送');
         setTimeout(function () { mask.hidden = true; }, 1000);
       }).catch(function (e) {
         state.className = 'status err';
@@ -4084,7 +4138,7 @@
   refreshUnread();
   refreshPending();
 
-  // 通知板一律不自动弹出 —— 有未读时右下角那个按钮上会挂红点，想看再点。
+  // 操作 log 一律不自动弹出 —— 入口只在「⚙ 设置 → 操作 log」，想看再点。
   // 例外只有一个：带着 #msg-<id> 进来，那是冲着某条留言来的。
   openMsgFromHash();
 

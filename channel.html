@@ -213,10 +213,12 @@
   }
   .jump[hidden] { display: none; }
 
+  /* 提示一律做成不显眼的灰色小浮条，2 秒就走 —— 这些都是「系统在动」的确认，
+     不是要用户拿主意的信息，不该抢视线。 */
   .toast {
-    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
-    background: rgba(20,20,20,.93); color: #fff; padding: 10px 18px; border-radius: 10px;
-    font-size: 13px; z-index: 30; opacity: 0; transition: opacity .18s ease; pointer-events: none;
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    background: rgba(90,96,104,.82); color: #e9ecef; padding: 6px 13px; border-radius: 999px;
+    font-size: 11.5px; z-index: 30; opacity: 0; transition: opacity .18s ease; pointer-events: none;
     max-width: calc(100vw - 32px); text-align: center;
   }
   .toast.show { opacity: 1; }
@@ -229,7 +231,7 @@
   <span class="who" id="who"></span>
   <span class="pill down sp" id="state"><i></i><span id="stateText">连接中…</span></span>
   <input id="q" type="search" placeholder="搜索消息…（含已 archive）" autocomplete="off">
-  <select id="prio" title="按消息里写的优先级筛选。括号里的条数是全部消息（含已 archive）里的，各项相加＝「全部优先级」的那个数；所以它可能比当前通知流上看到的条数多">
+  <select id="prio" title="按消息里写的优先级筛选。只在当前这堆消息里筛（已 archive 的不算，要看它们请先进 Archived 视图）">
     <option value="">全部优先级</option>
     <option value="紧急">紧急</option>
     <option value="高">高</option>
@@ -294,7 +296,7 @@
     t.textContent = m;
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2000);
   }
 
   /* ---------- 状态 ---------- */
@@ -523,20 +525,24 @@
     var needle = $('q').value.trim();
     var low = needle.toLowerCase();
     var prio = $('prio').value;
-    // 搜索 / 筛选一律跨越 archive 分区 —— 找东西的时候不该因为「收起来了」就找不到
-    var filtering = !!needle || !!prio;
+    /* 搜索跨越 archive 分区 —— 找东西的时候不该因为「收起来了」就找不到。
+       优先级筛选不跨：它是在「当前这堆消息」里再缩一层，把 archive 掉的
+       混进通知流反而让人以为它们回来了。 */
+    var filtering = !!needle;
 
     var list = filtering
       ? MSGS.slice()
       : MSGS.filter(function (m) { return !!m.archivedAt === showArchived; });
-    if (prio === 'none') list = list.filter(function (m) { return !prioOf(m); });
-    else if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
     if (needle) {
       list = list.filter(function (m) {
         return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
       });
     }
-    renderPrioCounts(prio);
+    // 先按当前这堆算条数，再套优先级 —— 这样每个选项括号里的数字
+    // 就是选中它以后真正会看到的条数，各项相加也正好等于「全部优先级」
+    renderPrioCounts(prio, list);
+    if (prio === 'none') list = list.filter(function (m) { return !prioOf(m); });
+    else if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
 
     var feed = $('feed');
     feed.textContent = '';
@@ -556,15 +562,16 @@
     var live = MSGS.filter(function (m) { return !m.archivedAt; });
     var arch = MSGS.length - live.length;
 
+    var narrowed = filtering || !!prio;   // 优先级不跨 archive，但空结果的说法一样要给
     $('empty').hidden = list.length > 0 || (!MSGS.length && !hooked);
-    if (filtering && !list.length) {
+    if (narrowed && !list.length) {
       $('empty').hidden = false;
       $('empty').textContent = '没有符合条件的消息'
         + (needle ? ('（搜索「' + needle + '」）') : '')
         + (prio ? ('（' + (prio === 'none' ? '未标优先级' : ('优先级 ' + prio)) + '）') : '') + '。';
     } else if (showArchived && !list.length) {
       $('empty').hidden = false; $('empty').textContent = '还没有 archive 过任何消息。';
-    } else if (!filtering) {
+    } else if (!narrowed) {
       $('empty').textContent = '还没有消息。往那个群 / 频道里发一条试试。';
     }
 
@@ -593,18 +600,21 @@
 
   /**
    * 把每个优先级的条数写进下拉选项，形如「高 (3)」。
+   * pool = 套优先级之前的那堆消息（已经排除 archive、也已经过搜索），
+   * 所以括号里的数字＝选中该项后真正会看到的条数，各项相加＝「全部优先级」。
    * 「未标优先级」这一档是必须的 —— 大多数消息正文里根本没写优先级，
    * 少了它，各项加起来就和「全部」对不上（之前就是：全部 14，四项加起来才 2）。
    */
-  function renderPrioCounts(current) {
+  function renderPrioCounts(current, pool) {
     var sel = $('prio');
     var n = {}, none = 0;
-    MSGS.forEach(function (m) {
+    pool = pool || [];
+    pool.forEach(function (m) {
       var p = prioOf(m);
       if (p) n[p] = (n[p] || 0) + 1; else none++;
     });
     [].forEach.call(sel.options, function (o) {
-      if (!o.value) { o.textContent = '全部优先级 (' + MSGS.length + ')'; return; }
+      if (!o.value) { o.textContent = '全部优先级 (' + pool.length + ')'; return; }
       if (o.value === 'none') { o.textContent = '未标优先级 (' + none + ')'; return; }
       o.textContent = o.value + ' (' + (n[o.value] || 0) + ')';
     });
