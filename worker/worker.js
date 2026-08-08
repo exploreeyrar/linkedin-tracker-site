@@ -897,6 +897,97 @@ function applyBoardOps(env, data, ops) {
   return { applied, skipped };
 }
 
+/* ==========================================================================
+ * 把某台机器的整份清单**合并**进仓库（油猴脚本的同步走这条）
+ *
+ * 原来脚本是整文件 PUT —— 两台电脑都开自动同步就会互相抹掉（A 推 97 条，
+ * B 本机只有 50 条，一推仓库就变 50 条）。改成在 Worker 侧按 id 合并之后，
+ * Worker 成为唯一写入方，谁先谁后都不会丢别人的记录。
+ *
+ * 合并语义**照搬脚本本地那套 mergeStored()**（它本来就是为多标签页写的），
+ * 这样两边行为一致、好推理：
+ *   · 按 id 配对；两边都有就取 recStamp = max(updatedAt, ts) 更大的那条
+ *   · 只有一边有 → 收进来
+ *   · 出现在 deleted 墓碑里的 → 删掉，且不许被别处的旧快照复活
+ *
+ * 刻意**不做**字段级 / MEMO 级合并：两台机器同时改同一条记录时，晚同步的那份
+ * 整条胜出。这比原来「整个文件被覆盖」好了一个数量级，而且和脚本本地的语义
+ * 完全一致；真要更细的粒度就得引入 per-field 版本号，那是另一回事了。
+ * ========================================================================== */
+
+function recStamp(r) {
+  return Math.max(Number(r && r.updatedAt) || 0, Number(r && r.ts) || 0);
+}
+function msgStamp2(m) {
+  return Math.max(Number(m && m.editedAt) || 0, Number(m && m.createdAt) || 0);
+}
+
+/** 一条记录出门前的脱敏。刻意不碰 jobUrl / jobId / site / id —— 换了链接就废了 */
+function redactRecord(env, r) {
+  if (!redactPairs(env).length) return r;
+  const out = Object.assign({}, r);
+  ['memo', 'followUpNote', 'company', 'title', 'sector', 'status'].forEach((k) => {
+    if (typeof out[k] === 'string') out[k] = redactText(env, out[k]);
+  });
+  if (Array.isArray(out.memos)) {
+    out.memos = out.memos.map((b) => ({ ts: b.ts, text: redactText(env, b.text) }));
+  }
+  if (Array.isArray(out.hirers)) {
+    out.hirers = out.hirers.map((h) => Object.assign({}, h, {
+      name: redactText(env, h.name), role: redactText(env, h.role),
+    }));
+  }
+  return out;
+}
+
+function mergeIntoRepo(env, repo, incoming) {
+  const dead = (incoming.deleted && typeof incoming.deleted === 'object') ? incoming.deleted : {};
+  const stat = { recAdded: 0, recUpdated: 0, recRemoved: 0, msgAdded: 0, msgUpdated: 0, msgRemoved: 0 };
+
+  /* ---- 记录 ---- */
+  const byId = new Map();
+  (repo.records || []).forEach((r) => { if (r && r.id) byId.set(r.id, r); });
+  (incoming.records || []).forEach((r) => {
+    if (!r || !r.id) return;
+    if (dead[r.id]) return;                       // 这台机器删过，别又推回来
+    const red = redactRecord(env, r);
+    const cur = byId.get(r.id);
+    if (!cur) { byId.set(r.id, red); stat.recAdded++; return; }
+    if (recStamp(red) >= recStamp(cur)) { byId.set(r.id, red); stat.recUpdated++; }
+  });
+  Object.keys(dead).forEach((id) => { if (byId.delete(id)) stat.recRemoved++; });
+  repo.records = Array.from(byId.values());
+
+  /* ---- 通知板留言 ---- */
+  const mById = new Map();
+  (repo.messages || []).forEach((m) => { if (m && m.id) mById.set(m.id, m); });
+  (incoming.messages || []).forEach((m) => {
+    if (!m || !m.id) return;
+    if (dead[m.id]) return;
+    const red = Object.assign({}, m, {
+      text: redactText(env, m.text), author: redactText(env, m.author),
+    });
+    const cur = mById.get(m.id);
+    if (!cur) { mById.set(m.id, red); stat.msgAdded++; return; }
+    if (msgStamp2(red) >= msgStamp2(cur)) { mById.set(m.id, red); stat.msgUpdated++; }
+  });
+  Object.keys(dead).forEach((id) => { if (mById.delete(id)) stat.msgRemoved++; });
+  repo.messages = Array.from(mById.values());
+
+  /* ---- 状态定义 ----
+   * 这一份是整体语义（顺序、改名、closed/advanced 这些标记），拆不成增量，
+   * 而且很小、基本只有一台机器在维护，所以推上来就以它为准。 */
+  if (Array.isArray(incoming.statusDefs) && incoming.statusDefs.length) {
+    repo.statusDefs = incoming.statusDefs.map((d) => Object.assign({}, d, {
+      name: redactText(env, d && d.name),
+    }));
+  }
+  if (Array.isArray(incoming.statusOrder) && incoming.statusOrder.length) {
+    repo.statusOrder = incoming.statusOrder.map((n) => redactText(env, n));
+  }
+  return stat;
+}
+
 /** 队列 key 用零填充的时间戳打头，KV 按字典序 list 出来就是按时间先后 */
 function queueKey(at, id) {
   return 'sch:' + String(at).padStart(13, '0') + ':' + id;
@@ -1133,6 +1224,63 @@ export default {
         last = put;
         // 409 = 手里的 sha 不是最新的（别处刚写过）。重新读一遍再套用。
         if (put.status !== 409) break;
+      }
+      const detail = last ? await last.text().catch(() => '') : '';
+      return json({ ok: false,
+        description: '写入仓库失败：HTTP ' + (last ? last.status : '?') + ' ' + detail.slice(0, 200)
+      }, 502, headers);
+    }
+
+    /* ---- 油猴脚本的整份同步：合并进仓库，而不是覆盖 ---- */
+    if (action === 'records_merge') {
+      if (!env.WRITE_KEY) {
+        return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
+        return json({ ok: false, description: '写入密钥不对' }, 403, headers);
+      }
+      if (!env.GH_TOKEN || !env.GH_REPO) {
+        return json({ ok: false, description: 'Worker 上还没配 GH_TOKEN / GH_REPO' }, 501, headers);
+      }
+      const pick = (k) => { try { return JSON.parse(body[k] || 'null'); } catch (e) { return null; } };
+      const incoming = {
+        records: pick('records') || [],
+        messages: pick('messages') || [],
+        deleted: pick('deleted') || {},
+        statusDefs: pick('statusDefs') || [],
+        statusOrder: pick('statusOrder') || [],
+      };
+      if (!Array.isArray(incoming.records)) {
+        return json({ ok: false, description: 'records 不是数组' }, 400, headers);
+      }
+      /* 空清单直接拒掉。一台刚装好、本机还没有任何记录的机器要是同步一次，
+         合并本身不会删东西（缺席 ≠ 删除），但这通常意味着配置错了 —— 早点报出来。 */
+      if (!incoming.records.length && !Object.keys(incoming.deleted).length) {
+        return json({ ok: false, description: '这台机器一条记录都没有，拒绝同步（避免误操作）' }, 400, headers);
+      }
+
+      let last = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let read;
+        try { read = await ghReadRecords(env); }
+        catch (e) { return json({ ok: false, description: String(e.message || e) }, 502, headers); }
+
+        const before = JSON.stringify(read.data);
+        const stat = mergeIntoRepo(env, read.data, incoming);
+        read.data.updatedAt = new Date().toISOString();
+
+        // 除了 updatedAt 什么都没变 → 别提交一个空 commit
+        const probe = Object.assign({}, read.data, { updatedAt: JSON.parse(before).updatedAt });
+        if (JSON.stringify(probe) === before) {
+          return json({ ok: true, stat: stat, committed: false }, 200, headers);
+        }
+
+        const put = await ghWriteRecords(env, read.data, read.sha,
+          'chore(records): ' + (read.data.records || []).length + ' 条投递记录 / '
+          + (read.data.messages || []).length + ' 条留言（合并）');
+        if (put.ok) return json({ ok: true, stat: stat, committed: true }, 200, headers);
+        last = put;
+        if (put.status !== 409) break;      // 409 = 别处刚写过，重读重并
       }
       const detail = last ? await last.text().catch(() => '') : '';
       return json({ ok: false,
