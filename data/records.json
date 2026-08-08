@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-08-08T07:19:10.313Z",
+ "updatedAt": "2026-08-08T07:24:19.174Z",
  "records": [
   {
    "id": "rmsbqx31qom94x",
@@ -1794,9 +1794,10 @@
    "followUpNote": "",
    "deadlineAt": 0,
    "deadlineDone": false,
-   "updatedAt": 1786105930820,
+   "updatedAt": 1786173859149,
    "epMonthly": 0,
-   "epAnnual": 0
+   "epAnnual": 0,
+   "statusAt": 1786173859149
   }
  ],
  "messages": [
