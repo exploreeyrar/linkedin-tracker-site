@@ -289,8 +289,28 @@
   .dtgrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; font-size: 13px; margin-top: 12px; }
   .dtgrid dt { color: var(--sub); white-space: nowrap; }
   .dtgrid dd { margin: 0; word-break: break-word; white-space: pre-wrap; }
-  .dtlink { font-size: 13px; align-self: center; }
   .dtgrid[hidden] { display: none; }
+
+  /* 标题那行：公司名在左，岗位链接在右上角。链接是详情页最常点的东西，
+     所以做成显眼的实心按钮，而不是以前藏在底部按钮堆里的一条文字链。 */
+  .dthead { display: flex; align-items: flex-start; gap: 12px; }
+  .dthead h3 { flex: 1 1 auto; min-width: 0; }
+  .joblink {
+    flex: 0 0 auto; text-decoration: none; white-space: nowrap;
+    font-size: 12.5px; font-weight: 700; padding: 8px 14px; border-radius: 999px;
+    background: var(--accent); color: #fff; border: 1px solid transparent;
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .joblink:hover { filter: brightness(1.08); }
+  .joblink[hidden] { display: none; }
+
+  /* 灰色、不显眼的次要按钮（详情页的「显示其余项目信息」用它） */
+  .mutedbtn {
+    font: inherit; font-size: 11.5px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid transparent; background: transparent; color: var(--sub); opacity: .72; font-weight: 500;
+  }
+  .mutedbtn:hover { opacity: 1; border-color: var(--line); background: var(--bg); }
+  .mutedbtn[hidden] { display: none; }
 
   /* ---------- 便签纸样式的 MEMO 时间轴（详情页主角） ----------
      从左上到右下，旧 → 新；每两条之间一个「→」做视觉指引。
@@ -393,8 +413,6 @@
     border: 0; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;
   }
   .memoadd button:disabled { opacity: .5; cursor: default; }
-  .memoaddcol { display: flex; flex-direction: column; gap: 7px; align-items: stretch; }
-  .memoaddcol .dtchk { justify-content: center; }
 
   /* 从 #memo-<jobId>@<ts> 链接点进来时高亮的那一张便签 */
   .sticky.hl {
@@ -467,6 +485,11 @@
   .dlg .row button.primary { background: var(--accent); color: #fff; border-color: transparent; font-weight: 600; }
   .dlg .row button:disabled { opacity: .5; cursor: default; }
   .dlg .row .sp { margin-left: auto; }
+  /* 开关型按钮：外形和旁边的「⧉ 复制全部」一致，靠描边和字色表示开着 */
+  .dlg .row button[aria-pressed="true"] {
+    border-color: var(--accent); color: var(--accent); font-weight: 600;
+    background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  }
   .dlg .status { font-size: 12px; margin-top: 12px; line-height: 1.6; word-break: break-word; }
   .dlg .status.ok { color: var(--c-offer); }
   .dlg .status.err { color: var(--c-rejitv); }
@@ -857,6 +880,7 @@
     <label class="chk"><input type="checkbox" id="pfPick"><span>启用多选<small>开启后按住 ⇧ 划过或点击若干行即可多选，右下角出现「发送速报」</small></span></label>
     <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
     <label class="chk"><input type="checkbox" id="pfBoard"><span>显示「💬 通知板」按钮<small>默认不显示；关掉之后带 #msg-… 的直达链接仍然能打开它</small></span></label>
+    <label class="chk"><input type="checkbox" id="pfPushTg"><span>详情页显示「推送至 telegram」勾选框<small>默认不显示。藏起来时「📤 一键推送所有新MEMO」一律真的发到 Telegram；放出来才能选择「只标记为已推送、不发出去」</small></span></label>
 
     <label style="margin-top:18px">通知</label>
     <label class="chk"><input type="checkbox" id="pfDot"><span>通知板有未读时显示小红点</span></label>
@@ -875,36 +899,36 @@
 
 <div class="mask" id="detailMask" hidden>
   <div class="dlg max">
-    <h3 id="dtTitle">项目详情</h3>
+    <div class="dthead">
+      <h3 id="dtTitle">项目详情</h3>
+      <a class="joblink" id="dtOpen" target="_blank" rel="noopener">🔗 本岗位链接</a>
+    </div>
     <div class="desc" id="dtSub"></div>
     <div class="dtscroll">
       <div class="dtgrid" id="dtBody" hidden></div>
       <div id="dtMemoHd" class="previewhdr">
         <span id="dtMemoCount">MEMO</span>
         <button class="linkbtn" id="dtMemoOrder" type="button" title="切换 MEMO 的排列方向">旧 → 新</button>
-        <button class="linkbtn sp" id="dtMore" type="button">显示其余项目信息</button>
+        <button class="mutedbtn sp" id="dtMore" type="button">显示其余项目信息</button>
       </div>
       <div class="dtpipe" id="dtPipe"></div>
       <div class="stickywrap" id="dtMemos"></div>
     </div>
     <div class="memoadd">
       <textarea id="dtMemoInput" placeholder="写一条 MEMO，回车换行、Ctrl/⌘+Enter 提交…"></textarea>
-      <div class="memoaddcol">
-        <button id="dtMemoAdd" type="button">＋ 追加</button>
-        <label class="dtchk" title="勾上＝追加的同时发一条到 Telegram 群（手机上就有推送）；也会出现在 Telegram 频道页">
-          <input type="checkbox" id="dtMemoTg" checked><span>通知 Telegram</span>
-        </label>
-      </div>
+      <button id="dtMemoAdd" type="button">＋ 追加</button>
     </div>
     <div class="row dtrow">
       <button id="dtCopy" type="button">⧉ 复制全部</button>
+      <button id="dtMemoTg" type="button" aria-pressed="true"
+              title="开＝追加 MEMO 的同时发一条到 Telegram 群（手机上就有推送）；关＝只写进看板">✈ 通知 Telegram</button>
       <button id="dtPushNew" type="button">📤 一键推送所有新MEMO</button>
-      <label class="dtchk" title="勾上＝真的发到 Telegram 群（也会出现在 Telegram 频道页）；不勾＝只把这些 MEMO 标记为已推送，不发出去">
+      <label class="dtchk" id="dtPushTgWrap" hidden
+             title="勾上＝真的发到 Telegram 群；不勾＝只把这些 MEMO 标记为已推送，不发出去">
         <input type="checkbox" id="dtPushTg" checked><span>推送至 telegram</span>
       </label>
       <button class="primary" id="dtRemind" type="button" hidden>📢 请求更新状态</button>
       <button id="dtFollow" type="button" hidden>🕐 跟进提醒</button>
-      <a class="dtlink" id="dtOpen" target="_blank" rel="noopener" hidden>在 LinkedIn 打开</a>
       <button class="sp" id="dtClose" type="button">关闭</button>
     </div>
   </div>
@@ -1341,6 +1365,8 @@
     showFoot: false,               // 底部那段构建说明：默认不显示
     showBoard: false,              // 右下角「💬 通知板」按钮：默认不显示
     memoAsc: true,                 // 详情页 MEMO 排列：true = 旧 → 新
+    memoTg: true,                  // 详情页「✈ 通知 Telegram」开关：默认开
+    showPushTg: false,             // 一键推送旁那个「推送至 telegram」勾：默认藏起来
     memoPushed: {},                // recKey → 最后一次推到 Telegram 的 MEMO 时间
     showHidden: false,             // 清单里是否放出「已投递等联络」那几种状态
     board: { x: 0, y: 0, w: 380, h: 440, placed: false, max: true }
@@ -2454,6 +2480,7 @@
     $('pfPick').checked = !!prefs.pickMode;
     $('pfFoot').checked = !!prefs.showFoot;
     $('pfBoard').checked = !!prefs.showBoard;
+    $('pfPushTg').checked = !!prefs.showPushTg;
     $('pfWriteKey').value = writeKey();
     updateWriteHint();
     $('pfDot').checked = !!prefs.showDot;
@@ -2495,6 +2522,12 @@
     refreshPending();
     if (v) flushViaWorker();
     else { try { sessionStorage.removeItem(GATE_SKIP); } catch (e) {} }
+  });
+
+  $('pfPushTg').addEventListener('change', function () {
+    prefs.showPushTg = this.checked;
+    savePrefs();
+    paintPushTgVisible();
   });
 
   $('pfBoard').addEventListener('change', function () {
@@ -2846,7 +2879,6 @@
     $('dtMore').textContent = '显示其余项目信息';
     $('dtRemind').hidden = true;
     $('dtFollow').hidden = true;
-    $('dtOpen').hidden = true;
     g.textContent = '';
     var add = function (k, v, node) {
       g.appendChild(el('dt', null, k));
@@ -2892,10 +2924,34 @@
     renderDetailMemos(r);
     $('dtMemoInput').value = '';
 
+    // 岗位链接常驻标题行右上角（以前藏在底部、要点「显示其余项目信息」才出来）
     var open = $('dtOpen');
-    if (r.jobUrl) open.href = r.jobUrl;
+    open.hidden = !r.jobUrl;
+    if (r.jobUrl) {
+      open.href = r.jobUrl;
+      open.textContent = '🔗 ' + (r.site === 'jobstreet' ? 'Jobstreet' : r.site === 'jora' ? 'Jora' : 'LinkedIn') + '　本岗位链接';
+    }
     $('detailMask').hidden = false;
     $('dtMemoInput').focus();
+  }
+
+  /* 「通知 Telegram」＝按钮式开关。默认开着，状态记在 prefs 里跨次打开保持。 */
+  function memoTgOn() { return prefs.memoTg !== false; }
+  function paintMemoTg() {
+    var b = $('dtMemoTg');
+    b.setAttribute('aria-pressed', memoTgOn() ? 'true' : 'false');
+    b.textContent = (memoTgOn() ? '✈ 通知 Telegram' : '✈ 不通知 Telegram');
+  }
+  $('dtMemoTg').addEventListener('click', function () {
+    prefs.memoTg = !memoTgOn();
+    savePrefs();
+    paintMemoTg();
+  });
+
+  /* 「推送至 telegram」这个勾默认藏起来（设置里可开）—— 一键推送本来就该发出去，
+     不发只标记是个少见的用法，没必要一直占着底部那排的位置。 */
+  function paintPushTgVisible() {
+    $('dtPushTgWrap').hidden = !prefs.showPushTg;
   }
 
   $('dtMemoOrder').addEventListener('click', function () {
@@ -2912,7 +2968,6 @@
     g.hidden = !show;
     $('dtRemind').hidden = !show;
     $('dtFollow').hidden = !show;
-    $('dtOpen').hidden = !show || !(detailTarget && detailTarget.jobUrl);
     this.textContent = show ? '收起其余项目信息' : '显示其余项目信息';
   });
 
@@ -2927,7 +2982,7 @@
     renderDetailMemos(r);
     apply();                 // 清单里那一格的 MEMO 也跟着更新
 
-    if (!$('dtMemoTg').checked) {
+    if (!memoTgOn()) {
       toast(r.jobId ? '已追加（没有通知 Telegram）' : '已追加（这条没有 Job ID，回传不了）');
       return;
     }
@@ -3006,7 +3061,8 @@
 
     /* 不勾「推送至 telegram」时只标记为已推送，不真发 ——
        用来把「未推送」角标清掉而不去打扰群里。 */
-    if (!$('dtPushTg').checked) {
+    // 这个勾藏起来的时候一律照发 —— 不然「上次取消勾选 + 后来在设置里隐藏」会变成静默不发
+    if (prefs.showPushTg && !$('dtPushTg').checked) {
       markPushed();
       toast('已把 ' + fresh.length + ' 条标记为已推送（没有发到 Telegram）');
       return;
@@ -4015,6 +4071,8 @@
   savePrefs();
 
   $('footnote').hidden = !prefs.showFoot;
+  paintMemoTg();
+  paintPushTgVisible();
   renderKPIs();
   renderColList();
   buildStatusPanel();

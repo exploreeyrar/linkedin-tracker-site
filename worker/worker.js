@@ -106,7 +106,7 @@ async function recordOwnMessage(env, result, text) {
     author: String(from.first_name || from.username || 'Bot').slice(0, 60),
     bot: true,
     kind: '',
-    text: String(text || '').slice(0, 4000),
+    text: redactText(env, String(text || '')).slice(0, 4000),
     replyText: '',
     media: null,
   });
@@ -406,6 +406,25 @@ function parseUpdate(u) {
     // 编辑成 /del 就是要把它从看板上撤掉
     del: !!edited && DEL_MARKS.indexOf(text.trim().toLowerCase()) !== -1,
   };
+}
+
+/**
+ * 一条收件箱消息的脱敏。
+ *
+ * ⚠️ 之前漏了这一层：从 Telegram webhook 进来的消息**完全没过替换**，
+ * 于是手写在群里的真名照原样进了收件箱，而收件箱是任何 Origin 都能读的。
+ * 所有写进收件箱的路径（webhook / recordOwnMessage / inbox_push）都必须过这里。
+ */
+function redactMsg(env, m) {
+  if (!m) return m;
+  if (!redactPairs(env).length) return m;
+  return Object.assign({}, m, {
+    text: redactText(env, m.text),
+    author: redactText(env, m.author),
+    chatTitle: redactText(env, m.chatTitle),
+    replyText: redactText(env, m.replyText),
+    kind: redactText(env, m.kind),
+  });
 }
 
 /** msgId 是每个会话里连续递增的，缺号就是没收到的那些 */
@@ -1034,7 +1053,7 @@ export default {
         return new Response('forbidden', { status: 403 });
       }
       const update = await request.json().catch(() => null);
-      const msg = parseUpdate(update);
+      const msg = redactMsg(env, parseUpdate(update));
       // 认不出来的 update 也回 200：回错误码 Telegram 会一直重投
       if (msg) {
         // 只收我们那个群 / 频道的，别人把 bot 拉进别的群也灌不进来
@@ -1182,6 +1201,30 @@ export default {
       return json({ ok: true, removed: await inboxClear(env) }, 200, headers);
     }
 
+    /* ---- 一次性：把收件箱里**现存**的消息按当前规则重新脱敏一遍 ----
+     * webhook 那条路以前没过替换，所以历史消息里留着真名。修完代码只管新消息，
+     * 旧的得跑这个。幂等，可以重复跑。 */
+    if (action === 'inbox_redact') {
+      if (!env.WRITE_KEY) {
+        return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
+        return json({ ok: false, description: '写入密钥不对' }, 403, headers);
+      }
+      if (!redactPairs(env).length) {
+        return json({ ok: false, description: 'REDACT_RULES 没配，没有规则可用' }, 501, headers);
+      }
+      const all = await inboxList(env, 0);
+      let changed = 0;
+      for (const m of (all.items || [])) {
+        const red = redactMsg(env, m);
+        if (JSON.stringify(red) === JSON.stringify(m)) continue;
+        await inboxAppend(env, red);         // 同一个 uid，覆盖写
+        changed++;
+      }
+      return json({ ok: true, scanned: (all.items || []).length, changed: changed }, 200, headers);
+    }
+
     /* ---- 看板代写 records.json ----
      * 让任何一台电脑（不装油猴脚本也行）都能把 MEMO / 跟进提醒 / 处理期限
      * 写回仓库。读-改-写 + sha 乐观锁，409 就重来 —— 比油猴脚本那条
@@ -1322,7 +1365,7 @@ export default {
         replyText: String(body.replyText || '').slice(0, 120),
         media: null,
       };
-      await inboxAppend(env, msg);
+      await inboxAppend(env, redactMsg(env, msg));
 
       // 顺手也发一条到 Telegram，这样手机上有推送
       let tg = null;

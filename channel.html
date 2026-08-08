@@ -229,12 +229,13 @@
   <span class="who" id="who"></span>
   <span class="pill down sp" id="state"><i></i><span id="stateText">连接中…</span></span>
   <input id="q" type="search" placeholder="搜索消息…（含已 archive）" autocomplete="off">
-  <select id="prio" title="按消息里写的优先级筛选（含已 archive）">
+  <select id="prio" title="按消息里写的优先级筛选。括号里的条数是全部消息（含已 archive）里的，各项相加＝「全部优先级」的那个数；所以它可能比当前通知流上看到的条数多">
     <option value="">全部优先级</option>
     <option value="紧急">紧急</option>
     <option value="高">高</option>
     <option value="中">中</option>
     <option value="低">低</option>
+    <option value="none">未标优先级</option>
   </select>
   <a class="navbtn" id="back" href="./index.html">📮 回到投递清单</a>
   <button class="navbtn" id="archFab" type="button" hidden>Archived (<b id="archN">0</b> 件)</button>
@@ -528,7 +529,8 @@
     var list = filtering
       ? MSGS.slice()
       : MSGS.filter(function (m) { return !!m.archivedAt === showArchived; });
-    if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
+    if (prio === 'none') list = list.filter(function (m) { return !prioOf(m); });
+    else if (prio) list = list.filter(function (m) { return prioOf(m) === prio; });
     if (needle) {
       list = list.filter(function (m) {
         return (m.text + ' ' + m.author + ' ' + m.kind).toLowerCase().indexOf(low) !== -1;
@@ -559,7 +561,7 @@
       $('empty').hidden = false;
       $('empty').textContent = '没有符合条件的消息'
         + (needle ? ('（搜索「' + needle + '」）') : '')
-        + (prio ? ('（优先级 ' + prio + '）') : '') + '。';
+        + (prio ? ('（' + (prio === 'none' ? '未标优先级' : ('优先级 ' + prio)) + '）') : '') + '。';
     } else if (showArchived && !list.length) {
       $('empty').hidden = false; $('empty').textContent = '还没有 archive 过任何消息。';
     } else if (!filtering) {
@@ -589,16 +591,21 @@
     updateSetup();
   }
 
-  /** 把每个优先级的条数写进下拉选项，形如「高 (3)」 */
+  /**
+   * 把每个优先级的条数写进下拉选项，形如「高 (3)」。
+   * 「未标优先级」这一档是必须的 —— 大多数消息正文里根本没写优先级，
+   * 少了它，各项加起来就和「全部」对不上（之前就是：全部 14，四项加起来才 2）。
+   */
   function renderPrioCounts(current) {
     var sel = $('prio');
-    var n = {};
+    var n = {}, none = 0;
     MSGS.forEach(function (m) {
       var p = prioOf(m);
-      if (p) n[p] = (n[p] || 0) + 1;
+      if (p) n[p] = (n[p] || 0) + 1; else none++;
     });
     [].forEach.call(sel.options, function (o) {
       if (!o.value) { o.textContent = '全部优先级 (' + MSGS.length + ')'; return; }
+      if (o.value === 'none') { o.textContent = '未标优先级 (' + none + ')'; return; }
       o.textContent = o.value + ' (' + (n[o.value] || 0) + ')';
     });
     sel.value = current || '';
