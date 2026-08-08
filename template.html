@@ -735,6 +735,8 @@
     <input id="q" type="search" placeholder="搜索公司 / 岗位 / HR / MEMO…" autocomplete="off">
     <select id="fstatus"><option value="">全部状态</option></select>
     <button class="toggle" id="fscout" type="button" aria-pressed="false">🌟 人事主动 scout 的案件</button>
+    <button class="toggle" id="ffollow" type="button" aria-pressed="false"
+            title="只看设了「🕐 跟进提醒」的项目（本机在看板上设的也算）">🕐 已设置提醒的案件</button>
     <button class="toggle" id="openPrefs" type="button" title="显示设置">⚙ 设置</button>
     <span class="hint" id="shown"></span>
     <span class="hint" id="pickHint" hidden title="按住 Shift 后鼠标划过或点击若干行即可多选，右下角会出现「发送速报」">⇧ 多选</span>
@@ -2405,6 +2407,7 @@
     var q = $('q').value.trim().toLowerCase();
     var fs = $('fstatus').value;
     var scoutOnly = $('fscout').classList.contains('on');
+    var followOnly = $('ffollow').classList.contains('on');
 
     var rows = RECORDS.filter(function (r) {
       if (fs && r.status !== fs) return false;
@@ -2414,6 +2417,9 @@
          搜东西的时候不该因为「默认收起来了」就搜不到。 */
       if (isHiddenStatus(r.status) && !prefs.showHidden && fs !== r.status && !q) return false;
       if (scoutOnly && !r.scout) return false;
+      // 「已设置提醒」＝设了跟进提醒。走 followUpOf，所以本机刚设、还没回传
+      // 仓库的那些也算得上，不然刚设完一筛就不见了。
+      if (followOnly && !followUpOf(r).at) return false;
       if (!q) return true;
       var hay = [r.company, r.title, r.memo, r.status]
         .concat((r.hirers || []).map(function (h) { return h.name + ' ' + h.role; }))
@@ -2520,11 +2526,13 @@
     buildStatusPanel();     // 「状态分布」跟着一起放出来 / 收回去
     apply();
   });
-  $('fscout').addEventListener('click', function () {
-    var on = !this.classList.contains('on');
-    this.classList.toggle('on', on);
-    this.setAttribute('aria-pressed', String(on));
-    apply();
+  ['fscout', 'ffollow'].forEach(function (id) {
+    $(id).addEventListener('click', function () {
+      var on = !this.classList.contains('on');
+      this.classList.toggle('on', on);
+      this.setAttribute('aria-pressed', String(on));
+      apply();
+    });
   });
 
   /* ---------- 设置 ---------- */
@@ -4079,6 +4087,7 @@
       // 可能被搜索/筛选挡住了，清掉条件再试一次
       $('q').value = ''; $('fstatus').value = '';
       $('fscout').classList.remove('on');
+      $('ffollow').classList.remove('on');
       apply();
       row = document.getElementById('job-' + id);
     }
