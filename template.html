@@ -789,6 +789,10 @@
     <div class="collist" id="collist"></div>
     <div class="tip">拖动可调整顺序，取消勾选即隐藏该列。</div>
 
+    <label for="pfWriteKey" style="margin-top:18px">Worker 写入密钥</label>
+    <input type="password" id="pfWriteKey" placeholder="留空 = 只能靠油猴脚本回传" spellcheck="false">
+    <div class="tip" id="pfWriteHint"></div>
+
     <label for="fbText" style="margin-top:18px">功能反馈 / 改进建议</label>
     <textarea id="fbText" placeholder="哪里别扭、想要什么功能…"></textarea>
     <div class="row" style="margin-top:8px">
@@ -983,7 +987,12 @@
     base.forEach(function (b) { put(b, 'base'); });
     mirror.forEach(function (b) { put(b, 'mirror'); });
     local.forEach(function (b) { put(b, 'local'); });
-    var out = order.map(function (ts) { return byTs[ts]; });
+    var wrote = (LOCAL && LOCAL.memoWrote && LOCAL.memoWrote[rk]) || {};
+    var out = order.map(function (ts) {
+      var b = byTs[ts];
+      if (!b.base && wrote[ts]) b.wrote = true;   // 已进仓库，只是还没构建进来
+      return b;
+    });
 
     // 本页面改过 / 删过的，覆盖在最后一层
     var k = rk;
@@ -1275,7 +1284,13 @@
     list.push(op);
     try { localStorage.setItem(OUTBOX, JSON.stringify(list.slice(-200))); } catch (e) {}
     refreshPending();
+    // 配了写入密钥就别等油猴脚本了，合并 1.2 秒内的连续操作后直接交给 Worker
+    if (canWorkerWrite()) {
+      clearTimeout(flushTimer);
+      flushTimer = setTimeout(flushViaWorker, 1200);
+    }
   }
+  var flushTimer = null;
   /* 油猴脚本在这一页跑着没有。它每 4 秒写一次心跳；15 秒内有就算活着。
      没有桥的话改动只会一直堆在队列里，界面必须说清楚原因 ——
      否则就是「点了没反应，MEMO 一直挂着『待回传』，也不知道为什么」。 */
@@ -1287,6 +1302,53 @@
     return { alive: true, ready: !!v.ready, err: v.err || '' };
   }
 
+  /* ---------- 经 Worker 代写仓库 ----------
+   * 静态页不能持有 GitHub PAT（页面是公开的），所以 PAT 收在 Worker 的 Secret 里，
+   * 页面把队列里的操作发给 Worker，由它读-改-写 records.json。
+   *
+   * 调用密钥不能写进构建产物（同样会公开），所以在每台电脑的设置里手输一次，
+   * 只存这台机器的 localStorage。配了它，这台电脑就不需要油猴脚本了。
+   */
+  var WKEY = 'sgjob_write_key';
+  function writeKey() { try { return localStorage.getItem(WKEY) || ''; } catch (e) { return ''; } }
+  function canWorkerWrite() { return !!(writeKey() && CONFIG.tgEndpoint); }
+  var wstate = { busy: false, at: 0, err: '', skipped: 0 };
+
+  /** 把队列里的操作交给 Worker。成功的从队列摘掉，跳过的也摘掉（重试也没用）。 */
+  function flushViaWorker() {
+    if (!canWorkerWrite() || wstate.busy) return Promise.resolve(0);
+    var ops = outboxRead();
+    if (!ops.length) return Promise.resolve(0);
+    wstate.busy = true;
+    return tgAction({ action: 'records_write', ops: JSON.stringify(ops.slice(0, 100)) },
+                    { 'X-Write-Key': writeKey() })
+      .then(function (d) {
+        var gone = {};
+        (d.applied || []).forEach(function (id) { gone[id] = 1; });
+        (d.skipped || []).forEach(function (x) { if (x && x.opId) gone[x.opId] = 1; });
+        // 记下「已经写进仓库、只是还没构建进页面」的那些 MEMO，状态角标要用
+        ops.forEach(function (o) {
+          if (!gone[o.opId] || !o.jobId) return;
+          var k = (o.site || 'linkedin') + ':' + o.jobId;
+          var ts = (o.op === 'memo') ? o.ts : o.blockTs;
+          if (!ts) return;
+          (LOCAL.memoWrote[k] = LOCAL.memoWrote[k] || {})[ts] = Date.now();
+        });
+        saveLocal();
+        var rest = outboxRead().filter(function (o) { return !gone[o && o.opId]; });
+        try { localStorage.setItem(OUTBOX, JSON.stringify(rest)); } catch (e) {}
+        wstate.at = Date.now();
+        wstate.err = '';
+        wstate.skipped = (d.skipped || []).length;
+        refreshPending();
+        apply();
+        if (detailTarget) renderDetailMemos(detailTarget);
+        return (d.applied || []).length;
+      })
+      .catch(function (e) { wstate.err = e.message || String(e); refreshPending(); return 0; })
+      .then(function (n) { wstate.busy = false; return n; });
+  }
+
   function refreshPending() {
     var n = outboxRead().length;
     var bar = $('pendBar');
@@ -1296,6 +1358,14 @@
 
     var b = bridgeState();
     var msg;
+    if (canWorkerWrite()) {
+      msg = wstate.err
+        ? ('⚠️ ' + n + ' 项写入仓库失败：' + wstate.err)
+        : ('⏳ ' + n + ' 项待写入：由 Worker 代写仓库，几秒内提交');
+      bar.textContent = msg;
+      bar.classList.toggle('warn', !!wstate.err);
+      return;
+    }
     if (!b.alive) {
       msg = '⚠️ ' + n + ' 项改动传不上去：这一页没有检测到油猴脚本。'
           + '确认 Tampermonkey 已启用、脚本的 @match 覆盖本站，然后刷新一次。';
@@ -1321,7 +1391,10 @@
   /* memoEdits / memoDels：对**已经在 records.json 或镜像里**那些 MEMO 的改动。
      LOCAL.memos 只装新增的，改和删动不了它们，所以另开两层覆盖。
      都按「recKey → 那条 MEMO 的 ts」定位。 */
-  var LOCAL = { memos: {}, msgs: [], archived: {}, deadlines: {}, memoEdits: {}, memoDels: {} };
+  var LOCAL = { memos: {}, msgs: [], archived: {}, deadlines: {},
+                memoEdits: {}, memoDels: {},
+                // 已经由 Worker 写进仓库、只是还没构建进这个页面的那些 MEMO
+                memoWrote: {} };
   try {
     var lsaved = JSON.parse(localStorage.getItem(LK) || 'null');
     if (lsaved && typeof lsaved === 'object') {
@@ -1331,6 +1404,7 @@
       if (lsaved.deadlines && typeof lsaved.deadlines === 'object') LOCAL.deadlines = lsaved.deadlines;
       if (lsaved.memoEdits && typeof lsaved.memoEdits === 'object') LOCAL.memoEdits = lsaved.memoEdits;
       if (lsaved.memoDels && typeof lsaved.memoDels === 'object') LOCAL.memoDels = lsaved.memoDels;
+      if (lsaved.memoWrote && typeof lsaved.memoWrote === 'object') LOCAL.memoWrote = lsaved.memoWrote;
     }
   } catch (e) { /* 用默认值 */ }
   function saveLocal() { try { localStorage.setItem(LK, JSON.stringify(LOCAL)); } catch (e) {} }
@@ -1395,6 +1469,15 @@
     });
 
     // MEMO 的改 / 删覆盖：records.json 已经是这个样子了就撤掉覆盖
+    // Worker 已写入的那些：构建进来之后这个标记就没用了
+    Object.keys(LOCAL.memoWrote).forEach(function (k) {
+      var have = byKey[k];
+      if (!have) return;
+      var m = LOCAL.memoWrote[k];
+      Object.keys(m).forEach(function (ts) { if (have[ts]) { delete m[ts]; changed = true; } });
+      if (!Object.keys(m).length) delete LOCAL.memoWrote[k];
+    });
+
     // 改：脚本镜像里那条的文本已经等于我们改成的样子 → 落地了
     Object.keys(LOCAL.memoEdits).forEach(function (k) {
       var mir = mirrorOf(k);
@@ -2163,6 +2246,8 @@
     $('pfPick').checked = !!prefs.pickMode;
     $('pfFoot').checked = !!prefs.showFoot;
     $('pfBoard').checked = !!prefs.showBoard;
+    $('pfWriteKey').value = writeKey();
+    updateWriteHint();
     $('pfDot').checked = !!prefs.showDot;
     $('pfNotify').checked = !!prefs.notify;
     var hint = '';
@@ -2186,6 +2271,23 @@
     savePrefs();
     $('footnote').hidden = !prefs.showFoot;
   });
+  function updateWriteHint() {
+    var h = $('pfWriteHint');
+    if (!CONFIG.tgEndpoint) { h.textContent = '还没配置 Worker 地址（config.json 的 tgEndpoint），这一项用不上。'; return; }
+    h.textContent = writeKey()
+      ? '已启用：这台电脑写的 MEMO / 跟进提醒 / 处理期限会由 Worker 直接提交到仓库，不需要装油猴脚本。'
+      : '填上之后，这台电脑就不需要油猴脚本也能把改动写回仓库。'
+        + '值 = Worker 上 wrangler secret put WRITE_KEY 设的那个。只存这台机器，不会进页面。';
+  }
+  $('pfWriteKey').addEventListener('change', function () {
+    var v = this.value.trim();
+    try { if (v) localStorage.setItem(WKEY, v); else localStorage.removeItem(WKEY); } catch (e) {}
+    wstate.err = '';
+    updateWriteHint();
+    refreshPending();
+    if (v) flushViaWorker();
+  });
+
   $('pfBoard').addEventListener('change', function () {
     prefs.showBoard = this.checked;
     savePrefs();
@@ -2399,11 +2501,19 @@
       cls += ' ok';
       txt = '✅ 已入库';
       tip = '已经在仓库的 records.json 里，并且已经构建进这个页面';
+    } else if (b.wrote) {
+      cls += ' sent';
+      txt = '☁️ 已写入仓库';
+      tip = 'Worker 已经提交到 records.json，等 Actions 构建完这个页面才会显示「已入库」';
+    } else if (b.local && canWorkerWrite()) {
+      // 这台电脑配了写入密钥，走 Worker 代写，不依赖油猴脚本
+      if (wstate.err) { cls += ' bad'; txt = '⚠️ 写入失败'; tip = wstate.err; }
+      else { cls += ' wait'; txt = '⏳ 正在写入仓库'; tip = '由 Worker 代写，几秒内提交'; }
     } else if (b.local) {
       if (!bst.alive) {
         cls += ' bad';
         txt = '⚠️ 传不上去';
-        tip = '这一页没有检测到油猴脚本 —— 改动只会停在本机队列里';
+        tip = '这一页没有检测到油猴脚本，也没配 Worker 写入密钥 —— 改动只会停在本机队列里';
       } else if (!bst.ready) {
         cls += ' bad';
         txt = '⚠️ 未配 Token';
@@ -2446,6 +2556,20 @@
     var bst = bridgeState();
     var n = outboxRead().length;
     var cls = 'dtpipe', txt;
+    if (canWorkerWrite()) {
+      // 配了写入密钥就走 Worker 代写，油猴脚本在不在都不影响
+      if (wstate.err) { cls += ' bad'; txt = '⚠️ Worker 写入失败：' + wstate.err; }
+      else if (n) { cls += ' wait'; txt = '⏳ ' + n + ' 项待写入（由 Worker 代写仓库）'; }
+      else {
+        cls += ' ok';
+        txt = '✅ 已全部写入仓库（Worker 代写'
+            + (wstate.at ? ('，最近 ' + fmtDT(wstate.at)) : '') + '）'
+            + (wstate.skipped ? ('　跳过 ' + wstate.skipped + ' 项') : '');
+      }
+      box.className = cls;
+      box.textContent = txt;
+      return;
+    }
     if (!bst.alive) {
       cls += ' bad';
       txt = '⚠️ 没有检测到油猴脚本' + (n ? ('，' + n + ' 项改动传不上去') : '');
@@ -2825,11 +2949,14 @@
   });
 
   /* ---------- 预约发送（Worker + KV + Cron） ---------- */
-  function tgAction(payload) {
+  function tgAction(payload, extraHeaders) {
     var endpoint = CONFIG.tgEndpoint;
     if (!endpoint) return Promise.reject(new Error('还没有配置 Telegram 中继（config.json 的 tgEndpoint）'));
     var opts = { method: 'POST', body: new URLSearchParams(payload) };
-    if (CONFIG.tgAppKey) opts.headers = { 'X-App-Key': CONFIG.tgAppKey };
+    var h = {};
+    if (CONFIG.tgAppKey) h['X-App-Key'] = CONFIG.tgAppKey;
+    if (extraHeaders) Object.keys(extraHeaders).forEach(function (k) { h[k] = extraHeaders[k]; });
+    if (Object.keys(h).length) opts.headers = h;
     return fetch(endpoint, opts)
       .then(function (res) { return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; }); })
       .then(function (data) { if (!data.ok) throw new Error(data.description || 'unknown error'); return data; });
@@ -3622,6 +3749,9 @@
   // 回传队列被油猴脚本取走后更新提示；storage 事件只在别的标签页写入时触发，
   // 所以本页面的桥接落地要靠这个轮询兜底。
   setInterval(refreshPending, 5000);
+  // 兜底：上次失败、或别的标签页排进来的，隔一会儿再试一次
+  setInterval(function () { if (!document.hidden) flushViaWorker(); }, 20000);
+  flushViaWorker();
   window.addEventListener('storage', function (e) {
     if (e.key === OUTBOX || e.key === OUTBOX_ACK) refreshPending();
     if (e.key === MK) syncFromMirror();

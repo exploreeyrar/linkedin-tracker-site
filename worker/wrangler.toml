@@ -32,6 +32,19 @@ BOARD_URL = "https://exploreeyrar.github.io/linkedin-tracker-site/"
 # Mac 上の iMessage ブリッジが action=inbox_push を叩くときの鍵。
 # 未設定なら inbox_push は 501 を返す（＝入口は既定で閉じている）。
 
+# ---- Worker 代写 records.json ----
+# 让任何一台电脑（不装油猴脚本也行）都能把看板上的改动写回仓库。
+#   GH_REPO / GH_BRANCH / GH_PATH  写在这里（不是机密）
+#   GH_TOKEN    Secret：fine-grained PAT，只勾这个仓库的 Contents = Read and write
+#   WRITE_KEY   Secret：页面调用时要带的密钥。用户在每台电脑的「⚙ 设置」里手输一次，
+#               存在那台机器的 localStorage 里 —— 绝不能写进构建产物（页面是公开的）。
+#               未设置时 action=records_write 返回 501（入口默认关闭）。
+#   REDACT_RULES Secret（可选）：JSON，形如 [["OKUMA","O"],["XR","胖"]]。
+#               规则本身含真名，所以只能当 Secret，不能进仓库。没配就不替换。
+GH_REPO = "exploreeyrar/linkedin-tracker-site"
+GH_BRANCH = "main"
+GH_PATH = "data/records.json"
+
 # ---- Telegram 频道 → channel.html 的收件箱 ----
 # 单实例、强一致、带 WebSocket 推送。KV 是最终一致的（最长 60 秒），
 # 「更新频率拉到最高」这件事只有 Durable Object 做得到。

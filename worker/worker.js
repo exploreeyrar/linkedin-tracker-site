@@ -40,7 +40,7 @@ function corsHeaders(origin, allowed) {
   return {
     'Access-Control-Allow-Origin': permitted ? (origin || 'null') : 'https://example.invalid',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-App-Key, X-Ingest-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, X-App-Key, X-Ingest-Key, X-Write-Key',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
@@ -704,6 +704,199 @@ async function inboxFileAllowed(env, fileId) {
   return !!d.ok;
 }
 
+/* ==========================================================================
+ * Worker 代写 records.json
+ *
+ * 看板是 GitHub Pages 上的静态页，手里不能放 PAT（页面是公开的），所以原来
+ * 只能把改动排进 localStorage 队列，等油猴脚本来取。那意味着：
+ *   · 没装油猴脚本的电脑，写的 MEMO 永远传不上去
+ *   · 装了但本机没有那条记录的电脑，操作会被静默丢弃
+ *
+ * 这里把 PAT 收进 Worker 的 Secret，由 Worker 读-改-写 records.json：
+ *   页面 ──ops──▶ Worker ──Contents API──▶ GitHub
+ * 用的是和 localStorage 队列**同一套 op 词汇**（memo / memoEdit / memoDelete /
+ * followUp / deadline），所以页面那边不用另造一套东西。
+ *
+ * 鉴权不能靠 Origin（curl 想写什么 Origin 都行），也不能把密钥放进页面
+ * （页面是公开的）。所以用一个 WRITE_KEY：用户在每台电脑的设置里手输一次，
+ * 存在那台机器的 localStorage 里，不进构建产物。没配 WRITE_KEY 就整个关掉。
+ * ========================================================================== */
+
+const GH_API = 'https://api.github.com';
+
+function ghHeaders(env) {
+  return {
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Authorization': 'Bearer ' + env.GH_TOKEN,
+    'User-Agent': 'sgjob-worker',
+  };
+}
+
+function ghContentsUrl(env) {
+  const repo = String(env.GH_REPO || '').trim().replace(/^\/+|\/+$/g, '');
+  const path = String(env.GH_PATH || 'data/records.json').trim().replace(/^\/+/, '');
+  return GH_API + '/repos/' + repo + '/contents/'
+       + path.split('/').map(encodeURIComponent).join('/');
+}
+
+/** UTF-8 字符串 → base64（btoa 只吃 latin1） */
+function b64utf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+async function ghReadRecords(env) {
+  const branch = env.GH_BRANCH || 'main';
+  // Contents API 的 GET 走 CDN，刚写完再读常拿到旧值 —— 必须穿透缓存，否则下一次 PUT 必然 409
+  const url = ghContentsUrl(env) + '?ref=' + encodeURIComponent(branch) + '&_=' + Date.now();
+  const res = await fetch(url, {
+    headers: Object.assign(ghHeaders(env), { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error('读取 records.json 失败：HTTP ' + res.status + ' ' + t.slice(0, 160));
+  }
+  const meta = await res.json();
+  const clean = String(meta.content || '').replace(/\s/g, '');
+  const bin = atob(clean);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return { data: JSON.parse(new TextDecoder().decode(bytes)), sha: meta.sha };
+}
+
+async function ghWriteRecords(env, data, sha, message) {
+  return await fetch(ghContentsUrl(env), {
+    method: 'PUT',
+    headers: Object.assign(ghHeaders(env), { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      message: message,
+      content: b64utf8(JSON.stringify(data, null, 1)),
+      branch: env.GH_BRANCH || 'main',
+      sha: sha,
+    }),
+  });
+}
+
+/* ---- 脱敏 ----------------------------------------------------------------
+ * 规则放在 REDACT_RULES Secret 里（JSON: [["OKUMA","O"],…]）——
+ * 规则本身就含真名，写进仓库等于白做，所以只能当 Secret。
+ * 没配就不替换：页面上手写的 MEMO 通常是自己知道会公开的短句。
+ * ------------------------------------------------------------------------ */
+function redactPairs(env) {
+  try {
+    const v = JSON.parse(env.REDACT_RULES || '[]');
+    if (!Array.isArray(v)) return [];
+    return v.filter((r) => Array.isArray(r) && r[0])
+            .sort((a, b) => String(b[0]).length - String(a[0]).length);
+  } catch (e) { return []; }
+}
+
+function redactText(env, v) {
+  let t = String(v == null ? '' : v);
+  if (!t) return t;
+  for (const [from, to] of redactPairs(env)) {
+    const re = new RegExp(String(from).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const rep = (to == null) ? '' : String(to);
+    t = t.replace(re, () => rep);
+  }
+  return t;
+}
+
+/* ---- MEMO 的读写，语义和油猴脚本的 memoBlocks / setMemoBlocks 保持一致 ---- */
+
+// 时间戳前缀按 JST 算 —— Worker 跑在 UTC，没有「本地时区」可用
+function memoStamp(ts) {
+  return '[' + new Date(ts + 9 * 3600000).toISOString().slice(0, 16).replace('T', ' ') + '] ';
+}
+
+function getMemos(rec) {
+  if (Array.isArray(rec.memos) && rec.memos.length) {
+    return rec.memos.filter((b) => b && b.text).slice().sort((a, b) => b.ts - a.ts);
+  }
+  if (rec.memo) return [{ ts: rec.updatedAt || rec.ts, text: rec.memo }];
+  return [];
+}
+
+function setMemos(rec, blocks) {
+  const list = (blocks || [])
+    .map((b) => ({ ts: Number(b.ts) || Date.now(), text: String(b.text || '').trim() }))
+    .filter((b) => b.text)
+    .sort((a, b) => b.ts - a.ts);
+  rec.memos = list;
+  // 扁平那份继续维护：CSV / Telegram / 老看板还在用
+  rec.memo = list.map((b) => memoStamp(b.ts) + b.text).join('\n\n');
+}
+
+/**
+ * 把一批 op 套用到 records.json 上。返回哪些成功、哪些跳过。
+ *
+ * 定位 MEMO **只按 blockTs**，不比 oldText：页面上显示的那份可能是 build.py
+ * 截断过的（memo 1000 / memos[].text 2000），拿它去和仓库里的全文比永远比不中。
+ * blockTs 是写入时的 Date.now()，一条记录内实际唯一。
+ */
+function applyBoardOps(env, data, ops) {
+  const recs = data.records || [];
+  const applied = [], skipped = [];
+  for (const op of ops) {
+    if (!op || !op.op || !op.jobId) { skipped.push({ opId: op && op.opId, why: '操作不完整' }); continue; }
+    const rec = recs.find((r) => String(r.jobId) === String(op.jobId)
+      && (!op.site || (r.site || 'linkedin') === op.site));
+    if (!rec) { skipped.push({ opId: op.opId, why: '仓库里没有这条记录' }); continue; }
+    const now = Number(op.ts) || Date.now();
+
+    if (op.op === 'memo') {
+      const text = redactText(env, op.text).trim();
+      const at = Number(op.ts) || Date.now();
+      const blocks = getMemos(rec);
+      if (!text) { skipped.push({ opId: op.opId, why: '内容为空' }); continue; }
+      if (blocks.some((b) => b.ts === at && b.text === text)) {
+        applied.push(op.opId);                 // 已经写进去了，算成功，别再重试
+        continue;
+      }
+      setMemos(rec, blocks.concat([{ ts: at, text: text }]));
+      rec.updatedAt = Math.max(rec.updatedAt || 0, at);
+      applied.push(op.opId);
+
+    } else if (op.op === 'memoEdit' || op.op === 'memoDelete') {
+      const bts = Number(op.blockTs) || 0;
+      const blocks = getMemos(rec);
+      const hit = blocks.filter((b) => b.ts === bts);
+      if (!hit.length) {
+        applied.push(op.opId);                 // 已经不在了（可能上一轮就删掉了）
+        continue;
+      }
+      const t = (op.op === 'memoEdit') ? redactText(env, op.text).trim() : '';
+      const next = t
+        ? blocks.map((b) => (hit.indexOf(b) === -1 ? b : { ts: b.ts, text: t }))
+        : blocks.filter((b) => hit.indexOf(b) === -1);
+      setMemos(rec, next);
+      rec.updatedAt = Math.max(rec.updatedAt || 0, now);
+      applied.push(op.opId);
+
+    } else if (op.op === 'followUp') {
+      rec.followUpAt = Number(op.at) || 0;
+      rec.followUpNote = redactText(env, op.note);
+      rec.updatedAt = Math.max(rec.updatedAt || 0, now);
+      applied.push(op.opId);
+
+    } else if (op.op === 'deadline') {
+      if (String(op.done) === 'true' || op.done === true) rec.deadlineDone = true;
+      else { rec.deadlineAt = Number(op.at) || 0; rec.deadlineDone = false; }
+      rec.updatedAt = Math.max(rec.updatedAt || 0, now);
+      applied.push(op.opId);
+
+    } else {
+      skipped.push({ opId: op.opId, why: '不认识的操作：' + op.op });
+    }
+  }
+  return { applied, skipped };
+}
+
 /** 队列 key 用零填充的时间戳打头，KV 按字典序 list 出来就是按时间先后 */
 function queueKey(at, id) {
   return 'sch:' + String(at).padStart(13, '0') + ':' + id;
@@ -896,6 +1089,55 @@ export default {
     }
     if (action === 'inbox_clear') {
       return json({ ok: true, removed: await inboxClear(env) }, 200, headers);
+    }
+
+    /* ---- 看板代写 records.json ----
+     * 让任何一台电脑（不装油猴脚本也行）都能把 MEMO / 跟进提醒 / 处理期限
+     * 写回仓库。读-改-写 + sha 乐观锁，409 就重来 —— 比油猴脚本那条
+     * 「整文件盲覆盖」的路安全，多台机器同时写也不会互相抹掉。 */
+    if (action === 'records_write') {
+      if (!env.WRITE_KEY) {
+        return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
+        return json({ ok: false, description: '写入密钥不对' }, 403, headers);
+      }
+      if (!env.GH_TOKEN || !env.GH_REPO) {
+        return json({ ok: false, description: 'Worker 上还没配 GH_TOKEN / GH_REPO' }, 501, headers);
+      }
+      let ops = [];
+      try { ops = JSON.parse(body.ops || '[]'); } catch (e) { ops = []; }
+      if (!Array.isArray(ops) || !ops.length) {
+        return json({ ok: false, description: 'missing ops' }, 400, headers);
+      }
+      ops = ops.slice(0, 100);
+
+      let last = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let read;
+        try { read = await ghReadRecords(env); }
+        catch (e) { return json({ ok: false, description: String(e.message || e) }, 502, headers); }
+
+        const res = applyBoardOps(env, read.data, ops);
+        if (!res.applied.length) {
+          // 一条都没改动（都被跳过）→ 不必提交
+          return json({ ok: true, applied: [], skipped: res.skipped, committed: false }, 200, headers);
+        }
+        read.data.updatedAt = new Date().toISOString();
+        const put = await ghWriteRecords(env, read.data, read.sha,
+          'chore(board): ' + res.applied.length + ' 项来自看板的改动');
+        if (put.ok) {
+          return json({ ok: true, applied: res.applied, skipped: res.skipped, committed: true },
+                      200, headers);
+        }
+        last = put;
+        // 409 = 手里的 sha 不是最新的（别处刚写过）。重新读一遍再套用。
+        if (put.status !== 409) break;
+      }
+      const detail = last ? await last.text().catch(() => '') : '';
+      return json({ ok: false,
+        description: '写入仓库失败：HTTP ' + (last ? last.status : '?') + ' ' + detail.slice(0, 200)
+      }, 502, headers);
     }
 
     /* ---- 外部来源直接推一条进收件箱（Mac 上的 iMessage 桥用）----
