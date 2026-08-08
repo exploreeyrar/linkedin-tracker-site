@@ -779,6 +779,25 @@ export class BoardStore {
     await this.arm();
   }
 
+  /* ---- 要望欄（wish.html 的 TODO LIST）----------------------------------
+   * 和看板数据毫无关系，所以单开 wish: 前缀。putDoc 只清 rec: / msg:，
+   * 整份同步压不到这里。也不进 GitHub —— 这是给自己看的清单。 */
+
+  async wishList() {
+    const all = await this.state.storage.list({ prefix: 'wish:' });
+    return [...all.values()];
+  }
+
+  async wishPut(item) {
+    await this.state.storage.put('wish:' + item.id, item);
+    return item;
+  }
+
+  async wishDel(id) {
+    await this.state.storage.delete('wish:' + id);
+    return true;
+  }
+
   /* ---- 速报标记 ---------------------------------------------------------- */
 
   async repGet(key) { return (await this.state.storage.get('rep:' + key)) || null; }
@@ -808,6 +827,10 @@ export class BoardStore {
     if (p === '/sch/add')   return reply({ item: await this.schAdd(body.item) });
     if (p === '/sch/del')   return reply({ item: await this.schRemove(String(body.id || '')) });
 
+    if (p === '/wish/list') return reply({ items: await this.wishList() });
+    if (p === '/wish/put')  return reply({ item: await this.wishPut(body.item) });
+    if (p === '/wish/del')  return reply({ ok: await this.wishDel(String(body.id || '')) });
+
     if (p === '/rep/get')   return reply({ val: await this.repGet(String(body.key || '')) });
     if (p === '/rep/put')   { await this.repPut(String(body.key || ''), body.val); return reply({ ok: true }); }
 
@@ -819,6 +842,27 @@ export class BoardStore {
   }
   async webSocketClose(ws, code, reason, wasClean) { try { ws.close(code, reason); } catch (e) {} }
   async webSocketError(ws) { /* 交给 close 处理 */ }
+}
+
+/**
+ * 要望欄的一条。入库前把形状钉死：id 只留安全字符，正文截断，
+ * 优先级只认那四个值 —— 页面是公开静态页，别让它塞进什么就存什么。
+ */
+const WISH_PRIO = ['紧急', '高', '中', '低'];
+function normalizeWish(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.id || '').replace(/[^0-9A-Za-z_-]/g, '').slice(0, 64);
+  const text = String(raw.text == null ? '' : raw.text).slice(0, 4000).trim();
+  if (!id || !text) return null;
+  const ts = Number(raw.ts) || Date.now();
+  return {
+    id: id,
+    ts: ts,
+    updatedAt: Number(raw.updatedAt) || ts,
+    text: text,
+    prio: WISH_PRIO.includes(raw.prio) ? raw.prio : '',
+    archivedAt: Number(raw.archivedAt) || 0,
+  };
 }
 
 /** 拿到那个唯一的看板 DO */
@@ -1737,6 +1781,38 @@ export default {
     /* ---- 看板运行时拉数据 ----
      * 以前这份是 build.py 烤进 index.html 的，等于挂在公开的 GitHub Pages 上。
      * 现在构建产物只剩空壳，数据要带 WRITE_KEY 来这里取。 */
+    /* ---- 要望欄 ----
+     * wish.html 用。和看板同一把写入密钥；没配就整个入口关掉。
+     * 不做脱敏 —— 这份东西不进仓库也不外发，替换掉只会把自己的笔记搞乱。 */
+    if (action === 'wish_list' || action === 'wish_put' || action === 'wish_del') {
+      if (!env.WRITE_KEY) {
+        return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);
+      }
+      if (request.headers.get('X-Write-Key') !== env.WRITE_KEY) {
+        return json({ ok: false, description: '写入密钥不对' }, 403, headers);
+      }
+      if (!env.BOARD) return json({ ok: false, description: 'BoardStore 未绑定' }, 501, headers);
+
+      if (action === 'wish_list') {
+        const r = await board(env, '/wish/list');
+        return json({ ok: true, items: r.items || [] }, 200, headers);
+      }
+      if (action === 'wish_del') {
+        const id = String(body.id || '').slice(0, 64);
+        if (!id) return json({ ok: false, description: '缺 id' }, 400, headers);
+        await board(env, '/wish/del', { id: id });
+        return json({ ok: true }, 200, headers);
+      }
+
+      let raw;
+      try { raw = JSON.parse(String(body.item || '{}')); }
+      catch (e) { return json({ ok: false, description: 'item 不是合法 JSON' }, 400, headers); }
+      const item = normalizeWish(raw);
+      if (!item) return json({ ok: false, description: 'item 缺 id 或正文是空的' }, 400, headers);
+      await board(env, '/wish/put', { item: item });
+      return json({ ok: true, item: item }, 200, headers);
+    }
+
     if (action === 'records_read') {
       if (!env.WRITE_KEY) {
         return json({ ok: false, description: 'WRITE_KEY 未配置，这个入口默认关闭' }, 501, headers);

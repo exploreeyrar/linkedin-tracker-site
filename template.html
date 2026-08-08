@@ -895,6 +895,12 @@
     <label class="chk"><input type="checkbox" id="pfFoot"><span>显示页面底部的构建说明<small>默认不显示</small></span></label>
     <label class="chk"><input type="checkbox" id="pfPushTg"><span>详情页显示「推送至 telegram」勾选框<small>默认不显示。藏起来时「📤 一键推送所有新MEMO」一律真的发到 Telegram；放出来才能选择「只标记为已推送、不发出去」</small></span></label>
 
+    <label style="margin-top:18px">要望欄</label>
+    <div class="row" style="margin-top:8px">
+      <a class="navbtn" id="pfWish" href="./wish.html">🗒 打开要望欄</a>
+      <span class="status" style="margin:0">即将新增的功能的 TODO LIST。也可以直接右键点「⚙ 设置」按钮进去。</span>
+    </div>
+
     <label style="margin-top:18px">操作 log</label>
     <div class="row" style="margin-top:8px">
       <button id="pfOpenLog" type="button">🧾 打开操作 log</button>
@@ -2593,6 +2599,12 @@ function bootBoard(PAYLOAD) {
     $('pfNotifyHint').textContent = hint;
   }
   $('openPrefs').addEventListener('click', function () { syncPrefsUI(); $('prefsMask').hidden = false; });
+  /* 右键这颗按钮 → 「要望欄」（即将新增的功能的 TODO LIST）。
+     藏在右键里是故意的：这页是给自己记事的，不该占工具栏的位置。 */
+  $('openPrefs').addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+    location.href = './wish.html';
+  });
   $('pfClose').addEventListener('click', function () { $('prefsMask').hidden = true; });
   $('prefsMask').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
   $('pfPick').addEventListener('change', function () {

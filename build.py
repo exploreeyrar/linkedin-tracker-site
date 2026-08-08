@@ -23,6 +23,7 @@ TEMPLATE = os.path.join(ROOT, "template.html")
 # Telegram 群 / 频道消息的镜像页。数据是运行时从 Worker 拉的，
 # 构建时只需要把中继地址塞进去。
 CHANNEL_TEMPLATE = os.path.join(ROOT, "channel.html")
+WISH_TEMPLATE = os.path.join(ROOT, "wish.html")
 OUTDIR = os.path.join(ROOT, "dist")
 
 # 内置状态清单，顺序即看板的默认排序顺位。
@@ -396,6 +397,27 @@ def build_channel(cfg):
           f"（{'已接中继' if cfg['tgEndpoint'] else '中继未配置'}）")
 
 
+def build_wish(cfg):
+    """dist/wish.html —— 要望欄（即将新增的功能的 TODO LIST）。
+
+    和 channel.html 同一套样式，但数据存在 Worker 的 BoardStore 里（wish: 前缀），
+    页面本身还是个空壳，构建时只把站点配置填进去。
+    """
+    if not os.path.exists(WISH_TEMPLATE):
+        print("! 找不到 wish.html，跳过要望欄", file=sys.stderr)
+        return
+    with open(WISH_TEMPLATE, encoding="utf-8") as f:
+        html = f.read()
+    if "__CONFIG__" not in html:
+        sys.exit("wish.html 里找不到 __CONFIG__ 占位符")
+    blob = (json.dumps(cfg, ensure_ascii=False, separators=(",", ":"))
+            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+    with open(os.path.join(OUTDIR, "wish.html"), "w", encoding="utf-8") as f:
+        f.write(html.replace("__CONFIG__", blob))
+    print(f"✓ dist/wish.html — 要望欄"
+          f"（{'已接中继' if cfg['tgEndpoint'] else '中继未配置'}）")
+
+
 def main():
     records, updated, messages, defs = load()
     statuses = [d["name"] for d in defs]
@@ -438,6 +460,7 @@ def main():
     open(os.path.join(OUTDIR, ".nojekyll"), "w").close()
 
     build_channel(cfg)
+    build_wish(cfg)
 
     by_status = {}
     for r in records:

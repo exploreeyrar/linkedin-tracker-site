@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>要望欄 · Job Application Tracker</title>
+<meta name="description" content="即将新增的功能的 TODO LIST">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🗒</text></svg>">
+<style>
+  :root {
+    --bg: #f6f7f9;      --card: #ffffff;   --fg: #14181d;   --sub: #5d6874;
+    --line: #e2e6ea;    --accent: #0a66c2; --shadow: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
+    --pop: 0 10px 34px rgba(16,24,40,.18);
+    --ok: #047857;      --warn: #b45309;   --err: #b91c1c;
+    --bubble: #ffffff;  --mine: #dbeafe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181d;    --card: #1c2229;   --fg: #e8eaed;   --sub: #98a2ae;
+      --line: #2b333c;  --accent: #6cb6ff; --shadow: 0 1px 3px rgba(0,0,0,.4);
+      --pop: 0 10px 34px rgba(0,0,0,.6);
+      --ok: #34d399;    --warn: #fbbf24;   --err: #f87171;
+      --bubble: #1c2229; --mine: #1e3a5f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    flex: 0 0 auto; background: var(--card); border-bottom: 1px solid var(--line);
+    padding: 12px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; white-space: nowrap; }
+  /* 多了个优先级下拉之后头部容易挤到换行 —— 让这段说明先让位、超出就省略号 */
+  header .who {
+    color: var(--sub); font-size: 12px; white-space: nowrap;
+    flex: 0 1 auto; min-width: 0; max-width: 30ch;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  header .sp { margin-left: auto; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg); white-space: nowrap;
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--sub); flex: 0 0 8px; }
+  .pill.live  { color: var(--ok);   border-color: currentColor; }
+  .pill.live i  { background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
+  .pill.poll  { color: var(--warn); border-color: currentColor; }
+  .pill.poll i  { background: currentColor; }
+  .pill.down  { color: var(--err);  border-color: currentColor; }
+  .pill.down i  { background: currentColor; }
+
+  .navbtn {
+    font: inherit; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap;
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    background: var(--card); color: var(--fg); border: 1px solid var(--line);
+  }
+  .navbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #q, #prio {
+    font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  #q { min-width: 190px; }
+  #q:focus, #prio:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  #prio.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  main { flex: 1 1 auto; overflow: auto; padding: 18px; overscroll-behavior: contain; }
+  .feed { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+
+  .daysep { display: flex; align-items: center; gap: 10px; color: var(--sub); font-size: 11.5px; margin: 10px 0 2px; }
+  .daysep::before, .daysep::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--line); }
+
+  .msg {
+    background: var(--bubble); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 14px 11px; box-shadow: var(--shadow); max-width: 100%;
+  }
+  .msg.bot { background: color-mix(in srgb, var(--accent) 7%, var(--bubble)); }
+  .msg.fresh { animation: pop .5s ease-out; }
+  @keyframes pop { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .msg .hd { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 12px; }
+  .msg .au { font-weight: 700; color: var(--accent); }
+  .msg .tm { color: var(--sub); font-variant-numeric: tabular-nums; margin-left: auto; }
+  .msg .ed { color: var(--sub); font-size: 11px; }
+  .msg .kind {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); margin-bottom: 4px;
+  }
+  .msg .re {
+    border-left: 3px solid var(--accent); padding: 2px 0 2px 9px; margin-bottom: 6px;
+    color: var(--sub); font-size: 12px; line-height: 1.5;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .msg .tx { font-size: 14.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+  .msg .tx a { color: var(--accent); }
+  .msg mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 3px; }
+
+  /* 群里的图片：Worker 代拿，Bot Token 不下发到浏览器 */
+  .msg .pic {
+    display: block; max-width: 100%; max-height: 380px; width: auto; border-radius: 9px;
+    margin: 2px 0 8px; border: 1px solid var(--line); cursor: zoom-in; background: var(--bg);
+  }
+  .msg .pic.broken { display: none; }
+  .msg .picerr { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+
+  .msg .arch {
+    float: right; margin-left: 8px; border: 1px solid transparent; background: transparent;
+    font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    line-height: 1.5; padding: 2px 9px; border-radius: 999px; color: var(--sub);
+  }
+  .msg .arch:hover { border-color: var(--accent); color: var(--accent); }
+  .msg .arch.del:hover { border-color: var(--err); color: var(--err); }
+  .msg .arch.del.armed { border-color: var(--err); color: var(--err); font-weight: 700; }
+  .msg.archived { opacity: .72; }
+  .msg .archat { font-size: 11px; color: var(--sub); }
+
+  /* 从直达链接点进来时高亮的那一条（配色和 index.html 的定位高亮一致） */
+  .msg.hl { background: #fff5c2; border-color: #eab308; }
+  .msg.hl .tx, .msg.hl .au { color: #3d3200; }
+  @media (prefers-color-scheme: dark) {
+    .msg.hl { background: #4a4218; border-color: #eab308; }
+    .msg.hl .tx { color: #f5efd0; }
+    .msg.hl .au { color: #ffd970; }
+  }
+  .msg .lnk {
+    float: right; margin-left: 6px; border: 1px solid transparent; background: transparent;
+    cursor: pointer; font-size: 13px; line-height: 1.5; padding: 2px 6px; border-radius: 6px; color: var(--sub);
+  }
+  .msg .lnk:hover { background: var(--line); color: var(--fg); }
+
+  /* 头部那排：Archived (N 件) */
+  .navbtn[hidden] { display: none; }
+  .navbtn.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+  .navbtn b { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* 两条横幅一起悬浮在顶部。放进一个固定容器里纵向排，
+     免得「定位到某条」和「正在看 archive」同时出现时叠在一起。 */
+  .topbars {
+    position: fixed; left: 50%; transform: translateX(-50%); top: 74px; z-index: 30;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+    max-width: min(720px, calc(100vw - 32px)); pointer-events: none;
+  }
+  .topbars .archbar {
+    margin: 0; width: auto; box-shadow: var(--pop); pointer-events: auto;
+  }
+  #hlbar { border-color: #eab308; }
+  #hlbar button { border-color: #eab308; }
+
+  /* 正在看 archive 列表时顶部的横幅 */
+  .archbar {
+    max-width: 900px; margin: 0 auto 14px; display: flex; align-items: center; gap: 12px;
+    font-size: 13px; background: var(--card); border: 1px solid var(--accent);
+    border-radius: 10px; padding: 10px 16px;
+  }
+  .archbar[hidden] { display: none; }
+  .archbar button {
+    font: inherit; font-size: 12px; font-weight: 600; margin-left: auto;
+    padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  .archbar button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 点开看大图 */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.88);
+    display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out;
+  }
+  .lightbox[hidden] { display: none; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+  .gapnote {
+    max-width: 900px; margin: 0 auto 14px; font-size: 12.5px; line-height: 1.7;
+    color: var(--sub); background: var(--card); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent); border-radius: 10px; padding: 11px 16px;
+  }
+  .gapnote[hidden] { display: none; }
+  .gapnote b { color: var(--fg); }
+  .gapnote button {
+    font: inherit; font-size: 11.5px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--sub); margin-left: 8px;
+  }
+  .gapnote button:hover { border-color: var(--err); color: var(--err); }
+
+  .note {
+    max-width: 900px; margin: 0 auto 16px; background: var(--card); border: 1px solid var(--line);
+    border-left: 4px solid var(--warn); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow);
+  }
+  .note[hidden] { display: none; }
+  .note h2 { font-size: 14px; margin: 0 0 8px; }
+  .note ol { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.85; }
+  .note code {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+    padding: 1px 6px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all;
+  }
+  .note .sm { color: var(--sub); font-size: 12px; margin-top: 8px; line-height: 1.6; }
+
+  .empty { text-align: center; color: var(--sub); padding: 48px 16px; font-size: 14px; }
+
+  .jump {
+    position: fixed; right: 22px; bottom: 22px; z-index: 20;
+    font: inherit; font-size: 13px; font-weight: 700; padding: 10px 16px; border-radius: 999px;
+    border: 0; background: var(--accent); color: #fff; cursor: pointer; box-shadow: var(--pop);
+  }
+  .jump[hidden] { display: none; }
+
+  /* 提示一律做成不显眼的灰色小浮条，2 秒就走 —— 这些都是「系统在动」的确认，
+     不是要用户拿主意的信息，不该抢视线。 */
+  .toast {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    background: rgba(90,96,104,.82); color: #e9ecef; padding: 6px 13px; border-radius: 999px;
+    font-size: 11.5px; z-index: 30; opacity: 0; transition: opacity .18s ease; pointer-events: none;
+    max-width: calc(100vw - 32px); text-align: center;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ---------- 要望欄自己多出来的那几块 ---------- */
+
+  /* 底部的输入条：贴着视口底边，永远够得着 */
+  .compose {
+    flex: 0 0 auto; background: var(--card); border-top: 1px solid var(--line);
+    padding: 12px 18px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .compose .inner { max-width: 900px; margin: 0 auto; width: 100%; display: flex; gap: 10px; align-items: flex-start; }
+  .compose textarea {
+    flex: 1 1 auto; min-height: 46px; max-height: 180px; font: inherit; font-size: 14px;
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--fg); resize: vertical; line-height: 1.6;
+  }
+  .compose textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .compose .col { display: flex; flex-direction: column; gap: 8px; }
+  .compose select {
+    font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  .compose button {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 10px;
+    border: 0; background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;
+  }
+  .compose button:disabled { opacity: .5; cursor: default; }
+
+  /* 优先级角标：颜色和「状态分布」那套一致，扫一眼就知道轻重 */
+  .msg .pr {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 9px;
+    border-radius: 999px; margin-bottom: 5px; border: 1px solid currentColor;
+  }
+  .pr-紧急 { color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); }
+  .pr-高   { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .pr-中   { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .pr-低   { color: var(--sub); background: color-mix(in srgb, var(--sub) 12%, transparent); }
+
+  /* 就地编辑：不弹框，textarea 直接长在那条上面 */
+  .msg .edit { width: 100%; }
+  .msg .edit textarea {
+    width: 100%; min-height: 90px; font: inherit; font-size: 14.5px; line-height: 1.7;
+    padding: 9px 11px; border: 1px solid var(--accent); border-radius: 9px;
+    background: var(--bg); color: var(--fg); resize: vertical;
+  }
+  .msg .editrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .msg .editrow select {
+    font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  .msg .editrow button {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 6px 13px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer;
+  }
+  .msg .editrow button.ok { border-color: transparent; background: var(--accent); color: #fff; }
+  .msg .editrow .sp { margin-left: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🗒 要望欄</h1>
+  <span class="who" id="who"></span>
+  <input id="q" type="search" placeholder="搜索要望…（含已 archive）" autocomplete="off">
+  <select id="prio" title="按优先级筛选。只在当前这堆里筛（已 archive 的不算，要看它们请先进 Archived 视图）">
+    <option value="">全部优先级</option>
+    <option value="紧急">紧急</option>
+    <option value="高">高</option>
+    <option value="中">中</option>
+    <option value="低">低</option>
+    <option value="none">未标优先级</option>
+  </select>
+  <a class="navbtn sp" id="back" href="./index.html">📮 回到投递清单</a>
+  <a class="navbtn" id="chan" href="./channel.html">📡 Telegram 频道</a>
+  <button class="navbtn" id="archFab" type="button" hidden>Archived (<b id="archN">0</b> 件)</button>
+</header>
+
+<main id="scroll">
+  <div class="feed" id="feed"></div>
+  <div class="empty" id="empty" hidden>还没有要望。在下面写一条，比如「详情页加个批量改状态」。</div>
+</main>
+
+<!-- 两条横幅都悬浮在顶部；同时出现时纵向排开，不会互相盖住 -->
+<div class="topbars">
+  <div class="archbar" id="hlbar" hidden>
+    <span id="hlText">已定位到这一条</span>
+    <button type="button" id="hlClear">取消高亮</button>
+  </div>
+  <div class="archbar" id="archbar" hidden>
+    <span id="archbarText">正在看已 archive 的要望</span>
+    <button type="button" id="archBack">← 回到要望流</button>
+  </div>
+</div>
+
+<div class="compose">
+  <div class="inner">
+    <textarea id="newText" placeholder="写一条要望…　回车换行、Ctrl/⌘+Enter 提交"></textarea>
+    <div class="col">
+      <select id="newPrio" title="优先级">
+        <option value="">优先级：无</option>
+        <option value="紧急">紧急</option>
+        <option value="高">高</option>
+        <option value="中">中</option>
+        <option value="低">低</option>
+      </select>
+      <button id="add" type="button">＋ 追加</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script id="cfg" type="application/json">__CONFIG__</script>
+<script>
+(function () {
+  'use strict';
+
+  /* 要望欄 —— 「即将新增的功能」的 TODO LIST。
+   *
+   * UI 照搬 channel.html（样式表是同一份），但数据完全是另一回事：
+   * 这里没有 Telegram，也不推任何东西出去。每一条存在 Worker 的
+   * BoardStore（Durable Object）里，key 前缀 wish:，所以换台电脑打开
+   * 看到的是同一份。写入和读取都要 Worker 写入密钥，和看板同一把。
+   *
+   * 不做脱敏：这份东西不进 git，也不外发，替换掉反而把自己的笔记搞乱。
+   */
+
+  var CONFIG = JSON.parse(document.getElementById('cfg').textContent) || {};
+  var ENDPOINT = CONFIG.tgEndpoint || '';
+  var APPKEY = CONFIG.tgAppKey || '';
+  var WKEY = 'sgjob_write_key';
+  var VIEW_KEY = 'sgjob_wish_view_v1';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  function key() { try { return localStorage.getItem(WKEY) || ''; } catch (e) { return ''; } }
+
+  var toastTimer = null;
+  function toast(m) {
+    var t = $('toast');
+    t.textContent = m;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2000);
+  }
+
+  /* ---------- 和 Worker 说话 ---------- */
+  function call(payload) {
+    if (!ENDPOINT) return Promise.reject(new Error('还没配置 Worker 地址'));
+    if (!key()) return Promise.reject(new Error('这台电脑还没填 Worker 写入密钥（在投递清单的「⚙ 设置」里填）'));
+    var headers = { 'X-Write-Key': key() };
+    if (APPKEY) headers['X-App-Key'] = APPKEY;
+    return fetch(ENDPOINT, { method: 'POST', headers: headers, body: new URLSearchParams(payload) })
+      .then(function (res) {
+        return res.json().catch(function () { return { ok: false, description: 'HTTP ' + res.status }; });
+      })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.description) || '请求失败');
+        return d;
+      });
+  }
+
+  /* ---------- 状态 ---------- */
+  var ITEMS = [];              // 按 ts 升序，和频道页一样「旧在上、新在下」
+  var showArchived = false;
+  var editing = '';            // 正在就地编辑的那条 id
+  var hlId = '';               // 直达链接高亮的那条
+
+  function sortItems() { ITEMS.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); }); }
+
+  /* ---------- 视图状态：刷新后原样恢复 ---------- */
+  function saveView() {
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({
+        q: $('q').value, prio: $('prio').value, arch: !!showArchived
+      }));
+    } catch (e) {}
+  }
+  function loadView() {
+    try { return JSON.parse(localStorage.getItem(VIEW_KEY) || 'null') || {}; }
+    catch (e) { return {}; }
+  }
+
+  /* ---------- 时间 ---------- */
+  function fmtTime(ms) {
+    var d = new Date(ms);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function fmtFull(ms) {
+    var d = new Date(ms);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-'
+         + String(d.getDate()).padStart(2, '0') + ' ' + fmtTime(ms);
+  }
+  function fmtDay(ms) {
+    var d = new Date(ms); d.setHours(0, 0, 0, 0);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var diff = Math.round((today - d) / 86400000);
+    if (diff === 0) return '今天';
+    if (diff === 1) return '昨天';
+    return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+  }
+
+  /* ---------- 渲染 ---------- */
+  function targetId() {
+    var m = String(location.hash || '').match(/^#w-([0-9a-z]+)$/i);
+    return m ? m[1] : '';
+  }
+
+  function render() {
+    // 最后一条被取回之后，别把人晾在一个空的 archive 视图里（那时按钮已经消失了）
+    if (showArchived && !ITEMS.some(function (m) { return m.archivedAt; })) showArchived = false;
+
+    var needle = $('q').value.trim();
+    var low = needle.toLowerCase();
+    var prio = $('prio').value;
+    // 搜索跨越 archive 分区；优先级不跨（和频道页同一套规矩）
+    var filtering = !!needle;
+
+    var list = filtering
+      ? ITEMS.slice()
+      : ITEMS.filter(function (m) { return !!m.archivedAt === showArchived; });
+    if (needle) {
+      list = list.filter(function (m) { return String(m.text || '').toLowerCase().indexOf(low) !== -1; });
+    }
+    renderPrioCounts(prio, list);
+    if (prio === 'none') list = list.filter(function (m) { return !m.prio; });
+    else if (prio) list = list.filter(function (m) { return m.prio === prio; });
+
+    var feed = $('feed');
+    feed.textContent = '';
+    var lastDay = '';
+    list.forEach(function (m) {
+      var day = fmtDay(m.ts);
+      if (day !== lastDay) { feed.appendChild(el('div', 'daysep', day)); lastDay = day; }
+      feed.appendChild(row(m));
+    });
+
+    var live = ITEMS.filter(function (m) { return !m.archivedAt; });
+    var arch = ITEMS.length - live.length;
+    var narrowed = filtering || !!prio;
+
+    $('empty').hidden = list.length > 0;
+    if (narrowed && !list.length) {
+      $('empty').textContent = '没有符合条件的要望'
+        + (needle ? ('（搜索「' + needle + '」）') : '')
+        + (prio ? ('（' + (prio === 'none' ? '未标优先级' : ('优先级 ' + prio)) + '）') : '') + '。';
+    } else if (showArchived && !list.length) {
+      $('empty').textContent = '还没有 archive 过任何要望。';
+    } else if (!narrowed) {
+      $('empty').textContent = '还没有要望。在下面写一条，比如「详情页加个批量改状态」。';
+    }
+
+    $('archFab').hidden = !arch;
+    $('archFab').classList.toggle('on', showArchived && !filtering);
+    $('archN').textContent = String(arch);
+    $('prio').classList.toggle('on', !!prio);
+    $('archbar').hidden = !showArchived || filtering;
+    $('archbarText').textContent = '正在看已 archive 的要望（' + arch + ' 条）';
+    if (filtering) {
+      var nArch = list.filter(function (m) { return m.archivedAt; }).length;
+      $('archbar').hidden = !nArch;
+      $('archbarText').textContent = '搜索结果里有 ' + nArch + ' 条是已 archive 的（淡显那几条）';
+    }
+
+    $('who').textContent = ITEMS.length
+      ? ('共 ' + live.length + ' 条' + (arch ? ('（另有 ' + arch + ' 条已 archive）') : ''))
+      : '';
+
+    saveView();
+  }
+
+  /**
+   * 把每个优先级的条数写进下拉选项。pool = 套优先级之前的那堆，
+   * 所以括号里的数字＝选中该项后真正会看到的条数，各项相加＝「全部优先级」。
+   */
+  function renderPrioCounts(current, pool) {
+    var sel = $('prio');
+    var n = {}, none = 0;
+    (pool || []).forEach(function (m) {
+      if (m.prio) n[m.prio] = (n[m.prio] || 0) + 1; else none++;
+    });
+    [].forEach.call(sel.options, function (o) {
+      if (!o.value) { o.textContent = '全部优先级 (' + (pool || []).length + ')'; return; }
+      if (o.value === 'none') { o.textContent = '未标优先级 (' + none + ')'; return; }
+      o.textContent = o.value + ' (' + (n[o.value] || 0) + ')';
+    });
+    sel.value = current || '';
+  }
+
+  /** 正文里的链接点得开，其余原样（不解析 HTML，避免注入） */
+  function linkify(text, host) {
+    var re = /https?:\/\/[^\s<>"')]+/g;
+    var i = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > i) host.appendChild(document.createTextNode(text.slice(i, m.index)));
+      var a = el('a', null, m[0]);
+      a.href = m[0]; a.target = '_blank'; a.rel = 'noopener';
+      host.appendChild(a);
+      i = m.index + m[0].length;
+    }
+    if (i < text.length) host.appendChild(document.createTextNode(text.slice(i)));
+  }
+
+  function row(m) {
+    var box = el('div', 'msg' + (m.archivedAt ? ' archived' : '') + (m.id === hlId ? ' hl' : ''));
+    box.id = 'w-' + m.id;
+
+    if (editing === m.id) { box.appendChild(editor(m)); return box; }
+
+    /* 右上角那排按钮。顺序和频道页一致：链接 → 复制 → archive（→ 彻底删除） */
+    var lnk = el('button', 'lnk', '🔗');
+    lnk.type = 'button';
+    lnk.title = '复制这一条的直达链接';
+    lnk.addEventListener('click', function () {
+      var url = location.origin + location.pathname + '#w-' + m.id;
+      copy(url, '链接已复制');
+      location.hash = 'w-' + m.id;
+    });
+    box.appendChild(lnk);
+
+    var cp = el('button', 'lnk', '⧉');
+    cp.type = 'button';
+    cp.title = '复制正文';
+    cp.addEventListener('click', function () { copy(m.text || '', '已复制'); });
+    box.appendChild(cp);
+
+    var ed = el('button', 'arch', '✎ 编辑');
+    ed.type = 'button';
+    ed.addEventListener('click', function () { editing = m.id; render(); });
+    box.appendChild(ed);
+
+    var arch = el('button', 'arch', m.archivedAt ? '↩ 取回' : '🗂 archive');
+    arch.type = 'button';
+    arch.addEventListener('click', function () { setArchived(m, !m.archivedAt); });
+    box.appendChild(arch);
+
+    if (m.archivedAt) {
+      // 彻底删除只在 archive 视图里给 —— 两段确认，免得手滑
+      var del = el('button', 'arch del', '🗑 彻底删除');
+      del.type = 'button';
+      var armed = false, disarm = null;
+      del.addEventListener('click', function () {
+        if (!armed) {
+          armed = true;
+          del.textContent = '⚠️ 再点一下确认';
+          del.classList.add('armed');
+          disarm = setTimeout(function () {
+            armed = false; del.textContent = '🗑 彻底删除'; del.classList.remove('armed');
+          }, 4000);
+          return;
+        }
+        clearTimeout(disarm);
+        removeItem(m);
+      });
+      box.appendChild(del);
+    }
+
+    var hd = el('div', 'hd');
+    hd.appendChild(el('span', 'au', '要望'));
+    if (m.updatedAt && m.updatedAt > m.ts + 1000) hd.appendChild(el('span', 'ed', '已编辑'));
+    hd.appendChild(el('span', 'tm', fmtFull(m.ts)));
+    box.appendChild(hd);
+
+    if (m.prio) box.appendChild(el('span', 'pr pr-' + m.prio, m.prio));
+    if (m.archivedAt) box.appendChild(el('div', 'archat', 'archive 于 ' + fmtFull(m.archivedAt)));
+
+    var tx = el('div', 'tx');
+    linkify(String(m.text || ''), tx);
+    box.appendChild(tx);
+    return box;
+  }
+
+  /** 就地编辑：不弹框，textarea 直接长在那一条上 */
+  function editor(m) {
+    var wrap = el('div', 'edit');
+    var ta = document.createElement('textarea');
+    ta.value = m.text || '';
+    wrap.appendChild(ta);
+
+    var rowEl = el('div', 'editrow');
+    var sel = document.createElement('select');
+    [['', '优先级：无'], ['紧急', '紧急'], ['高', '高'], ['中', '中'], ['低', '低']].forEach(function (p) {
+      var o = document.createElement('option');
+      o.value = p[0]; o.textContent = p[1];
+      sel.appendChild(o);
+    });
+    sel.value = m.prio || '';
+    rowEl.appendChild(sel);
+
+    var save = el('button', 'ok', '保存');
+    save.type = 'button';
+    save.addEventListener('click', function () {
+      var t = ta.value.trim();
+      if (!t) { toast('内容不能为空'); return; }
+      save.disabled = true;
+      put(Object.assign({}, m, { text: t, prio: sel.value, updatedAt: Date.now() }))
+        .then(function () { editing = ''; render(); toast('已保存'); })
+        .catch(function (e) { save.disabled = false; toast('保存失败：' + (e.message || e)); });
+    });
+    rowEl.appendChild(save);
+
+    var cancel = el('button', null, '取消');
+    cancel.type = 'button';
+    cancel.addEventListener('click', function () { editing = ''; render(); });
+    rowEl.appendChild(cancel);
+
+    // 编辑态下删除也放这里，省得先取消再找按钮
+    var del = el('button', 'sp', '🗑 删除这一条');
+    del.type = 'button';
+    var armed = false, disarm = null;
+    del.addEventListener('click', function () {
+      if (!armed) {
+        armed = true;
+        del.textContent = '⚠️ 再点一下确认';
+        disarm = setTimeout(function () { armed = false; del.textContent = '🗑 删除这一条'; }, 4000);
+        return;
+      }
+      clearTimeout(disarm);
+      editing = '';
+      removeItem(m);
+    });
+    rowEl.appendChild(del);
+
+    wrap.appendChild(rowEl);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); save.click(); }
+      if (e.key === 'Escape') { e.preventDefault(); cancel.click(); }
+    });
+    return wrap;
+  }
+
+  function copy(text, okMsg) {
+    var done = function () { toast(okMsg); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { toast('复制失败'); });
+      return;
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败'); }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- 增 / 改 / 删 ---------- */
+
+  /** 本地先落地再发请求：手感上是立刻生效的，失败了再回滚并说明 */
+  function put(item) {
+    var i = ITEMS.findIndex(function (x) { return x.id === item.id; });
+    var prev = i === -1 ? null : ITEMS[i];
+    if (i === -1) ITEMS.push(item); else ITEMS[i] = item;
+    sortItems();
+    render();
+    return call({ action: 'wish_put', item: JSON.stringify(item) }).catch(function (e) {
+      var j = ITEMS.findIndex(function (x) { return x.id === item.id; });
+      if (j !== -1) { if (prev) ITEMS[j] = prev; else ITEMS.splice(j, 1); }
+      render();
+      throw e;
+    });
+  }
+
+  function removeItem(m) {
+    var i = ITEMS.findIndex(function (x) { return x.id === m.id; });
+    if (i !== -1) ITEMS.splice(i, 1);
+    render();
+    call({ action: 'wish_del', id: m.id })
+      .then(function () { toast('已彻底删除'); })
+      .catch(function (e) { ITEMS.push(m); sortItems(); render(); toast('删除失败：' + (e.message || e)); });
+  }
+
+  function setArchived(m, on) {
+    put(Object.assign({}, m, { archivedAt: on ? Date.now() : 0 }))
+      .then(function () { toast(on ? '已 archive' : '已取回'); })
+      .catch(function (e) { toast('操作失败：' + (e.message || e)); });
+  }
+
+  function addItem() {
+    var t = $('newText').value.trim();
+    if (!t) { toast('先写点什么'); return; }
+    var now = Date.now();
+    var item = {
+      id: now.toString(36) + Math.random().toString(36).slice(2, 6),
+      ts: now, updatedAt: now, text: t, prio: $('newPrio').value, archivedAt: 0
+    };
+    $('newText').value = '';
+    // 新的一条在最下面，加完滚过去
+    put(item).then(function () {
+      scrollToBottom();
+      toast('已追加');
+    }).catch(function (e) {
+      $('newText').value = t;
+      toast('追加失败：' + (e.message || e));
+    });
+  }
+
+  function scrollToBottom() {
+    var s = $('scroll');
+    s.scrollTop = s.scrollHeight;
+  }
+
+  /* ---------- 直达链接 ---------- */
+  function focusItem(id, scroll) {
+    hlId = id || '';
+    if (!hlId) { $('hlbar').hidden = true; render(); return; }
+    // 可能落在 archive 分区里，先切过去再找
+    var it = ITEMS.filter(function (m) { return m.id === hlId; })[0];
+    if (it && !!it.archivedAt !== showArchived) showArchived = !!it.archivedAt;
+    render();
+    var node = document.getElementById('w-' + hlId);
+    $('hlbar').hidden = false;
+    $('hlText').textContent = node ? '已定位到这一条' : '链接指向的要望已经不在了';
+    if (!node) { hlId = ''; render(); return; }
+    if (scroll) node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  function clearHighlight() { hlId = ''; $('hlbar').hidden = true; render(); }
+
+  /* ---------- 事件 ---------- */
+  $('q').addEventListener('input', function () { render(); });
+  $('prio').addEventListener('change', function () { render(); });
+  $('add').addEventListener('click', addItem);
+  $('newText').addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); addItem(); }
+  });
+  $('hlClear').addEventListener('click', clearHighlight);
+  window.addEventListener('hashchange', function () { focusItem(targetId(), true); });
+  $('archFab').addEventListener('click', function () {
+    showArchived = !showArchived;
+    render();
+    $('scroll').scrollTop = 0;
+  });
+  $('archBack').addEventListener('click', function () {
+    showArchived = false;
+    render();
+    scrollToBottom();
+  });
+
+  /* ---------- 启动 ---------- */
+  var pendingArch = false;      // 先声明再赋值：var 会提升，反过来写会被抹掉
+  (function () {
+    var v = loadView();
+    if (v.q) $('q').value = v.q;
+    if (v.prio) {
+      $('prio').value = v.prio;
+      if ($('prio').value !== v.prio) $('prio').value = '';
+    }
+    pendingArch = !!v.arch;
+  })();
+
+  render();
+  call({ action: 'wish_list' }).then(function (d) {
+    ITEMS = (d.items || []).filter(function (x) { return x && x.id; });
+    sortItems();
+    if (pendingArch && ITEMS.some(function (m) { return m.archivedAt; })) showArchived = true;
+    render();
+    if (targetId()) focusItem(targetId(), true);
+    else scrollToBottom();
+  }).catch(function (e) {
+    $('empty').hidden = false;
+    $('empty').textContent = '取不到要望：' + (e.message || e);
+  });
+})();
+</script>
+</body>
+</html>
