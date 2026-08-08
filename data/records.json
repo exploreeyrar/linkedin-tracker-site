@@ -1,6 +1,6 @@
 {
  "source": "linkedin-applied-tracker",
- "updatedAt": "2026-08-08T05:56:13.481Z",
+ "updatedAt": "2026-08-08T05:56:57.658Z",
  "count": 97,
  "records": [
   {
@@ -1828,6 +1828,13 @@
   }
  ],
  "messages": [
+  {
+   "id": "pmsjyodrewxdy",
+   "text": "📝 MEMO 删除\nCrowdStrike / Manager, Sales Development - Southeast and North Asia\nTESTT",
+   "createdAt": 1786168617386,
+   "editedAt": 0,
+   "author": "看板"
+  },
   {
    "id": "pmsjynfo3l1l9",
    "text": "📤 已发送到 Telegram\n\n#SGJOB 状态更新请求\n处理人：通知\n\n公司：CrowdStrike\n岗位：Manager, Sales Development - Southeast and North Asia\n投递时间：2026-08-04 14:36\n链接：https://www.linkedin.com/jobs/view/4423636831/\n当前状态：等己方处理(胖 ball)\n看板：https://exploreeyrar.github.io/linkedin-tracker-site/#job-4423636831\n\n🟢 备注：TESTT",
